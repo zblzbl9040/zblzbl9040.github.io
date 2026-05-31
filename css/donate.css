@@ -50,9 +50,9 @@
 	position: absolute;
 	float: left;
 	top: calc(50% - 15px);
-	left: calc(50% - 150px);
+	left: calc(50% - 75px);
 	z-index: 10;
-	width: 299px;
+	width: 150px;
 	height: 28px;
 	background-color: #FFF;
 	border: 1px solid #DDD;
@@ -62,7 +62,7 @@
 
 #DonateBox li {
 	float: left;
-	width: 74px;
+	width: 75px;
 	height: 28px;
 	background: no-repeat center center;
 	background-color: rgba(204, 217, 220, 0.1);
