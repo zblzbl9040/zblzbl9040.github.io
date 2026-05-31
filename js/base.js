@@ -916,7 +916,7 @@ function Base() {
      * 初始化评论列表
      */
     this.initComments = function() {
-        if (window.config.Comment.type != "Waline") {
+        if (window.config.Comment.type == "Valine") {
             require(['LeanCloud', 'Valine'], function(LeanCloud, Valine) {
                 window.AV    = LeanCloud;
                 let metaStr  = window.config.Valine.meta;
