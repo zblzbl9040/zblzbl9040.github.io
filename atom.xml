@@ -60,9 +60,11 @@
     <link href="http://example.com/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/"/>
     <published>2024-04-11T14:06:14.000Z</published>
     <summary>
-      <![CDATA[<h1 id="SSD的内部结构"><a href="#SSD的内部结构" class="headerlink" title="SSD的内部结构"></a>SSD的内部结构</h1><p>SSD主要由控制单元(SSD控制器、主机接口、DRAM等)和存储单元(主要是NAND FLA]]>
+      <![CDATA[<h1 id="SSD的内部结构"><a href="#SSD的内部结构" class="headerlink" title="SSD的内部结构"></a>SSD的内部结构</h1>
+
+<p>SSD主要由控制单元(SSD控制器、主机接口、DRAM等)和存储单元(主要是NAND F]]>
     </summary>
     <title>SSD的内部结构</title>
-    <updated>2026-06-03T12:51:14.976Z</updated>
+    <updated>2026-06-03T13:17:34.698Z</updated>
   </entry>
 </feed>
