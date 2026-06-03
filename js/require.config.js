@@ -16,7 +16,7 @@ require.config({
         Menu: 'menu',
         //-- Search
         InstantSearch: 'instantsearch.min',
-        Search: 'search',
+        Search: 'search-local',
         //-- Lazy Load
         LazyLoad: 'jquery.lazyload.min',
         //-- Home Animation

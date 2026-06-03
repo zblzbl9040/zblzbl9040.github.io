@@ -236,6 +236,7 @@
             loading: '/js/loading.js',
             meting: '/js/Meting.min.js',
             require: '/js/require.min.js',
+            searchLocal: '/js/search-local.js',
             waline: '/js/waline.mjs',
             pageview: '/js/pageview.mjs',
             comment: '/js/comment.mjs'
