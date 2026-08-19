@@ -242,3 +242,30 @@
 .tags .tags-content a::after {
     display: none !important;
 }
+
+/* 本地搜索样式 */
+.search-hit-content {
+    margin-top: 5px;
+    font-size: 14px;
+    color: #888;
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+#local-search-input {
+    width: 100% !important;
+    padding: 5px 0 !important;
+    background: transparent !important;
+    outline: none !important;
+    border: none !important;
+    color: inherit !important;
+    font-size: 16px !important;
+}
+
+#local-search-input::placeholder {
+    color: #999 !important;
+}

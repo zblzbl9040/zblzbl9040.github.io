@@ -3,28 +3,16 @@ $(document).ready(function () {
     let scroll = null;
 
     // 加载搜索数据
-    $.ajax({
-        url: '/search.xml',
-        dataType: 'xml',
-        success: function(xml) {
-            $(xml).find('entry').each(function() {
-                let $entry = $(this);
-                searchData.push({
-                    title: $entry.find('title').text(),
-                    url: $entry.find('url').text(),
-                    content: $entry.find('content').text()
-                });
-            });
-            console.log('Search data loaded:', searchData.length + ' entries');
-        },
-        error: function() {
-            console.error('Failed to load search data from /search.xml');
-        }
+    $.getJSON('/searchdb.json', function(data) {
+        searchData = data;
+        window.console.log('Search data loaded:', searchData.length + ' items');
+    }).fail(function() {
+        window.console.error('Failed to load search data');
     });
 
     // 搜索函数
     function performSearch(query) {
-        if (!query) {
+        if (!query || query.trim() === '') {
             $('#search-stats').empty();
             $('#search-hits').empty();
             $('#search-pagination').empty();
@@ -32,36 +20,68 @@ $(document).ready(function () {
         }
 
         let results = [];
-        let lowerQuery = query.toLowerCase();
+        let queryLower = query.toLowerCase();
 
         searchData.forEach(function(item) {
-            let titleMatch = item.title.toLowerCase().indexOf(lowerQuery) !== -1;
-            let contentMatch = item.content.toLowerCase().indexOf(lowerQuery) !== -1;
+            let title = item.title || '';
+            let content = item.content || '';
+            let url = item.url || '';
 
-            if (titleMatch || contentMatch) {
-                results.push(item);
+            // 搜索标题和内容
+            if (title.toLowerCase().includes(queryLower) ||
+                content.toLowerCase().includes(queryLower)) {
+
+                // 高亮匹配的文本
+                let highlightedTitle = highlightText(title, query);
+                let highlightedContent = highlightText(content.substring(0, 200), query);
+
+                results.push({
+                    title: highlightedTitle,
+                    content: highlightedContent,
+                    url: url
+                });
             }
         });
 
         displayResults(results, query);
     }
 
+    // 高亮匹配文本
+    function highlightText(text, query) {
+        if (!text) return '';
+        let regex = new RegExp('(' + escapeRegExp(query) + ')', 'gi');
+        return text.replace(regex, '<em>$1</em>');
+    }
+
+    // 转义正则表达式特殊字符
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
     // 显示搜索结果
     function displayResults(results, query) {
-        // 显示统计信息
-        let stats = results.length + ' 条相关条目';
-        $('#search-stats').html(stats + '<hr/>');
+        let startTime = Date.now();
+        let html = '';
 
-        // 显示搜索结果
-        let hitsHtml = '';
         if (results.length === 0) {
-            hitsHtml = '<div id="search-hits-empty" class="search-hits-empty">未发现与 「' + query + '」 相关的内容</div>';
+            html = '<div id="search-hits-empty" class="search-hits-empty">未发现与 「' + query + '」 相关的内容</div>';
         } else {
+            html += '<div class="search-hits">';
             results.forEach(function(item) {
-                hitsHtml += '<a href="' + item.url + '" class="search-hit-link">' + item.title + '</a>';
+                html += '<div class="search-hit-item">';
+                html += '<a href="' + item.url + '" class="search-hit-link">' + item.title + '</a>';
+                html += '<div class="search-hit-content">' + item.content + '</div>';
+                html += '</div>';
             });
+            html += '</div>';
         }
-        $('#search-hits').html(hitsHtml);
+
+        let endTime = Date.now();
+        let statsHtml = results.length + ' 条相关条目，使用了 ' + (endTime - startTime) + ' 毫秒<hr/>';
+
+        $('#search-stats').html(statsHtml);
+        $('#search-hits').html(html);
+        $('#search-pagination').empty();
 
         // 刷新滚动条
         if (scroll) {
@@ -69,24 +89,37 @@ $(document).ready(function () {
         }
     }
 
-    // 搜索输入事件
-    $('#search-input').on('input', 'input', function() {
-        performSearch($(this).val());
-    });
+    // 防抖函数
+    let debounceTimer;
+    function debounceSearch(query) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function() {
+            performSearch(query);
+        }, 300);
+    }
 
     // 打开搜索窗口
     $('body').on('click', '.search', function(e) {
         e.stopPropagation();
         $('body').append('<div class="search-cover"></div>').css('overflow', 'hidden');
 
+        // 移动端防止滚动
         $('.search-cover').on('touchmove', function(event){
             event.preventDefault();
         }, false);
 
         document.body.addEventListener('touchmove', handler, { passive: false });
-        $('.search-window').toggle();
-        $('#search-input').find('input').focus();
+        $('.search-window').show();
 
+        // 创建搜索输入框
+        createSearchInput();
+
+        // 聚焦输入框
+        setTimeout(function() {
+            $('#local-search-input').focus();
+        }, 100);
+
+        // 初始化滚动条
         let height = $('.search-content').outerHeight();
         $('.search-scroll').css('height', 'calc(100% - ' + height + 'px)');
         scroll = new IScroll('.search-scroll', {
@@ -97,24 +130,49 @@ $(document).ready(function () {
         });
     });
 
+    // 创建本地搜索输入框
+    function createSearchInput() {
+        if ($('#local-search-input').length === 0) {
+            let inputHtml = '<input type="text" id="local-search-input" placeholder="搜索" style="width: 100%; padding: 5px 0; background: transparent; outline: none; border: none; color: inherit;">';
+            $('#search-input').html(inputHtml);
+
+            // 监听输入事件
+            $('#local-search-input').on('input', function() {
+                debounceSearch($(this).val());
+            });
+
+            // 监听回车键
+            $('#local-search-input').on('keypress', function(e) {
+                if (e.which === 13) {
+                    performSearch($(this).val());
+                }
+            });
+        }
+    }
+
     // 关闭搜索窗口
     $('body').on('click', '.search-close-icon', function() {
         $('.search-window').hide();
         $('.search-cover').remove();
         document.body.removeEventListener('touchmove', handler, { passive: false });
         $('body').css('overflow', 'auto');
-        $('#search-input').find('input').val('');
+
+        // 清空搜索
+        $('#local-search-input').val('');
         $('#search-stats').empty();
         $('#search-hits').empty();
         $('#search-pagination').empty();
+
+        // 销毁滚动条
         if (scroll) {
             scroll.destroy();
             scroll = null;
         }
     });
-});
 
-function handler(event) {
-    event.preventDefault();
-    event.stopPropagation();
-}
+    // 触摸事件处理器
+    function handler(event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+});
