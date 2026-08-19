@@ -14,33 +14,64 @@
     transition: all 0.3s ease !important;
     text-decoration: none !important;
     display: inline-block !important;
+    background-color: #667eea !important;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
 }
 
-/* 为不同标签设置不同颜色 */
-.tags-content a:nth-child(4n+1) {
+/* 为不同标签设置不同颜色 - 使用更具体的选择器 */
+.tags-content .tags-light a:nth-child(1),
+.tags-content .tags-dark a:nth-child(1) {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
 }
 
-.tags-content a:nth-child(4n+2) {
+.tags-content .tags-light a:nth-child(2),
+.tags-content .tags-dark a:nth-child(2) {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
     box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4) !important;
 }
 
-.tags-content a:nth-child(4n+3) {
+.tags-content .tags-light a:nth-child(3),
+.tags-content .tags-dark a:nth-child(3) {
     background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
     box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4) !important;
 }
 
-.tags-content a:nth-child(4n+4) {
+.tags-content .tags-light a:nth-child(4),
+.tags-content .tags-dark a:nth-child(4) {
     background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
     box-shadow: 0 4px 15px rgba(67, 233, 123, 0.4) !important;
+}
+
+/* 继续循环颜色 */
+.tags-content .tags-light a:nth-child(5),
+.tags-content .tags-dark a:nth-child(5) {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%) !important;
+    box-shadow: 0 4px 15px rgba(250, 112, 154, 0.4) !important;
+}
+
+.tags-content .tags-light a:nth-child(6),
+.tags-content .tags-dark a:nth-child(6) {
+    background: linear-gradient(135deg, #30cfd0 0%, #330867 100%) !important;
+    box-shadow: 0 4px 15px rgba(48, 207, 208, 0.4) !important;
+}
+
+.tags-content .tags-light a:nth-child(7),
+.tags-content .tags-dark a:nth-child(7) {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%) !important;
+    box-shadow: 0 4px 15px rgba(168, 237, 234, 0.4) !important;
+}
+
+.tags-content .tags-light a:nth-child(8),
+.tags-content .tags-dark a:nth-child(8) {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%) !important;
+    box-shadow: 0 4px 15px rgba(255, 154, 158, 0.4) !important;
 }
 
 /* 悬停效果 */
 .tags-content a:hover {
     transform: translateY(-3px) scale(1.05) !important;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5) !important;
 }
 
 .tags-title {
