@@ -1,81 +1,244 @@
-/* 强制显示标签云 */
-.tags-content .tags-light,
-.tags-content .tags-dark {
-    display: block !important;
-}
-
-/* 彩虹标签云效果 */
+/* 彩虹标签云效果 - 和文章底部标签样式一致 */
 .tags-content a {
     color: #fff !important;
-    font-weight: bold !important;
-    padding: 8px 15px !important;
-    margin: 8px !important;
-    border-radius: 20px !important;
+    font-weight: 600 !important;
+    padding: 3px 14px !important;
+    margin: 2px 5px 0 5px !important;
+    border-radius: 12px !important;
     transition: all 0.3s ease !important;
     text-decoration: none !important;
     display: inline-block !important;
-    background-color: #667eea !important;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
-}
-
-/* 为不同标签设置不同颜色 - 使用更具体的选择器 */
-.tags-content .tags-light a:nth-child(1),
-.tags-content .tags-dark a:nth-child(1) {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
 }
 
-.tags-content .tags-light a:nth-child(2),
-.tags-content .tags-dark a:nth-child(2) {
+/* 标签云循环颜色 - 和文章底部标签一致 */
+.tags-content a:nth-child(2n+1) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+}
+
+.tags-content a:nth-child(2n+1):hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5) !important;
+}
+
+.tags-content a:nth-child(2n) {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
-    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4) !important;
+    box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3) !important;
 }
 
-.tags-content .tags-light a:nth-child(3),
-.tags-content .tags-dark a:nth-child(3) {
+.tags-content a:nth-child(2n):hover {
+    box-shadow: 0 4px 12px rgba(245, 87, 108, 0.5) !important;
+}
+
+.tags-content a:nth-child(3n) {
     background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
-    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4) !important;
+    box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3) !important;
 }
 
-.tags-content .tags-light a:nth-child(4),
-.tags-content .tags-dark a:nth-child(4) {
+.tags-content a:nth-child(3n):hover {
+    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.5) !important;
+}
+
+.tags-content a:nth-child(3n+1) {
     background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
-    box-shadow: 0 4px 15px rgba(67, 233, 123, 0.4) !important;
+    box-shadow: 0 2px 8px rgba(67, 233, 123, 0.3) !important;
 }
 
-/* 继续循环颜色 */
-.tags-content .tags-light a:nth-child(5),
-.tags-content .tags-dark a:nth-child(5) {
+.tags-content a:nth-child(3n+1):hover {
+    box-shadow: 0 4px 12px rgba(67, 233, 123, 0.5) !important;
+}
+
+/* 文章页面底部标签彩色样式 */
+.article-footer .tag a {
+    color: #fff !important;
+    font-weight: 600 !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+    transition: all 0.3s ease !important;
+}
+
+.article-footer .tag a:hover {
+    transform: translateY(-2px) scale(1.05) !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5) !important;
+}
+
+/* 文章底部标签循环颜色 */
+.article-footer .tag a:nth-child(2n+1) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+}
+
+.article-footer .tag a:nth-child(2n+1):hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5) !important;
+}
+
+.article-footer .tag a:nth-child(2n) {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3) !important;
+}
+
+.article-footer .tag a:nth-child(2n):hover {
+    box-shadow: 0 4px 12px rgba(245, 87, 108, 0.5) !important;
+}
+
+.article-footer .tag a:nth-child(3n) {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+    box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3) !important;
+}
+
+.article-footer .tag a:nth-child(3n):hover {
+    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.5) !important;
+}
+
+.article-footer .tag a:nth-child(3n+1) {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+    box-shadow: 0 2px 8px rgba(67, 233, 123, 0.3) !important;
+}
+
+.article-footer .tag a:nth-child(3n+1):hover {
+    box-shadow: 0 4px 12px rgba(67, 233, 123, 0.5) !important;
+}
+
+/* 文章标题下标签彩色样式 */
+.header-subinfo .tag-color {
+    color: #fff !important;
     background: linear-gradient(135deg, #fa709a 0%, #fee140 100%) !important;
-    box-shadow: 0 4px 15px rgba(250, 112, 154, 0.4) !important;
+    box-shadow: 0 2px 8px rgba(250, 112, 154, 0.3) !important;
+    transition: all 0.3s ease !important;
 }
 
-.tags-content .tags-light a:nth-child(6),
-.tags-content .tags-dark a:nth-child(6) {
-    background: linear-gradient(135deg, #30cfd0 0%, #330867 100%) !important;
-    box-shadow: 0 4px 15px rgba(48, 207, 208, 0.4) !important;
+.header-subinfo .tag-color:hover {
+    transform: translateY(-2px) scale(1.05) !important;
+    box-shadow: 0 4px 12px rgba(250, 112, 154, 0.5) !important;
 }
 
-.tags-content .tags-light a:nth-child(7),
-.tags-content .tags-dark a:nth-child(7) {
-    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%) !important;
-    box-shadow: 0 4px 15px rgba(168, 237, 234, 0.4) !important;
+/* 标题下标签循环颜色 */
+.header-subinfo .tag-color:nth-of-type(1) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
 }
 
-.tags-content .tags-light a:nth-child(8),
-.tags-content .tags-dark a:nth-child(8) {
-    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%) !important;
-    box-shadow: 0 4px 15px rgba(255, 154, 158, 0.4) !important;
+.header-subinfo .tag-color:nth-of-type(1):hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5) !important;
 }
 
-/* 悬停效果 */
+.header-subinfo .tag-color:nth-of-type(2) {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3) !important;
+}
+
+.header-subinfo .tag-color:nth-of-type(2):hover {
+    box-shadow: 0 4px 12px rgba(245, 87, 108, 0.5) !important;
+}
+
+.header-subinfo .tag-color:nth-of-type(3) {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+    box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3) !important;
+}
+
+.header-subinfo .tag-color:nth-of-type(3):hover {
+    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.5) !important;
+}
+
+.header-subinfo .tag-color:nth-of-type(n+4) {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+    box-shadow: 0 2px 8px rgba(67, 233, 123, 0.3) !important;
+}
+
+.header-subinfo .tag-color:nth-of-type(n+4):hover {
+    box-shadow: 0 4px 12px rgba(67, 233, 123, 0.5) !important;
+}
+
+/* 暗色模式下的标签样式 */
+@media (prefers-color-scheme: dark) {
+    :root:not([color-scheme]) .article-footer .tag a {
+        color: #fff !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+
+    :root:not([color-scheme]) .article-footer .tag a:nth-child(2n) {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    }
+
+    :root:not([color-scheme]) .article-footer .tag a:nth-child(3n) {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+    }
+
+    :root:not([color-scheme]) .article-footer .tag a:nth-child(3n+1) {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+    }
+
+    :root:not([color-scheme]) .header-subinfo .tag-color {
+        color: #fff !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+
+    :root:not([color-scheme]) .header-subinfo .tag-color:nth-of-type(2) {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    }
+
+    :root:not([color-scheme]) .header-subinfo .tag-color:nth-of-type(3) {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+    }
+
+    :root:not([color-scheme]) .header-subinfo .tag-color:nth-of-type(n+4) {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+    }
+}
+
+[color-scheme=dark] .article-footer .tag a {
+    color: #fff !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+[color-scheme=dark] .article-footer .tag a:nth-child(2n) {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+}
+
+[color-scheme=dark] .article-footer .tag a:nth-child(3n) {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+}
+
+[color-scheme=dark] .article-footer .tag a:nth-child(3n+1) {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+}
+
+[color-scheme=dark] .header-subinfo .tag-color {
+    color: #fff !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+[color-scheme=dark] .header-subinfo .tag-color:nth-of-type(2) {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+}
+
+[color-scheme=dark] .header-subinfo .tag-color:nth-of-type(3) {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+}
+
+[color-scheme=dark] .header-subinfo .tag-color:nth-of-type(n+4) {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+}
+
+/* 标签云悬停效果 - 和文章底部标签一致 */
 .tags-content a:hover {
-    transform: translateY(-3px) scale(1.05) !important;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5) !important;
+    transform: translateY(-2px) scale(1.05) !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5) !important;
 }
 
 .tags-title {
-    color: #fff !important;
+    color: #666 !important;
     font-size: 18px !important;
     margin-bottom: 20px !important;
+}
+
+/* 强制覆盖page.css中的标签样式 */
+.tags .tags-content a {
+    margin: 2px 5px 0 5px !important;
+    line-height: normal !important;
+}
+
+.tags .tags-content a::after {
+    display: none !important;
 }
