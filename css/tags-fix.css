@@ -4,17 +4,47 @@
     display: block !important;
 }
 
-/* 增加标签可见性 */
+/* 彩虹标签云效果 */
 .tags-content a {
-    color: #333 !important;
+    color: #fff !important;
     font-weight: bold !important;
-    padding: 5px 10px !important;
+    padding: 8px 15px !important;
+    margin: 8px !important;
+    border-radius: 20px !important;
+    transition: all 0.3s ease !important;
+    text-decoration: none !important;
+    display: inline-block !important;
 }
 
+/* 为不同标签设置不同颜色 */
+.tags-content a:nth-child(4n+1) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+}
+
+.tags-content a:nth-child(4n+2) {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4) !important;
+}
+
+.tags-content a:nth-child(4n+3) {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4) !important;
+}
+
+.tags-content a:nth-child(4n+4) {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+    box-shadow: 0 4px 15px rgba(67, 233, 123, 0.4) !important;
+}
+
+/* 悬停效果 */
 .tags-content a:hover {
-    color: #000 !important;
+    transform: translateY(-3px) scale(1.05) !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
 }
 
 .tags-title {
-    color: #333 !important;
+    color: #fff !important;
+    font-size: 18px !important;
+    margin-bottom: 20px !important;
 }
