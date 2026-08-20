@@ -1,6 +1,129 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Raft共识算法原理与实现</title>
+    <url>/2026/06/15/Raft%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0/</url>
+    <content><![CDATA[<h1 id="Raft共识算法原理与实现"><a href="#Raft共识算法原理与实现" class="headerlink" title="Raft共识算法原理与实现"></a>Raft共识算法原理与实现</h1><p>最近在做分布式存储项目某个模块的功能开发时，涉及到了Raft集群选举的相关知识，忽然发现自己对Raft共识算法的理解只停留在书面的八股文阶段，同时网上的大部分资料也只是讨论了Raft的设计思维，因此特意拜读了一下Raft的原文《In Search of an Understandable Consensus Algorithm》。</p>
+<h2 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h2><p>在原文中作者提到，Raft的设计初衷是因为Paxos过于难理解，这主要的原因有以下几点：</p>
+<ol>
+<li>Paxos使用了很多非直观的数学化表达；</li>
+<li>Paxos把Leader选举、日志复制、安全性保证等多个问题紧密耦合在一起；</li>
+<li>Paxos允许非常多的并发情况和不一致状态，因此需要考虑的边缘情况极多，推理难度大；</li>
+<li>工程落地复杂，没有一个标准化的工程落地实现方式。</li>
+</ol>
+<h2 id="Design-of-Raft"><a href="#Design-of-Raft" class="headerlink" title="Design of Raft"></a>Design of Raft</h2><p>其实这里个人理解，Raft的设计关键就是：<code>确保Leader节点的唯一性 --&gt; 将复制日志的任务交给Leader节点 --&gt; 按照日志记录同步应用到状态机</code>，只不过这里针对第一步<code>确保Leader节点的唯一性</code>，Raft做了一些改变&#x2F;努力。</p>
+<h3 id="Leader选举"><a href="#Leader选举" class="headerlink" title="Leader选举"></a>Leader选举</h3><p>首先，Raft将集群中的节点状态划分为3个：Leader、Follower和Candidate。在任何时间节点下，集群节点只能是上述三种状态之一。在集群中，只有Leader节点去处理客户端的请求，其它的Follower节点只是被动响应Leader的请求。</p>
+<p>其次，为了避免脑裂的现象，Raft为每个节点都设置了一个随机的选举超时时间。在Raft集群刚开始启动时，其中某个节点的选举超时时间最短，那它会率先成为Candidate，给自己投一票后向其它节点发送<code>RequestVote</code>请求来触发选举过程。由于每个节点的选举超时时间是随机的，因此能在很大的程度上避免脑裂问题。当一个Candidate获得超过半数的投票时，它就被选举为新的Leader节点。</p>
+<blockquote>
+<p>如果说，某两个节点的选举超时时间恰好相同咋办？这里以A、B、C的3节点Raft集群为例，如果A和B的选举超时时间恰好相同，那它们两个同时成为Candidate，在分别给自己投了一票后向C发送<code>RequestVote</code>请求。假如说C先收到了A的<code>RequestVote</code>请求，那此时C把票投给了A，A获得2票成功当选Leader，A立刻开始向其它节点（B和C）发送心跳。B这里虽然也是Candidate，但是它会收到A发送的心跳，B检查发现心跳来自更高或相同<code>term</code>的合法Leader，B会自动转变为Follower状态，同时重置自己的选举超时计时器，不再发起选举。</p>
+</blockquote>
+<p>为了避免时钟漂移带来的影响，Raft引入了<code>term</code>这一逻辑上的概念来作为信息进行判断。一个Leader被成功选举出之后，<code>term</code>自增，直到下一个新Leader成功选举出后（可能是因为Leader宕机、又或者是网络分区导致Follower长时间收不到心跳而触发Follower的选举超时），这一阶段的<code>term</code>才算结束。</p>
+<img src="/2026/06/15/Raft%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0/image-20260701223707295.png" class="" title="Raft节点状态转移">
+
+<p>此外，Raft的另一个较为核心的设计是日志的组织方式。新的日志条目只能追加到日志的末尾，不会随意丢弃旧日志。在Leader选举时，日志完整性检查也是一个核心的判断因素。</p>
+<img src="/2026/06/15/Raft%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0/image-20260701231448027.png" class="" title="Raft日志结构">
+
+<blockquote>
+<p>在投票选举时，日志完整性也是一个关键的判断方式。上面提到在选举时会判断<code>term</code>，请求的<code>term</code>大于自己的<code>term</code>才会接受这个<code>RequestVote</code>请求；接着，只有日志至少和自己一样新的 Candidate 才能获得投票。这里的比较规则是：（Candidate 的 lastLogTerm, lastLogIndex）是否 ≥（自己的 lastLogTerm, lastLogIndex）。这样的设计方式保证了日志更完整的节点更容易当选Leader。</p>
+</blockquote>
+<h3 id="Log更新"><a href="#Log更新" class="headerlink" title="Log更新"></a>Log更新</h3><p>在客户端发送请求给Leader后，Leader会将这个请求转换为一条日志条目，并在自己本地日志中追加这条日志条目，随后并行地向其它所有的Follower节点发送<code>AppendEntries</code>RPC；Follower收到后，检查日志一致性，如果匹配，就追加到自己的日志中，并回复Leader”成功”；当超过半数的Follower都回复确认后，Leader把这条日志标记为已提交。Leader可以把已提交的日志应用到自己的状态机，并返回结果给客户端。Leader会在下一次心跳或<code>AppendEntries</code>中，告诉Follower哪些日志已经提交。Follower收到后，也会把对应日志应用到自己的状态机。</p>
+<p>那在日志更新的过程中，难免会出现以下图中日志不一致的情况：</p>
+<img src="/2026/06/15/Raft%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0/image-20260701233335868.png" class="" title="Follower日志不一致的情况">
+
+<blockquote>
+<p>比如上面a、b代表的情况：旧Leader还没来得及把日志复制给它就宕机了；<br>c、d代表的情况：旧Leader写入了一些还未提交的日志就宕机了。</p>
+<p>那这时，Leader会持续通过心跳或后续的<code>AppendEntries</code>把缺失的日志同步给落后的Follower，最终所有节点日志会达成一致。</p>
+</blockquote>
+<p>其实到这里Raft的设计核心就已经差不多了，剩下的比较重要的问题都是偏向工程实践部分的问题，比如：日志压缩（使用快照）、成员节点变更（添加&#x2F;删除）、客户端交互一致性（如何找到当前的Leader）。</p>
+<h2 id="工程实现"><a href="#工程实现" class="headerlink" title="工程实现"></a>工程实现</h2><h3 id="日志压缩"><a href="#日志压缩" class="headerlink" title="日志压缩"></a>日志压缩</h3><p>这里理解起来比较直观：因为Raft的日志是追加式的，在长期运行时会无限增长，此时会占用大量磁盘空间和内存。因此设置日志条目数量阈值，达到这个值时生成快照，同时删除旧的日志段。</p>
+<blockquote>
+<p>Raft的日志持久化时机是当Leader节点收到Client的请求的时候，将请求转换为日志条目并追加到内存的日志中后，就立即将这条日志持久化到磁盘中。写磁盘成功之后才会继续后续的向Follower复制日志这些操作。</p>
+</blockquote>
+<p>这里重点讨论一下成员节点变更和客户端交互一致性。</p>
+<h3 id="成员节点变更"><a href="#成员节点变更" class="headerlink" title="成员节点变更"></a>成员节点变更</h3><p>在Raft论文中提出的官方方式是<strong>Joint Consensus（联合共识）</strong>，它的核心流程是将集群配置划分为两个阶段的配置<code>C_old</code>和<code>C_new</code>。</p>
+<blockquote>
+<p>假设当前A、B、C的集群的配置为 <code>C_old</code>，要添加一个新的节点D，变成<code>C_new</code>。此时进入联合配置（<code>C_old</code> U <code>C_new</code>）：</p>
+<ol>
+<li>Leader把一条特殊日志（包含新配置<code>C_old</code>+<code>C_new</code>）追加到自己的日志；</li>
+<li>Leader将这条日志复制给当前的所有节点（包括新节点和旧节点）；</li>
+<li>当这条日志在<code>C_old</code>和<code>C_new</code>的两个多数派都得到确认后，Leader才提交这条日志；</li>
+<li>提交成功后，集群同时使用两个配置的多数派规则，即写操作需要同时得到<code>C_old majority</code>和<code>C_new majority</code>的确认。</li>
+</ol>
+<p>此时，新节点D可以参与日志复制，但暂时不参与投票。</p>
+<p>切换到新配置（<code>C_new</code>）：</p>
+<ol>
+<li>Leader再写入一条新配置日志（只包含<code>C_new</code>）；</li>
+<li>同样需要在新旧两个多数派都确认后提交；</li>
+<li>提交成功后，集群切换到<code>C_new</code>配置。</li>
+</ol>
+</blockquote>
+<h3 id="客户端交互一致性"><a href="#客户端交互一致性" class="headerlink" title="客户端交互一致性"></a>客户端交互一致性</h3><h4 id="如何找到Leader"><a href="#如何找到Leader" class="headerlink" title="如何找到Leader"></a>如何找到Leader</h4><p>只有Leader能处理客户端的写请求，但客户端并不能保证自己第一次连上的就是Leader。常见的处理方式是：</p>
+<ol>
+<li>客户端随机挑选一个节点发起请求；</li>
+<li>如果连上的是Follower，Follower不处理该请求，而是把自己已知的Leader地址返回给客户端（重定向）；</li>
+<li>客户端再向Leader重发请求。</li>
+</ol>
+<p>如果此时集群正处于无Leader状态（选举进行中）或者返回的Leader信息已经过期（旧的Leader已下台），客户端的请求会失败，此时客户端只能&#x3D;&#x3D;随机重试&#x3D;&#x3D;，直到新Leader被选举出来并且被客户端找到为止。</p>
+<blockquote>
+<p>这里有一个微妙的场景：一个已经被废除但自己还不知道的旧Leader（比如它被网络分区隔离了）可能会响应客户端的读请求并返回过期的数据。因此对于写请求，当旧Leader尝试向集群提交日志时会因为无法获得当前<code>term</code>下的多数派确认而失败，最终它会发现更高<code>term</code>的Leader存在并自动下台。这也是<code>term</code>机制的又一层保障。</p>
+</blockquote>
+<h4 id="命令去重（至少一次语义的坑）"><a href="#命令去重（至少一次语义的坑）" class="headerlink" title="命令去重（至少一次语义的坑）"></a>命令去重（至少一次语义的坑）</h4><p>考虑这样的流程：客户端发送命令给Leader，Leader将日志复制到多数派并提交，就在返回结果给客户端之前网络抖了一下，客户端没有收到响应，于是&#x3D;&#x3D;客户端重试&#x3D;&#x3D;，再次发送同一条命令。</p>
+<p>如果没有任何处理，这条命令会被追加成一条新的日志，并在状态机上&#x3D;&#x3D;执行两次&#x3D;&#x3D;，这对于”转账加100元”这样的命令显然是不可接受的。</p>
+<p>Raft的解决方式是给命令赋予唯一标识，实现去重：</p>
+<ol>
+<li>每个客户端在首次连接时获得一个&#x3D;&#x3D;唯一的客户端ID&#x3D;&#x3D;；</li>
+<li>客户端为它发送的每条命令分配&#x3D;&#x3D;单调递增的序列号&#x3D;&#x3D;；</li>
+<li>Leader为每个客户端维护一份会话状态，记录该客户端最近一条命令的序列号和对应的响应结果；</li>
+<li>当Leader收到一条命令时，先检查序列号：如果这个序列号已经被处理过，不再写入日志、不再应用状态机，而是&#x3D;&#x3D;直接把上次缓存的结果返回&#x3D;&#x3D;给客户端。</li>
+</ol>
+<p>这样即使客户端重试，命令也只会对状态机生效一次，对外表现为&#x3D;&#x3D;线性一致&#x3D;&#x3D;。</p>
+<blockquote>
+<p>注意会话状态本身也需要在Leader切换后依然有效，因此”最近序列号+响应结果”要随日志一起被复制&#x2F;随快照一起被持久化，新Leader上任后才能继续正确地去重。</p>
+</blockquote>
+<h4 id="只读请求的处理"><a href="#只读请求的处理" class="headerlink" title="只读请求的处理"></a>只读请求的处理</h4><p>只读操作如果不加任何处理直接读Leader的状态机，会有返回过期数据的风险：Leader可能已经被隔离但它自己不知道（比如网络分区期间它仍然是”Leader”，但集群其他节点已经选出了新Leader并提交了新日志）。</p>
+<p>Raft论文给出的方案是 <strong>ReadIndex</strong>：</p>
+<ol>
+<li>Leader记录下当前的<code>commitIndex</code>（即ReadIndex）；</li>
+<li>Leader向集群多数派发一轮心跳，确认自己仍然是当前的Leader；</li>
+<li>确认成功后，等待状态机的<code>appliedIndex &gt;= ReadIndex</code>，此时读取状态机并返回结果。</li>
+</ol>
+<p>这样保证读到的数据至少是发起读请求那一刻集群已提交的最新状态，同时省去了把读请求写进日志的开销。</p>
+<blockquote>
+<p>在ReadIndex的基础上还有一个更激进的优化：<strong>Lease Read（租约读）</strong>。Leader在选举超时时间内持有租约，租约期内直接读本地状态机，连心跳确认都省掉。代价是它依赖时钟假设（租约期内没有发生时钟大跳变），工程上通常作为可配置的性能优化项，而不是默认语义。</p>
+</blockquote>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>客户端交互一致性的核心可以归纳为三件事：</p>
+<table>
+<thead>
+<tr>
+<th align="center">问题</th>
+<th align="center">方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">找到Leader</td>
+<td align="center">Follower重定向 + 客户端随机重试</td>
+</tr>
+<tr>
+<td align="center">命令重复执行</td>
+<td align="center">客户端ID + 序列号，Leader缓存响应去重</td>
+</tr>
+<tr>
+<td align="center">读到旧数据</td>
+<td align="center">ReadIndex确认Leader身份后再读状态机</td>
+</tr>
+</tbody></table>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>Raft把共识问题拆解为Leader选举、日志复制、安全性三个相对独立的子问题，用<code>term</code>和随机选举超时解决了脑裂，用日志完整性比较保证了数据更全的节点优先当选，用多数派提交确认界定了日志的安全边界。而工程落地时真正的难点往往在论文之外：快照与日志压缩、成员变更的两阶段配置、客户端的线性一致语义。理解这些设计背后的取舍，比背下流程图重要得多。</p>
+]]></content>
+      <categories>
+        <category>分布式系统</category>
+      </categories>
+      <tags>
+        <tag>Raft</tag>
+        <tag>分布式一致性</tag>
+        <tag>共识算法</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>SSD的内部结构</title>
     <url>/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/</url>
     <content><![CDATA[<h1 id="SSD的内部结构"><a href="#SSD的内部结构" class="headerlink" title="SSD的内部结构"></a>SSD的内部结构</h1><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/dcbba826b52f1170afb42c3c99eb39a.jpg" class="" title="SSD结构图">
@@ -86,24 +209,6 @@
         <tag>存储系统</tag>
         <tag>硬件</tag>
       </tags>
-  </entry>
-  <entry>
-    <title>Hello World</title>
-    <url>/2026/05/26/hello-world/</url>
-    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
-]]></content>
   </entry>
   <entry>
     <title>mTLS双向认证：从选型到落地的完整实践</title>
