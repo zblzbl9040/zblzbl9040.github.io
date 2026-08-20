@@ -88,6 +88,190 @@
       </tags>
   </entry>
   <entry>
+    <title>mTLS双向认证：从选型到落地的完整实践</title>
+    <url>/2026/08/20/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/</url>
+    <content><![CDATA[<h1 id="mTLS双向认证：从选型到落地的完整实践"><a href="#mTLS双向认证：从选型到落地的完整实践" class="headerlink" title="mTLS双向认证：从选型到落地的完整实践"></a>mTLS双向认证：从选型到落地的完整实践</h1><h2 id="问题背景"><a href="#问题背景" class="headerlink" title="问题背景"></a>问题背景</h2><p>在分布式集群中，关键组件之间的通信往往没有安全认证机制——只要知道 IP 和端口，任何节点都能直接加入集群、参与通信。这在内网环境下看似问题不大，但一旦网络边界被突破，整个集群就完全暴露。</p>
+<p>本文记录一次给集群组件间通信加认证机制的调研与落地过程，最终方案是 <strong>mTLS + CA 双向认证</strong>。</p>
+<h2 id="可选方案对比"><a href="#可选方案对比" class="headerlink" title="可选方案对比"></a>可选方案对比</h2><h3 id="1-静态共享-Token"><a href="#1-静态共享-Token" class="headerlink" title="1. 静态共享 Token"></a>1. 静态共享 Token</h3><p>在配置里写一串密钥，所有节点一样，请求带上它，服务端做字符串比对。</p>
+<ul>
+<li>优点：实现极其简单</li>
+<li>缺点：全局公用一个 token，一处泄露全局崩溃；token 可被抓包；数据传输不加密</li>
+</ul>
+<h3 id="2-HMAC-签名请求"><a href="#2-HMAC-签名请求" class="headerlink" title="2. HMAC 签名请求"></a>2. HMAC 签名请求</h3><p>密钥依旧是共享的，但不直接发送。每个请求用密钥计算 HMAC 签名，只发签名和时间戳，服务端用同样的密钥重算并比对。</p>
+<ul>
+<li>优点：密钥不上网络；时间戳可防重放</li>
+<li>缺点：密钥仍是全局共享；数据传输不加密</li>
+</ul>
+<h3 id="3-身份密钥环验证"><a href="#3-身份密钥环验证" class="headerlink" title="3. 身份密钥环验证"></a>3. 身份密钥环验证</h3><p>每个实体初始时拥有自己的密钥，密钥从不上线，由一个可信的”密钥管家”服务发放短期会话密钥，每次建立连接时做认证握手。</p>
+<ul>
+<li>优点：每个实体拥有独立密钥，不全局共享；密钥不上线；可防重放</li>
+<li>缺点：数据传输不加密；需要额外的密钥管家服务；初始密钥的分发和同步有效性认证困难</li>
+</ul>
+<h3 id="4-mTLS-CA-双向认证-✅"><a href="#4-mTLS-CA-双向认证-✅" class="headerlink" title="4. mTLS + CA 双向认证 ✅"></a>4. mTLS + CA 双向认证 ✅</h3><p>双方都持有证书，建立连接时互相认证。证书由 CA 统一签发和吊销。</p>
+<ul>
+<li>优点：双向认证；数据传输加密；密钥、证书可自动颁发；技术标准成熟</li>
+<li>缺点：部署较为复杂；监听端口固定时，所有访问该端口的服务（如 CLI 客户端、网关等）都需要做 mTLS 认证</li>
+</ul>
+<h2 id="方案选择与一个坑"><a href="#方案选择与一个坑" class="headerlink" title="方案选择与一个坑"></a>方案选择与一个坑</h2><p>最终选择 mTLS：既能完成双向身份认证，又能保证传输加密。</p>
+<p>但单纯配置 mTLS 有一个容易被忽略的问题：它只能保证<strong>集群初始建立时</strong>的安全，&#x3D;&#x3D;不能完全保证&#x3D;&#x3D;<strong>新节点加入</strong>的安全。以 3 节点 Raft 集群为例：把新节点 <code>m4</code> 加入成员表只需要 <code>m1/m2/m3</code> 三个老成员投票，<code>m4</code> 自己并不参与。这样一个没有证书（或没开 TLS）的 <code>m4</code> 依然可能被加进成员表——只是加入后它无法和其他节点通信，集群处于一种”半残”状态。</p>
+<p>解决办法：在把新节点加入成员表<strong>之前</strong>，先做一次 TLS 连通性检查（拨号新节点），TLS 握手通过才允许加入。</p>
+<h2 id="mTLS-的流程"><a href="#mTLS-的流程" class="headerlink" title="mTLS 的流程"></a>mTLS 的流程</h2><p>mTLS 是基于 TLS 的，只是比 TLS 多一些认证过程。先看标准 TLS 握手：</p>
+<img src="/2026/08/20/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/tls-handshake.jpg" class="" title="TLS握手流程">
+
+<p>再看 mTLS：</p>
+<img src="/2026/08/20/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/mtls-handshake.jpg" class="" title="mTLS握手流程">
+
+<p>相比标准 TLS，新增的过程是：</p>
+<ol>
+<li>&#x3D;&#x3D;服务端要求客户端提供证书&#x3D;&#x3D;</li>
+<li>&#x3D;&#x3D;客户端发送自己的证书&#x3D;&#x3D;</li>
+<li>&#x3D;&#x3D;客户端根据握手消息计算哈希值并用自己的私钥加密（CertificateVerify）&#x3D;&#x3D;</li>
+<li>&#x3D;&#x3D;服务端进行对应的解密和验证&#x3D;&#x3D;</li>
+</ol>
+<h2 id="落地时要考虑的问题"><a href="#落地时要考虑的问题" class="headerlink" title="落地时要考虑的问题"></a>落地时要考虑的问题</h2><p>把 mTLS 作为集群组件间的认证方式，需要考虑：</p>
+<ol>
+<li>在最开始的 Leader 选举阶段，每个节点会在 Client 和 Server 角色之间来回切换，证书必须同时支持两个方向；</li>
+<li>证书怎么签、什么时候签、谁来签；</li>
+<li>身份体系如何设计；</li>
+<li>如何批量签发所有的子证书。</li>
+</ol>
+<h3 id="创建-CA"><a href="#创建-CA" class="headerlink" title="创建 CA"></a>创建 CA</h3><p>用 openssl 创建一个私有 CA：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 创建配置文件，定义CA证书长什么样+有什么权限（非必须）</span></span><br><span class="line">$ <span class="built_in">touch</span> openssl-ca.cnf</span><br><span class="line">$ vim openssl-ca.cnf</span><br><span class="line">	[ req ]</span><br><span class="line">	distinguished_name = req_dn</span><br><span class="line">	prompt             = no</span><br><span class="line">	x509_extensions    = v3_ca   <span class="comment"># 在使用-x509参数创建自签名证书时，额外添加[ v3_ca ]中的拓展功能</span></span><br><span class="line"></span><br><span class="line">	[ req_dn ]</span><br><span class="line">	CN = My-Cluster-CA</span><br><span class="line">	O  = MyCluster</span><br><span class="line"></span><br><span class="line">	[ v3_ca ]</span><br><span class="line">	basicConstraints       = critical, CA:TRUE</span><br><span class="line">	keyUsage               = critical, keyCertSign, cRLSign</span><br><span class="line">	subjectKeyIdentifier   = <span class="built_in">hash</span></span><br><span class="line"><span class="comment"># 生成CA密钥+设置权限</span></span><br><span class="line">$ openssl genrsa -out ca.key 4096</span><br><span class="line">$ <span class="built_in">chmod</span> 600 ca.key</span><br><span class="line"><span class="comment"># 生成自签CA证书</span></span><br><span class="line">$ openssl req -x509 -new -key ca.key -out ca.crt -config openssl-ca.cnf -days 3650 -sha256</span><br></pre></td></tr></table></figure>
+
+<p>很多参数是可选的，但 CA 的安全语义是固定的。配置文件中核心是 <code>[ v3_ca ]</code> 部分：</p>
+<ol>
+<li><code>CA:TRUE</code>：证明这个证书是 CA，它可以给别人签发证书；</li>
+<li><code>keyUsage</code>：定义了这把私钥能干什么（签证书、签吊销列表）。</li>
+</ol>
+<h3 id="签发子证书"><a href="#签发子证书" class="headerlink" title="签发子证书"></a>签发子证书</h3><p>这一步和身份体系的设计强相关，身份体系不同，操作也不同。大致过程如下：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 创建证书拓展规则文件，定义这个叶子证书允许干什么+能被谁信任+用在哪些场景</span></span><br><span class="line">$ <span class="built_in">touch</span> node.ext</span><br><span class="line">	[ v3_node ]</span><br><span class="line">	basicConstraints = critical, CA:FALSE</span><br><span class="line">	keyUsage = critical, digitalSignature, keyEncipherment</span><br><span class="line">	extendedKeyUsage = serverAuth, clientAuth</span><br><span class="line">	subjectAltName = IP:10.0.0.11, DNS:master-1</span><br><span class="line"><span class="comment"># 生成密钥（对应节点的私钥）</span></span><br><span class="line">$ openssl genrsa -out master-1.key 4096</span><br><span class="line">$ <span class="built_in">chmod</span> 600 master-1.key</span><br><span class="line"><span class="comment"># 生成CSR（证书请求）</span></span><br><span class="line">$ openssl req -new -key master-1.key -out master-1.csr -subj <span class="string">&quot;/CN=master-1/OU=master/O=MyCluster&quot;</span></span><br><span class="line"><span class="comment"># 签发证书</span></span><br><span class="line">$ openssl x509 -req -<span class="keyword">in</span> master-1.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out master-1.crt -days 730 -sha256 -extfile node.ext -extensions v3_node</span><br></pre></td></tr></table></figure>
+
+<p>这样就有了 <code>master-1</code> 的证书和私钥，把 <code>master-1.crt</code> 和 <code>ca.crt</code> 部署到节点上即可使用。</p>
+<p>两个关键点：</p>
+<ol>
+<li>子证书必须 <code>CA:FALSE</code>，说明它不是 CA，不能继续签发其他证书；</li>
+<li><code>extendedKeyUsage</code> 设为 <code>serverAuth, clientAuth</code>，说明这个证书既可当 <code>server</code> 也可当 <code>client</code>——这正是为了适配节点在选举期间角色切换的场景。</li>
+</ol>
+<h3 id="身份体系设计"><a href="#身份体系设计" class="headerlink" title="身份体系设计"></a>身份体系设计</h3><p>以 <code>master-1</code> 的证书为例，各字段如下：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Subject: CN=master-1, OU=master, O=MyCluster</span><br><span class="line">SAN:     IP Address: 10.0.0.11</span><br><span class="line">         DNS Name:   master-1</span><br><span class="line">EKU:     TLS Web Server Authentication, TLS Web Client Authentication</span><br><span class="line">Basic:   CA:FALSE</span><br><span class="line">Issuer:  CN=My-Cluster-CA, O=MyCluster</span><br><span class="line">Validity: 2 年</span><br></pre></td></tr></table></figure>
+
+<p>各字段承担的职责：</p>
+<table>
+<thead>
+<tr>
+<th align="center">字段</th>
+<th align="center">内容</th>
+<th align="center">负责部分</th>
+<th align="center">原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">CN</td>
+<td align="center">节点名</td>
+<td align="center">审计</td>
+<td align="center">不做TLS校验，便于日志记录</td>
+</tr>
+<tr>
+<td align="center">OU</td>
+<td align="center">角色（master &#x2F; data-node &#x2F; client）</td>
+<td align="center">授权</td>
+<td align="center">标准字符串字段，不采用自定义OID</td>
+</tr>
+<tr>
+<td align="center">O</td>
+<td align="center">集群名</td>
+<td align="center">归属标识</td>
+<td align="center">多集群区分，单集群也可用</td>
+</tr>
+<tr>
+<td align="center">SAN</td>
+<td align="center">IP + DNS</td>
+<td align="center">TLS校验</td>
+<td align="center">TLS校验使用SAN对比</td>
+</tr>
+<tr>
+<td align="center">EKU</td>
+<td align="center">serverAuth + clientAuth</td>
+<td align="center">双向通用</td>
+<td align="center">双向标记，节点能当client和server</td>
+</tr>
+<tr>
+<td align="center">CA:FALSE</td>
+<td align="center">标记是叶子</td>
+<td align="center">防越权签发</td>
+<td align="center">明确叶子证书权限，防止伪造签发</td>
+</tr>
+<tr>
+<td align="center">Issuer</td>
+<td align="center">集群CA</td>
+<td align="center">认证</td>
+<td align="center">作为根认证</td>
+</tr>
+</tbody></table>
+<p>利用 OU 字段做角色授权，可以在 TLS 握手完成后从对端证书中读出角色，实现”连接级”的权限控制。当前阶段只做连接控制，暂不做端点级控制（连接进来就信任此角色，不卡具体端点）。</p>
+<h3 id="组件配置"><a href="#组件配置" class="headerlink" title="组件配置"></a>组件配置</h3><p>在每个组件的配置文件中添加 TLS 相关字段，并设置一个开关：</p>
+<figure class="highlight json"><table><tr><td class="code"><pre><span class="line"><span class="attr">&quot;TLS&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;Enabled&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;CAFile&quot;</span><span class="punctuation">:</span>   <span class="string">&quot;/etc/cluster/certs/ca.crt&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;CertFile&quot;</span><span class="punctuation">:</span> <span class="string">&quot;/etc/cluster/certs/master-2.crt&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;KeyFile&quot;</span><span class="punctuation">:</span>  <span class="string">&quot;/etc/cluster/certs/master-2.key&quot;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>&#x3D;&#x3D;<code>Enabled</code> 字段作为 TLS 的开关&#x3D;&#x3D;：设为 <code>true</code> 开启 mTLS 认证，设为 <code>false</code> 回退到明文传输，方便灰度切换和故障排查。</p>
+<h3 id="批量签发"><a href="#批量签发" class="headerlink" title="批量签发"></a>批量签发</h3><p>实际落地时不可能手动一张张签证书。做法是写一个自动签发脚本（如 <code>gen_certs.sh</code>），所有叶子证书的签发依据同一目录下的 <code>nodes.conf</code> 配置清单：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 集群节点证书清单</span></span><br><span class="line"><span class="comment"># 格式：name ip role [dns]</span></span><br><span class="line"><span class="comment">#   name  节点名（证书 CN，用于审计）</span></span><br><span class="line"><span class="comment">#   ip    节点服务 IP（写入 SAN；共享证书用 &quot;-&quot;）</span></span><br><span class="line"><span class="comment">#   role  角色（写入 OU：master/data-node/client）</span></span><br><span class="line"><span class="comment">#   dns   可选 DNS 名（写入 SAN；没有就留空）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># === Master ===</span></span><br><span class="line">master-1 10.0.0.11 master master-1</span><br><span class="line">master-2 10.0.0.12 master master-2</span><br><span class="line">master-3 10.0.0.13 master master-3</span><br><span class="line"></span><br><span class="line"><span class="comment"># === Data Node ===</span></span><br><span class="line">data-1 10.0.0.11 data-node data-1</span><br><span class="line">data-2 10.0.0.12 data-node data-2</span><br><span class="line">data-3 10.0.0.13 data-node data-3</span><br><span class="line"></span><br><span class="line"><span class="comment"># === 共享 Client（CLI / 网关 / 监控用）===</span></span><br><span class="line">shared-client - client</span><br></pre></td></tr></table></figure>
+
+<p>新增节点时只需在 <code>nodes.conf</code> 里加一行，重新跑脚本即可自动签发。每个服务节点的证书都是唯一的，<code>SAN IP</code> 作为校验证书归属的标准；<code>Client</code> 证书是共用的，不需要 SAN IP。</p>
+<p>要注意的是，这种签发过程是<strong>静态</strong>的：需要手动执行脚本，签出来的证书、密钥以及 CA 公钥也要手动分发到对应节点上才生效。如果节点规模大或变动频繁，可以考虑引入自动化的证书签发与轮换机制。</p>
+<h3 id="客户端认证"><a href="#客户端认证" class="headerlink" title="客户端认证"></a>客户端认证</h3><p>所有发起 RPC 或 HTTP 请求的一律视为 <code>Client</code>（CLI 工具、网关、监控抓取器等），持有共享的客户端证书。客户端节点的配置类似：</p>
+<figure class="highlight json"><table><tr><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;TLS&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">        <span class="attr">&quot;Enabled&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;CAFile&quot;</span><span class="punctuation">:</span>   <span class="string">&quot;/etc/cluster/certs/ca.crt&quot;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;CertFile&quot;</span><span class="punctuation">:</span> <span class="string">&quot;/etc/cluster/certs/shared-client.crt&quot;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;KeyFile&quot;</span><span class="punctuation">:</span>  <span class="string">&quot;/etc/cluster/certs/shared-client.key&quot;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="新节点预检查"><a href="#新节点预检查" class="headerlink" title="新节点预检查"></a>新节点预检查</h3><p>如前文所说，在新节点加入之前要先做 TLS 连通性检查。用 <code>tls.DialTimeout</code>（Go）尝试和新节点做一次 TLS 握手，这一步能同时验证 5 件事：</p>
+<table>
+<thead>
+<tr>
+<th align="center">验证</th>
+<th align="center">失败时的错误</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">新节点在不在运行（TCP 能连上）</td>
+<td align="center"><code>connection refused</code></td>
+</tr>
+<tr>
+<td align="center">新节点开了 TLS（不是明文监听）</td>
+<td align="center"><code>first record does not look like a TLS handshake</code></td>
+</tr>
+<tr>
+<td align="center">新节点的证书是本集群 CA 签的</td>
+<td align="center"><code>certificate signed by unknown authority</code></td>
+</tr>
+<tr>
+<td align="center">新节点的证书 SAN-IP 对得上</td>
+<td align="center"><code>certificate is valid for X, not Y</code></td>
+</tr>
+<tr>
+<td align="center">mTLS 双向认证通过</td>
+<td align="center"><code>bad certificate</code></td>
+</tr>
+</tbody></table>
+<h3 id="长连接复用"><a href="#长连接复用" class="headerlink" title="长连接复用"></a>长连接复用</h3><p>为了避免每次 RPC 都重新建立连接（尤其是 TLS 握手开销不小），可以做一个类似连接池的机制：</p>
+<p>创建 TCP&#x2F;TLS 连接后放入连接池并维护引用计数，以目标地址 <code>host:port</code> 作为索引键。发请求时先拿目标地址去池里查，查到就把这条已经握过手、正开着的连接”借”出来用；没查到才执行拨号，建成后存入池中。</p>
+<p>连接会在以下情况下断开并从池中移除：RPC 出错、池满了被淘汰、对端关闭、网络断开、进程退出。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>mTLS + CA 的组合为集群内部通信提供了双向身份认证和传输加密，配合基于证书 OU 的角色授权和新节点入队前的 TLS 预检查，能覆盖从集群建立到动态扩容的全生命周期安全。核心要点回顾：</p>
+<ol>
+<li>单纯 mTLS 不保护”新节点加入”流程，需要额外的入队前 TLS 预检查；</li>
+<li>证书字段各司其职：CN 审计、OU 授权、SAN 做 TLS 校验、Issuer 做根认证；</li>
+<li>选举类场景下节点角色会切换，叶子证书的 EKU 要同时含 <code>serverAuth</code> 和 <code>clientAuth</code>；</li>
+<li>用配置清单 + 脚本实现批量签发，用 <code>Enabled</code> 开关支持灰度切换。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>网络安全</category>
+      </categories>
+      <tags>
+        <tag>mTLS</tag>
+        <tag>TLS</tag>
+        <tag>PKI</tag>
+        <tag>分布式系统</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hello World</title>
     <url>/2026/05/26/hello-world/</url>
     <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
@@ -2964,190 +3148,6 @@
       </categories>
       <tags>
         <tag>C++</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>mTLS双向认证：从选型到落地的完整实践</title>
-    <url>/2026/08/20/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/</url>
-    <content><![CDATA[<h1 id="mTLS双向认证：从选型到落地的完整实践"><a href="#mTLS双向认证：从选型到落地的完整实践" class="headerlink" title="mTLS双向认证：从选型到落地的完整实践"></a>mTLS双向认证：从选型到落地的完整实践</h1><h2 id="问题背景"><a href="#问题背景" class="headerlink" title="问题背景"></a>问题背景</h2><p>在分布式集群中，关键组件之间的通信往往没有安全认证机制——只要知道 IP 和端口，任何节点都能直接加入集群、参与通信。这在内网环境下看似问题不大，但一旦网络边界被突破，整个集群就完全暴露。</p>
-<p>本文记录一次给集群组件间通信加认证机制的调研与落地过程，最终方案是 <strong>mTLS + CA 双向认证</strong>。</p>
-<h2 id="可选方案对比"><a href="#可选方案对比" class="headerlink" title="可选方案对比"></a>可选方案对比</h2><h3 id="1-静态共享-Token"><a href="#1-静态共享-Token" class="headerlink" title="1. 静态共享 Token"></a>1. 静态共享 Token</h3><p>在配置里写一串密钥，所有节点一样，请求带上它，服务端做字符串比对。</p>
-<ul>
-<li>优点：实现极其简单</li>
-<li>缺点：全局公用一个 token，一处泄露全局崩溃；token 可被抓包；数据传输不加密</li>
-</ul>
-<h3 id="2-HMAC-签名请求"><a href="#2-HMAC-签名请求" class="headerlink" title="2. HMAC 签名请求"></a>2. HMAC 签名请求</h3><p>密钥依旧是共享的，但不直接发送。每个请求用密钥计算 HMAC 签名，只发签名和时间戳，服务端用同样的密钥重算并比对。</p>
-<ul>
-<li>优点：密钥不上网络；时间戳可防重放</li>
-<li>缺点：密钥仍是全局共享；数据传输不加密</li>
-</ul>
-<h3 id="3-身份密钥环验证"><a href="#3-身份密钥环验证" class="headerlink" title="3. 身份密钥环验证"></a>3. 身份密钥环验证</h3><p>每个实体初始时拥有自己的密钥，密钥从不上线，由一个可信的”密钥管家”服务发放短期会话密钥，每次建立连接时做认证握手。</p>
-<ul>
-<li>优点：每个实体拥有独立密钥，不全局共享；密钥不上线；可防重放</li>
-<li>缺点：数据传输不加密；需要额外的密钥管家服务；初始密钥的分发和同步有效性认证困难</li>
-</ul>
-<h3 id="4-mTLS-CA-双向认证-✅"><a href="#4-mTLS-CA-双向认证-✅" class="headerlink" title="4. mTLS + CA 双向认证 ✅"></a>4. mTLS + CA 双向认证 ✅</h3><p>双方都持有证书，建立连接时互相认证。证书由 CA 统一签发和吊销。</p>
-<ul>
-<li>优点：双向认证；数据传输加密；密钥、证书可自动颁发；技术标准成熟</li>
-<li>缺点：部署较为复杂；监听端口固定时，所有访问该端口的服务（如 CLI 客户端、网关等）都需要做 mTLS 认证</li>
-</ul>
-<h2 id="方案选择与一个坑"><a href="#方案选择与一个坑" class="headerlink" title="方案选择与一个坑"></a>方案选择与一个坑</h2><p>最终选择 mTLS：既能完成双向身份认证，又能保证传输加密。</p>
-<p>但单纯配置 mTLS 有一个容易被忽略的问题：它只能保证<strong>集群初始建立时</strong>的安全，&#x3D;&#x3D;不能完全保证&#x3D;&#x3D;<strong>新节点加入</strong>的安全。以 3 节点 Raft 集群为例：把新节点 <code>m4</code> 加入成员表只需要 <code>m1/m2/m3</code> 三个老成员投票，<code>m4</code> 自己并不参与。这样一个没有证书（或没开 TLS）的 <code>m4</code> 依然可能被加进成员表——只是加入后它无法和其他节点通信，集群处于一种”半残”状态。</p>
-<p>解决办法：在把新节点加入成员表<strong>之前</strong>，先做一次 TLS 连通性检查（拨号新节点），TLS 握手通过才允许加入。</p>
-<h2 id="mTLS-的流程"><a href="#mTLS-的流程" class="headerlink" title="mTLS 的流程"></a>mTLS 的流程</h2><p>mTLS 是基于 TLS 的，只是比 TLS 多一些认证过程。先看标准 TLS 握手：</p>
-
-
-<p>再看 mTLS：</p>
-
-
-<p>相比标准 TLS，新增的过程是：</p>
-<ol>
-<li>&#x3D;&#x3D;服务端要求客户端提供证书&#x3D;&#x3D;</li>
-<li>&#x3D;&#x3D;客户端发送自己的证书&#x3D;&#x3D;</li>
-<li>&#x3D;&#x3D;客户端根据握手消息计算哈希值并用自己的私钥加密（CertificateVerify）&#x3D;&#x3D;</li>
-<li>&#x3D;&#x3D;服务端进行对应的解密和验证&#x3D;&#x3D;</li>
-</ol>
-<h2 id="落地时要考虑的问题"><a href="#落地时要考虑的问题" class="headerlink" title="落地时要考虑的问题"></a>落地时要考虑的问题</h2><p>把 mTLS 作为集群组件间的认证方式，需要考虑：</p>
-<ol>
-<li>在最开始的 Leader 选举阶段，每个节点会在 Client 和 Server 角色之间来回切换，证书必须同时支持两个方向；</li>
-<li>证书怎么签、什么时候签、谁来签；</li>
-<li>身份体系如何设计；</li>
-<li>如何批量签发所有的子证书。</li>
-</ol>
-<h3 id="创建-CA"><a href="#创建-CA" class="headerlink" title="创建 CA"></a>创建 CA</h3><p>用 openssl 创建一个私有 CA：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 创建配置文件，定义CA证书长什么样+有什么权限（非必须）</span></span><br><span class="line">$ <span class="built_in">touch</span> openssl-ca.cnf</span><br><span class="line">$ vim openssl-ca.cnf</span><br><span class="line">	[ req ]</span><br><span class="line">	distinguished_name = req_dn</span><br><span class="line">	prompt             = no</span><br><span class="line">	x509_extensions    = v3_ca   <span class="comment"># 在使用-x509参数创建自签名证书时，额外添加[ v3_ca ]中的拓展功能</span></span><br><span class="line"></span><br><span class="line">	[ req_dn ]</span><br><span class="line">	CN = My-Cluster-CA</span><br><span class="line">	O  = MyCluster</span><br><span class="line"></span><br><span class="line">	[ v3_ca ]</span><br><span class="line">	basicConstraints       = critical, CA:TRUE</span><br><span class="line">	keyUsage               = critical, keyCertSign, cRLSign</span><br><span class="line">	subjectKeyIdentifier   = <span class="built_in">hash</span></span><br><span class="line"><span class="comment"># 生成CA密钥+设置权限</span></span><br><span class="line">$ openssl genrsa -out ca.key 4096</span><br><span class="line">$ <span class="built_in">chmod</span> 600 ca.key</span><br><span class="line"><span class="comment"># 生成自签CA证书</span></span><br><span class="line">$ openssl req -x509 -new -key ca.key -out ca.crt -config openssl-ca.cnf -days 3650 -sha256</span><br></pre></td></tr></table></figure>
-
-<p>很多参数是可选的，但 CA 的安全语义是固定的。配置文件中核心是 <code>[ v3_ca ]</code> 部分：</p>
-<ol>
-<li><code>CA:TRUE</code>：证明这个证书是 CA，它可以给别人签发证书；</li>
-<li><code>keyUsage</code>：定义了这把私钥能干什么（签证书、签吊销列表）。</li>
-</ol>
-<h3 id="签发子证书"><a href="#签发子证书" class="headerlink" title="签发子证书"></a>签发子证书</h3><p>这一步和身份体系的设计强相关，身份体系不同，操作也不同。大致过程如下：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 创建证书拓展规则文件，定义这个叶子证书允许干什么+能被谁信任+用在哪些场景</span></span><br><span class="line">$ <span class="built_in">touch</span> node.ext</span><br><span class="line">	[ v3_node ]</span><br><span class="line">	basicConstraints = critical, CA:FALSE</span><br><span class="line">	keyUsage = critical, digitalSignature, keyEncipherment</span><br><span class="line">	extendedKeyUsage = serverAuth, clientAuth</span><br><span class="line">	subjectAltName = IP:10.0.0.11, DNS:master-1</span><br><span class="line"><span class="comment"># 生成密钥（对应节点的私钥）</span></span><br><span class="line">$ openssl genrsa -out master-1.key 4096</span><br><span class="line">$ <span class="built_in">chmod</span> 600 master-1.key</span><br><span class="line"><span class="comment"># 生成CSR（证书请求）</span></span><br><span class="line">$ openssl req -new -key master-1.key -out master-1.csr -subj <span class="string">&quot;/CN=master-1/OU=master/O=MyCluster&quot;</span></span><br><span class="line"><span class="comment"># 签发证书</span></span><br><span class="line">$ openssl x509 -req -<span class="keyword">in</span> master-1.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out master-1.crt -days 730 -sha256 -extfile node.ext -extensions v3_node</span><br></pre></td></tr></table></figure>
-
-<p>这样就有了 <code>master-1</code> 的证书和私钥，把 <code>master-1.crt</code> 和 <code>ca.crt</code> 部署到节点上即可使用。</p>
-<p>两个关键点：</p>
-<ol>
-<li>子证书必须 <code>CA:FALSE</code>，说明它不是 CA，不能继续签发其他证书；</li>
-<li><code>extendedKeyUsage</code> 设为 <code>serverAuth, clientAuth</code>，说明这个证书既可当 <code>server</code> 也可当 <code>client</code>——这正是为了适配节点在选举期间角色切换的场景。</li>
-</ol>
-<h3 id="身份体系设计"><a href="#身份体系设计" class="headerlink" title="身份体系设计"></a>身份体系设计</h3><p>以 <code>master-1</code> 的证书为例，各字段如下：</p>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Subject: CN=master-1, OU=master, O=MyCluster</span><br><span class="line">SAN:     IP Address: 10.0.0.11</span><br><span class="line">         DNS Name:   master-1</span><br><span class="line">EKU:     TLS Web Server Authentication, TLS Web Client Authentication</span><br><span class="line">Basic:   CA:FALSE</span><br><span class="line">Issuer:  CN=My-Cluster-CA, O=MyCluster</span><br><span class="line">Validity: 2 年</span><br></pre></td></tr></table></figure>
-
-<p>各字段承担的职责：</p>
-<table>
-<thead>
-<tr>
-<th align="center">字段</th>
-<th align="center">内容</th>
-<th align="center">负责部分</th>
-<th align="center">原因</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">CN</td>
-<td align="center">节点名</td>
-<td align="center">审计</td>
-<td align="center">不做TLS校验，便于日志记录</td>
-</tr>
-<tr>
-<td align="center">OU</td>
-<td align="center">角色（master &#x2F; data-node &#x2F; client）</td>
-<td align="center">授权</td>
-<td align="center">标准字符串字段，不采用自定义OID</td>
-</tr>
-<tr>
-<td align="center">O</td>
-<td align="center">集群名</td>
-<td align="center">归属标识</td>
-<td align="center">多集群区分，单集群也可用</td>
-</tr>
-<tr>
-<td align="center">SAN</td>
-<td align="center">IP + DNS</td>
-<td align="center">TLS校验</td>
-<td align="center">TLS校验使用SAN对比</td>
-</tr>
-<tr>
-<td align="center">EKU</td>
-<td align="center">serverAuth + clientAuth</td>
-<td align="center">双向通用</td>
-<td align="center">双向标记，节点能当client和server</td>
-</tr>
-<tr>
-<td align="center">CA:FALSE</td>
-<td align="center">标记是叶子</td>
-<td align="center">防越权签发</td>
-<td align="center">明确叶子证书权限，防止伪造签发</td>
-</tr>
-<tr>
-<td align="center">Issuer</td>
-<td align="center">集群CA</td>
-<td align="center">认证</td>
-<td align="center">作为根认证</td>
-</tr>
-</tbody></table>
-<p>利用 OU 字段做角色授权，可以在 TLS 握手完成后从对端证书中读出角色，实现”连接级”的权限控制。当前阶段只做连接控制，暂不做端点级控制（连接进来就信任此角色，不卡具体端点）。</p>
-<h3 id="组件配置"><a href="#组件配置" class="headerlink" title="组件配置"></a>组件配置</h3><p>在每个组件的配置文件中添加 TLS 相关字段，并设置一个开关：</p>
-<figure class="highlight json"><table><tr><td class="code"><pre><span class="line"><span class="attr">&quot;TLS&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;Enabled&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;CAFile&quot;</span><span class="punctuation">:</span>   <span class="string">&quot;/etc/cluster/certs/ca.crt&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;CertFile&quot;</span><span class="punctuation">:</span> <span class="string">&quot;/etc/cluster/certs/master-2.crt&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;KeyFile&quot;</span><span class="punctuation">:</span>  <span class="string">&quot;/etc/cluster/certs/master-2.key&quot;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<p>&#x3D;&#x3D;<code>Enabled</code> 字段作为 TLS 的开关&#x3D;&#x3D;：设为 <code>true</code> 开启 mTLS 认证，设为 <code>false</code> 回退到明文传输，方便灰度切换和故障排查。</p>
-<h3 id="批量签发"><a href="#批量签发" class="headerlink" title="批量签发"></a>批量签发</h3><p>实际落地时不可能手动一张张签证书。做法是写一个自动签发脚本（如 <code>gen_certs.sh</code>），所有叶子证书的签发依据同一目录下的 <code>nodes.conf</code> 配置清单：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 集群节点证书清单</span></span><br><span class="line"><span class="comment"># 格式：name ip role [dns]</span></span><br><span class="line"><span class="comment">#   name  节点名（证书 CN，用于审计）</span></span><br><span class="line"><span class="comment">#   ip    节点服务 IP（写入 SAN；共享证书用 &quot;-&quot;）</span></span><br><span class="line"><span class="comment">#   role  角色（写入 OU：master/data-node/client）</span></span><br><span class="line"><span class="comment">#   dns   可选 DNS 名（写入 SAN；没有就留空）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># === Master ===</span></span><br><span class="line">master-1 10.0.0.11 master master-1</span><br><span class="line">master-2 10.0.0.12 master master-2</span><br><span class="line">master-3 10.0.0.13 master master-3</span><br><span class="line"></span><br><span class="line"><span class="comment"># === Data Node ===</span></span><br><span class="line">data-1 10.0.0.11 data-node data-1</span><br><span class="line">data-2 10.0.0.12 data-node data-2</span><br><span class="line">data-3 10.0.0.13 data-node data-3</span><br><span class="line"></span><br><span class="line"><span class="comment"># === 共享 Client（CLI / 网关 / 监控用）===</span></span><br><span class="line">shared-client - client</span><br></pre></td></tr></table></figure>
-
-<p>新增节点时只需在 <code>nodes.conf</code> 里加一行，重新跑脚本即可自动签发。每个服务节点的证书都是唯一的，<code>SAN IP</code> 作为校验证书归属的标准；<code>Client</code> 证书是共用的，不需要 SAN IP。</p>
-<p>要注意的是，这种签发过程是<strong>静态</strong>的：需要手动执行脚本，签出来的证书、密钥以及 CA 公钥也要手动分发到对应节点上才生效。如果节点规模大或变动频繁，可以考虑引入自动化的证书签发与轮换机制。</p>
-<h3 id="客户端认证"><a href="#客户端认证" class="headerlink" title="客户端认证"></a>客户端认证</h3><p>所有发起 RPC 或 HTTP 请求的一律视为 <code>Client</code>（CLI 工具、网关、监控抓取器等），持有共享的客户端证书。客户端节点的配置类似：</p>
-<figure class="highlight json"><table><tr><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;TLS&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">        <span class="attr">&quot;Enabled&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;CAFile&quot;</span><span class="punctuation">:</span>   <span class="string">&quot;/etc/cluster/certs/ca.crt&quot;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;CertFile&quot;</span><span class="punctuation">:</span> <span class="string">&quot;/etc/cluster/certs/shared-client.crt&quot;</span><span class="punctuation">,</span></span><br><span class="line">        <span class="attr">&quot;KeyFile&quot;</span><span class="punctuation">:</span>  <span class="string">&quot;/etc/cluster/certs/shared-client.key&quot;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="新节点预检查"><a href="#新节点预检查" class="headerlink" title="新节点预检查"></a>新节点预检查</h3><p>如前文所说，在新节点加入之前要先做 TLS 连通性检查。用 <code>tls.DialTimeout</code>（Go）尝试和新节点做一次 TLS 握手，这一步能同时验证 5 件事：</p>
-<table>
-<thead>
-<tr>
-<th align="center">验证</th>
-<th align="center">失败时的错误</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">新节点在不在运行（TCP 能连上）</td>
-<td align="center"><code>connection refused</code></td>
-</tr>
-<tr>
-<td align="center">新节点开了 TLS（不是明文监听）</td>
-<td align="center"><code>first record does not look like a TLS handshake</code></td>
-</tr>
-<tr>
-<td align="center">新节点的证书是本集群 CA 签的</td>
-<td align="center"><code>certificate signed by unknown authority</code></td>
-</tr>
-<tr>
-<td align="center">新节点的证书 SAN-IP 对得上</td>
-<td align="center"><code>certificate is valid for X, not Y</code></td>
-</tr>
-<tr>
-<td align="center">mTLS 双向认证通过</td>
-<td align="center"><code>bad certificate</code></td>
-</tr>
-</tbody></table>
-<h3 id="长连接复用"><a href="#长连接复用" class="headerlink" title="长连接复用"></a>长连接复用</h3><p>为了避免每次 RPC 都重新建立连接（尤其是 TLS 握手开销不小），可以做一个类似连接池的机制：</p>
-<p>创建 TCP&#x2F;TLS 连接后放入连接池并维护引用计数，以目标地址 <code>host:port</code> 作为索引键。发请求时先拿目标地址去池里查，查到就把这条已经握过手、正开着的连接”借”出来用；没查到才执行拨号，建成后存入池中。</p>
-<p>连接会在以下情况下断开并从池中移除：RPC 出错、池满了被淘汰、对端关闭、网络断开、进程退出。</p>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>mTLS + CA 的组合为集群内部通信提供了双向身份认证和传输加密，配合基于证书 OU 的角色授权和新节点入队前的 TLS 预检查，能覆盖从集群建立到动态扩容的全生命周期安全。核心要点回顾：</p>
-<ol>
-<li>单纯 mTLS 不保护”新节点加入”流程，需要额外的入队前 TLS 预检查；</li>
-<li>证书字段各司其职：CN 审计、OU 授权、SAN 做 TLS 校验、Issuer 做根认证；</li>
-<li>选举类场景下节点角色会切换，叶子证书的 EKU 要同时含 <code>serverAuth</code> 和 <code>clientAuth</code>；</li>
-<li>用配置清单 + 脚本实现批量签发，用 <code>Enabled</code> 开关支持灰度切换。</li>
-</ol>
-]]></content>
-      <categories>
-        <category>网络安全</category>
-      </categories>
-      <tags>
-        <tag>mTLS</tag>
-        <tag>TLS</tag>
-        <tag>PKI</tag>
-        <tag>分布式系统</tag>
       </tags>
   </entry>
 </search>
