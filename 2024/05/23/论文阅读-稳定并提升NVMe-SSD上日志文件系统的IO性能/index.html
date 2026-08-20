@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-siteapp">
     <title>
         
-            归档
+            论文阅读：稳定并提升NVMe SSD上日志文件系统的I/O性能
         
     </title>
     <link rel="shortcut icon" href="#"/>
@@ -33,15 +33,46 @@
 </head>
 <body>
     <a id="cover"></a>
-    <link type="text/css" rel="stylesheet" href="/css/archive.css">
+    <link type="text/css" rel="stylesheet" href="/css/post.css">
 <div id="header" class="header">
     <div class="vertical">
         <div class="inner">
             
-                <h1 class="header-subtitle">归档</h1>
+                <h1 class="header-subtitle">论文阅读：稳定并提升NVMe SSD上日志文件系统的I/O性能</h1>
                 <div class="header-subinfo">
-                    <p class="article-info-text Chinese"></p>
-                    <p class="article-info-text English"></p>                  
+                    <p class="article-info-text">
+                        <span>
+                            <i class="iconfont icon-time"></i> 发表时间：2024-05-23
+                        </span>
+                        
+                            
+                                <span id="/2024/05/23/论文阅读-稳定并提升NVMe-SSD上日志文件系统的IO性能/" class="leancloud_visitors" data-flag-title="论文阅读：稳定并提升NVMe SSD上日志文件系统的I/O性能">
+                                    <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
+                                </span>
+                            
+                            
+                                <span>
+                                    <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2024/05/23/论文阅读-稳定并提升NVMe-SSD上日志文件系统的IO性能/"></span>
+                                </span>
+                              
+                        
+                    </p>
+                    
+                        
+                            <span class="category-color">论文阅读</span>
+                        
+                    
+                    
+                        
+                            <span class="tag-color">SSD</span>
+                        
+                            <span class="tag-color">分布式存储</span>
+                        
+                            <span class="tag-color">NVMe</span>
+                        
+                            <span class="tag-color">日志文件系统</span>
+                        
+                    
                 </div>
             
         </div>
@@ -50,57 +81,169 @@
 </div>
 <div id="container">
     
-        
-            <!-- 归档页面、分类归档页面、标签归档页面 -->
-            <div class="articles">
-                <div class="articles-wrap">
-                    <span class="archive-move-on"></span>
-                    <span class="archive-counter">
+        <!-- 文章页面 -->
+        <div id="article">
+            <div class="toc"></div>
+            <div class="article-body">
+                <h1 id="论文阅读：稳定并提升NVMe-SSD上日志文件系统的I-O性能"><a href="#论文阅读：稳定并提升NVMe-SSD上日志文件系统的I-O性能" class="headerlink" title="论文阅读：稳定并提升NVMe SSD上日志文件系统的I&#x2F;O性能"></a>论文阅读：稳定并提升NVMe SSD上日志文件系统的I&#x2F;O性能</h1><blockquote>
+<p>论文：<em>Stabilizing and Boosting I&#x2F;O Performance for File Systems with Journaling on NVMe SSD</em></p>
+</blockquote>
+<h2 id="问题：SSD做外部日志设备时的性能波动"><a href="#问题：SSD做外部日志设备时的性能波动" class="headerlink" title="问题：SSD做外部日志设备时的性能波动"></a>问题：SSD做外部日志设备时的性能波动</h2><p>许多日志文件系统（在写入数据时，先将相关信息写入日志，再将数据写入底层存储设备）使用SSD来作为外部日志设备以提高I&#x2F;O性能。但是在微小写入工作负载时，会产生严重的I&#x2F;O波动，&#x3D;&#x3D;主要原因是因为将数据写回到硬盘驱动器（HDD）上的后端文件系统比写入日志的速度慢得多。&#x3D;&#x3D;</p>
+<p>由于两阶段机制（two-phase mechanism）的存在，这导致日志写入频繁冻结：微小写入通常涉及许多小规模的数据写入操作，这些操作通常是随机且高频的，这意味着系统必须频繁地处理多个独立的写入请求，每次请求可能只写入少量数据。虽然日志的写入速度非常快，但是写回速度很慢，这时写回队列（Writeback Queue）会经常被填满。&#x3D;&#x3D;写回队列一旦满了，系统就无法继续进行新的日志写入操作，这会导致日志写入的能力冻结&#x2F;暂停。&#x3D;</p>
+<p>带有SSD的传统日志文件系统如下图所示：</p>
+<img src="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/be33241b865feafeb4c0b03bb0f992f.png" class="" title="带有SSD的传统日志文件系统">
+
+<h2 id="实验观察"><a href="#实验观察" class="headerlink" title="实验观察"></a>实验观察</h2><img src="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/f890617cf00928edac8bca80dcfda98.png" class="" title="FileStore引擎上的实验结果">
+
+<p>上图是在FileStore引擎上进行的实验结果：使用一个SSD设备作为外部存储日志，3个对象存储设备（OSD）对应3个不同的HDD。在进行微写入时（4、8、64KB大小），针对IOPS和Busy rate（忙碌程度）进行检测。可以发现在使用SSD记录日志时IOPS波动非常大，而且只在很短的时间内繁忙。主要原因是SSD在日志记录微写时速度很快，但是HDD的写回比日志记录慢很多，因此写回队列经常被占满，这会导致日志写入经常暂停或冻结，日志必须等待部分数据写回到底层存储后才能继续新的写入操作。</p>
+<p>微写大小不同、线程数相同时的IOPS和Busy rate情况：</p>
+<img src="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/d90326d1246c705ec35670deb377dbc.png" class="" title="微写大小不同的实验结果">
+
+<p>微写大小相同、线程数不同时的IOPS和Busy rate情况：</p>
+<img src="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/496d2ed6098ccea61023b2a1898efd7.png" class="" title="线程数不同的实验结果">
+
+<p>综上可以得到：</p>
+<ol>
+<li>SSD的IOPS性能波动较大，且大部分时间SSD处于冻结状态；</li>
+<li>IOPS性能的稳定性与微写大小密切相关，而与线程数关系不大（因为锁机制的存在），&#x3D;&#x3D;微写大小越小，IOPS性能波动越严重&#x3D;&#x3D;（因为对于较大的写入操作，可以有效地利用HDD的顺序写能力）。</li>
+</ol>
+<h2 id="解决方案：内存合并加速架构（MIM）"><a href="#解决方案：内存合并加速架构（MIM）" class="headerlink" title="解决方案：内存合并加速架构（MIM）"></a>解决方案：内存合并加速架构（MIM）</h2><p>主要思想：&#x3D;&#x3D;造成上述问题的主要原因是回写速度慢。由于HDD的顺序写速度比随机微写入速度快，因此将多个微小写入操作合并成顺序的大块写入（sequential large writes）并暂时保存在内存中，然后再将这些大块数据写回到后端存储设备中。&#x3D;</p>
+<p>这个设计需要解决三个问题：</p>
+<p><strong>1. 快速识别相同地址的微小写入</strong>：要合并多个微小写入，它们必须具有相同的地址（即相同的目录和对象）。识别这些相同地址的操作需要非常快，否则这个识别过程本身可能成为性能提升的新瓶颈。&#x3D;&#x3D;论文引入了一种新型的基于开放地址散列表的多链表（HTMLL，Open-Address Hash Table-Based Multiple Linked-List）数据结构，这种数据结构不仅能有效地支持写入操作的合并，还能在将数据刷新（flush）到底层存储设备时带来额外的好处，如减少冲刷时间和提高效率。&#x3D;</p>
+<p><strong>2. 增加合并机会的内存滞留</strong>：为了增加合并的机会，每个微小写入在内存中保留的时间需要相对较长。然而这会推迟微小写入的写回时间，从而增加日志队列被填满的可能性，导致新的写入操作需要等待。&#x3D;&#x3D;论文采用了一种新的刷新机制，这一机制考虑了HTMLL的占用率（occupancy ratio）以及时间因素，在不影响性能的前提下优化合并操作的时机和刷新操作，从而避免日志队列的拥塞。&#x3D;</p>
+<p><strong>3. 写入操作重排序引发的问题</strong>：由于合并操作会导致写入操作的重排序，原本的检查点机制（checkpointing mechanism）可能会失去其功能性，导致系统在崩溃时无法正确恢复数据。&#x3D;&#x3D;论文对原有的检查点机制进行了重新设计，以应对由于合并操作导致的写入操作重排序问题，确保系统在发生崩溃时仍能正确恢复数据。&#x3D;</p>
+<p>MIM体系结构如下图所示：</p>
+<img src="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/175f36cf87f361a9a10c5c4d93d0752.png" class="" title="MIM体系结构">
+
+<p>与传统的日志文件系统的区别是：(1)将传统的Flush操作分成了2个过程；(2)新增了Check pointing（检查点）操作。</p>
+<h3 id="Flush-Phase-1：HTMLL——解决怎么快速识别相同地址的微小写入"><a href="#Flush-Phase-1：HTMLL——解决怎么快速识别相同地址的微小写入" class="headerlink" title="Flush Phase 1：HTMLL——解决怎么快速识别相同地址的微小写入"></a>Flush Phase 1：HTMLL——解决怎么快速识别相同地址的微小写入</h3><p>将每个微写入操作都用一个四元组来表示：<code>&lt;cid,oid,sn,data&gt;</code>，其中：</p>
+<ul>
+<li><strong>cid</strong>：对象组的标识符，可以理解为微小写入操作要执行的目录，不同的对象组有不同的cid；</li>
+<li><strong>oid</strong>：对象组内某个对象的标识符，即数据要写入的具体对象（不同的cid之间可以共享一组oid值）；</li>
+<li><strong>sn</strong>：微小写入操作的序列号；</li>
+<li><strong>data</strong>：要写入文件系统的数据本身。</li>
+</ul>
+<p>&#x3D;&#x3D;将对象组的数量设置较多、对象的数量设置较少时，可以减少定位对象的时间。&#x3D;</p>
+<img src="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/03ec77836bb1b9d375f90c35fe97385.png" class="" title="HTMLL数据结构">
+
+<p>上图为HTMLL的数据结构图。具体来说：&#x3D;&#x3D;在线程池中的每一个线程，首先都会被映射为形如&lt;cid,oid,sn,data&gt;的四元组的格式；然后哈希表被分为多个（N个）槽，每个槽都是一个链表的起始点，每条链表都是由多个（M个）链块构成，链块上有多个进程。之所以把这些进程放在一起组成一个链块，是为了方便将这些随机写的进程合并为一个大的顺序写的进程（可以选择适当的M和N的值来控制内存消耗）。&#x3D;</p>
+<p><strong>线程进入HTMLL的具体过程</strong>：当有新的微写入操作到达HTMLL时，首先会根据其oid来决定它应该被放到哪个槽中（同一个槽&#x2F;链表上的链块具有相同的oid）。如果成功，写线程接下来会检查该槽对应的链表，看看链表中是否存在一个与cid匹配的链块。如果在这个链表中没有找到与cid匹配的链块，说明这个链表中没有与这个微写入操作相关的已有数据，此时系统会将这个微写入操作直接写入到写回队列中。如果找到了匹配的链块，系统会将新的数据追加到这个链块中——这意味着多个属于同一对象组的微写入操作会被合并在同一个链块中，以便在后续的写回操作中一次性写入。如果失败（即哈希表中所有的槽都被占用，没有空槽且其oid和现有的oid都不匹配），则会将这个操作直接写入写回队列，不进行后续的合并处理。</p>
+<h3 id="Flush-Phase-2：空间阈值与时间阈值——解决内存滞留问题"><a href="#Flush-Phase-2：空间阈值与时间阈值——解决内存滞留问题" class="headerlink" title="Flush Phase 2：空间阈值与时间阈值——解决内存滞留问题"></a>Flush Phase 2：空间阈值与时间阈值——解决内存滞留问题</h3><p>在MIM架构中，微写入操作通常会在HTMLL中停留一段时间，以便有更多机会与其他微写入操作合并。但是如果HTMLL中的占用率过高（有太多的链块已经被占用），那么新的微写入操作将直接被刷新到写回队列中，而无法充分利用合并的优势。这不仅减少了合并带来的性能提升，还可能导致检查点日志（checkpoint-based journal）变得过大，进而严重影响系统性能。因此提出了<strong>空间阈值</strong>和<strong>时间阈值</strong>：</p>
+<p><strong>空间阈值</strong>（基于HTMLL的占用率，即占用的链块比例）：</p>
+<img src="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/daf5a5582f1c9dc080b24d7e89a3d7c.png" class="" title="空间阈值公式">
+
+<p>其中：</p>
+<ul>
+<li><strong>journalthroughput</strong>：NVMe SSD在追加微写入操作时的固有最大吞吐量，即它能以多快的速度处理这些写入操作；</li>
+<li><strong>max flushing intvl</strong>：两次连续的日志刷写操作之间的最大时间间隔，这个间隔由文件系统指定，在这个时间间隔内，日志系统会定期将数据从HTMLL中刷写到写回队列中；</li>
+<li><strong>blocksize</strong>：一个对象（object）的大小，即每个链块的大小；</li>
+<li><strong>sp_thresh</strong>：在最大刷写间隔内，系统需要分配的链块数量。</li>
+</ul>
+<p>&#x3D;&#x3D;journalthroughput × max flushing intvl 得到的是在max flushing intvl这么长的时间内有多少数据写入进来，然后计算得到的总数据量除以blocksize（对象或链块的大小）后，得到的数字表示在最大刷写时间内需要多少个链块才能容纳这些数据量。&#x3D;</p>
+<p><strong>时间阈值</strong>（基于两次连续的刷写操作之间的时间间隔）：</p>
+<img src="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/d1b73776a743e87ecfc87e244b1e099.png" class="" title="时间阈值公式">
+
+<p>其中：</p>
+<ul>
+<li><strong>rep</strong>：写入到后台文件系统中的数据副本数量；</li>
+<li><strong>scale</strong>：文件系统中的节点数量；</li>
+<li><strong>max flushing intvl</strong>：同上，两次连续的日志刷写操作之间的最大时间间隔。</li>
+</ul>
+<p>&#x3D;&#x3D;考虑到写入操作时，可能需要等待数据的所有副本都成功写入、或者所有节点都同步完毕之后，才能继续进行下一步操作。这种等待时间会影响整体的写入效率，因此用其来定义时间阈值。&#x3D;</p>
+<p>&#x3D;&#x3D;当HTMLL的占用率超过了空间阈值、或者距离上一次刷写操作的时间超过了时间阈值时，写线程将停止将新的微写入操作插入到HTMLL中，随后系统将触发一个整体的刷写操作。&#x3D;</p>
+<h3 id="Record-Checkpoint：解决写入操作重排序后的数据一致性问题"><a href="#Record-Checkpoint：解决写入操作重排序后的数据一致性问题" class="headerlink" title="Record-Checkpoint：解决写入操作重排序后的数据一致性问题"></a>Record-Checkpoint：解决写入操作重排序后的数据一致性问题</h3><p>在传统的日志文件系统中，微写操作按照附加到日志文件的顺序写回操作系统。日志文件中存在一个检查点，这个检查点会定期更新，表示最后一次检查时未写回操作系统的第一个微写操作。由于是按顺序写回，所以这个检查点之后的所有微写操作都被视为未写回。&#x3D;&#x3D;但是在MIM体系结构中，由于合并操作的存在，在日志中落后于一个微写操作的另一个微写操作可能会被提前写回，因此只记录最后一个完成写回操作的检查点机制是会产生问题的。&#x3D;</p>
+<p>解决办法：首先记录自上一个检查点后，所有成功写回到底层文件系统的微写入操作的序列号（sn）。这些成功的sn会被保存到一个辅助链表中，并按照它们在日志文件中的顺序排列。系统随后会通过辅助链表来找到检查点可以更新的位置。具体来说，&#x3D;&#x3D;系统会从当前检查点开始，逐一检查这些成功写回的sn：如果检查点的sn与辅助链表中最早的sn相同，说明这个微写操作已经成功写回，检查点就可以向前移动到下一个未被成功写回的微写操作的位置。&#x3D;&#x3D;通过重复这一过程，系统不断更新检查点，直到遇到一个sn在链表中没有匹配的情况。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>在使用SSD作为外部日志的日志文件系统中，SSD的写入速度远大于HDD的写入速度，因此会导致性能波动等问题。论文提出了一种名为MIM（Merging-In-Memory）的优化架构，通过微写合并操作来提升效率，同时解决了这个框架带来的三个问题：</p>
+<ol>
+<li>如何高效合并微写操作——HTMLL数据结构；</li>
+<li>如何在最合适的时机触发写回操作——空间阈值+时间阈值；</li>
+<li>如何确保合并操作后的数据持久性和一致性——Record-Checkpoint机制。</li>
+</ol>
+
+                
+                <p class="end">__END__</p>
+            </div>
+            <div class="article-footer">
+                <div class="suffix-box">
+    <div class="suffix-box-left">
+        <img src="/image/sidebar/avatar.jpg" alt="振兴东北">
+    </div>
+    <div class="suffix-box-right">
+        <span class="suffix-box-title">文章作者：</span>拳击手胖虎
+        <br>
+        <span class="suffix-box-title">文章出处：</span><a href="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/" target="_blank">论文阅读：稳定并提升NVMe SSD上日志文件系统的I/O性能</a>
+        <br>
+        <span class="suffix-box-title">作者签名：</span>不成木讷树，便做自由风
+        <br>
+        <span class="suffix-box-title">关于主题：</span><a href="https://github.com/first19326/Hexo-LiveForCode" target="_blank">Hexo - Live For Code</a>
+        <br>
+        <span class="suffix-box-title">版权声明：</span>文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" title="BY-NC-SA" target="_blank">BY-NC-SA</a> 许可协议，转载请注明出处
+        <br>
+    </div>
+    <div style="clear: both;"></div>
+</div>
+                
+                    <div class="category">
+                        分类：
                         
-                            目前共计 6 篇日志，继续加油！
+                            <a href="/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/">论文阅读</a>
                         
-                    </span>
-                    
-                    
+                    </div>
+                
+                
+                    <div class="tag">
+                        标签：
                         
-                            <div class="archive-title">
-                                <h2 class="archive-year">2024</h2>
-                            </div>
-                            
-                           
-                        <div class="article">
-                            <div class="article-header">
-                                <h1 class="article-title"><a href="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/"><span>论文阅读：稳定并提升NVMe SSD上日志文件系统的I/O性能</span></a></h1>
-                                <div class="article-meta">
-                                    <span class="article-time">05-23</span>
-                                </div>
-                            </div>
-                        </div>
+                            <a href="/tags/SSD/">SSD</a>
+                        
+                            <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8/">分布式存储</a>
+                        
+                            <a href="/tags/NVMe/">NVMe</a>
+                        
+                            <a href="/tags/%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">日志文件系统</a>
+                        
+                    </div>
+                
+                <div class="article-prev-next">
                     
-                           
-                        <div class="article">
-                            <div class="article-header">
-                                <h1 class="article-title"><a href="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/"><span>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</span></a></h1>
-                                <div class="article-meta">
-                                    <span class="article-time">05-11</span>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/" class="prev-prefix">« </a> 上一篇：    <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/" title="发布于 2025-11-12 10:06">C++笔记</a>
+                        <br>
                     
-                           
-                        <div class="article">
-                            <div class="article-header">
-                                <h1 class="article-title"><a href="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/"><span>SSD的内部结构</span></a></h1>
-                                <div class="article-meta">
-                                    <span class="article-time">04-11</span>
-                                </div>
-                            </div>
-                        </div>
+                    
+                        <a href="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/" class="next-prefix">» </a> 下一篇：    <a href="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/" title="发布于 2024-05-11 09:00">论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</a>
                     
                 </div>
             </div>
             
+    <div class="article-comments">
         
+            <div class="comments-title">
+                评论列表
+            </div>
+        
+        <div class="comments-content">
+            
+                <script src="https://giscus.app/client.js"
+                    data-repo="zblzbl9040/zblzbl9040.github.io"
+                    data-repo-id="R_kgDONJvMDQ"
+                    data-category="Announcements"
+                    data-category-id="DIC_kwDONJvMDc4C-Nmz"
+                    data-mapping="pathname"
+                    data-strict="0"
+                    data-reactions-enabled="1"
+                    data-emit-metadata="0"
+                    data-input-position="bottom"
+                    data-theme="preferred_color_scheme"
+                    data-lang="zh-CN"
+                    crossorigin="anonymous"
+                    async>
+                </script>
+            
+        </div>
+    </div>
+    
+ 
+        </div>
     
 </div>
     <div id="footer">
@@ -138,7 +281,7 @@
                     
                         <li class=""><a href="/tags" class="" target="_self"><span class="iconfont icon-discount-fill"></span>标签</a></li>
                     
-                        <li class=" active "><a href="/archives" class="" target="_self"><span class="iconfont icon-calendar-fill"></span>归档</a></li>
+                        <li class=""><a href="/archives" class="" target="_self"><span class="iconfont icon-calendar-fill"></span>归档</a></li>
                     
                         <li class=""><a href="/donate" class="" target="_self"><span class="iconfont icon-heart-fill"></span>赞赏</a></li>
                     
