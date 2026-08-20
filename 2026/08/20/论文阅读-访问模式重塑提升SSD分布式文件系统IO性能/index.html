@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-siteapp">
     <title>
         
-            归档
+            论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能
         
     </title>
     <link rel="shortcut icon" href="#"/>
@@ -33,15 +33,46 @@
 </head>
 <body>
     <a id="cover"></a>
-    <link type="text/css" rel="stylesheet" href="/css/archive.css">
+    <link type="text/css" rel="stylesheet" href="/css/post.css">
 <div id="header" class="header">
     <div class="vertical">
         <div class="inner">
             
-                <h1 class="header-subtitle">归档</h1>
+                <h1 class="header-subtitle">论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</h1>
                 <div class="header-subinfo">
-                    <p class="article-info-text Chinese"></p>
-                    <p class="article-info-text English"></p>                  
+                    <p class="article-info-text">
+                        <span>
+                            <i class="iconfont icon-time"></i> 发表时间：2026-08-20
+                        </span>
+                        
+                            
+                                <span id="/2026/08/20/论文阅读-访问模式重塑提升SSD分布式文件系统IO性能/" class="leancloud_visitors" data-flag-title="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能">
+                                    <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
+                                </span>
+                            
+                            
+                                <span>
+                                    <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2026/08/20/论文阅读-访问模式重塑提升SSD分布式文件系统IO性能/"></span>
+                                </span>
+                              
+                        
+                    </p>
+                    
+                        
+                            <span class="category-color">论文阅读</span>
+                        
+                    
+                    
+                        
+                            <span class="tag-color">SSD</span>
+                        
+                            <span class="tag-color">分布式存储</span>
+                        
+                            <span class="tag-color">Lustre</span>
+                        
+                            <span class="tag-color">F2FS</span>
+                        
+                    
                 </div>
             
         </div>
@@ -50,37 +81,145 @@
 </div>
 <div id="container">
     
-        
-            <!-- 归档页面、分类归档页面、标签归档页面 -->
-            <div class="articles">
-                <div class="articles-wrap">
-                    <span class="archive-move-on"></span>
-                    <span class="archive-counter">
+        <!-- 文章页面 -->
+        <div id="article">
+            <div class="toc"></div>
+            <div class="article-body">
+                <h1 id="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能"><a href="#论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能" class="headerlink" title="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能"></a>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能</h1><blockquote>
+<p>论文：<em>Improving I&#x2F;O performance in distributed file systems for flash-based SSDs by access pattern reshaping</em></p>
+</blockquote>
+<p>这篇文章的核心思想是：<strong>通过将分布式文件系统（Lustre）中写请求的地址进行重塑，把SSD上的随机写重构为顺序写，来减少写放大效应、提高写入性能</strong>。在展开方案之前，先补充两个背景知识：F2FS文件系统和Lustre文件系统。</p>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><h3 id="F2FS文件系统（Flash-Friendly-File-System）"><a href="#F2FS文件系统（Flash-Friendly-File-System）" class="headerlink" title="F2FS文件系统（Flash Friendly File System）"></a>F2FS文件系统（Flash Friendly File System）</h3><p>F2FS可以极大程度上避免碎片产生。相对于传统日志型文件系统，F2FS在<strong>wandering tree</strong>和<strong>GC</strong>方面有一定的优化，可以复用离散的数据页写入数据，显著减少GC带来的卡顿。</p>
+<p><strong>wandering tree</strong>：在文件更新时，指向文件的Direct Pointer（直接指针）由于数据异地更新，也会随之更新；同时指向这个Direct Pointer的Indirect Pointer（间接指针）也会更新，然后保存这个Indirect Pointer的inode（存储文件元数据的结构体）、inode block map（记录块分配情况的表）等结构也需要更新，这样会导致频繁的metadata更新。</p>
+<h3 id="Lustre文件系统"><a href="#Lustre文件系统" class="headerlink" title="Lustre文件系统"></a>Lustre文件系统</h3><img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/1553ffc55c4f184bfbbf8499a14ebd8.png" class="" title="Lustre文件系统总体结构">
+
+<p>上图为Lustre文件系统的总体结构，主要由客户端、元数据服务器、元数据目标、对象存储服务器和对象存储目标组成：</p>
+<p><strong>客户端（Client）</strong>：是Lustre文件系统的用户接口，负责向元数据服务器（MDS）和对象存储服务器（OSS）发送文件系统请求。&#x3D;&#x3D;客户端能将用户的I&#x2F;O请求转发到合适的服务器，并从服务器接收数据。&#x3D;</p>
+<p><strong>元数据服务器（MDS）</strong>：负责管理文件系统的元数据，包括文件名、目录结构、文件权限、文件大小、文件所在的对象存储目标（OST）等信息。&#x3D;&#x3D;当客户端发出文件操作请求时，MDS会查询并返回相关的元数据信息，使客户端知道应该从哪个OST获取文件数据。&#x3D;</p>
+<p><strong>元数据目标（MDT）</strong>：MDT是存储在MDS上的物理存储设备，用于存储文件系统的元数据。&#x3D;&#x3D;MDT是元数据的实际存储位置，负责保存和检索文件系统的元数据内容。多个MDT可以分担元数据的存储负载，从而提高元数据访问的并行度和整体性能。&#x3D;</p>
+<p><strong>对象存储服务器（OSS）</strong>：OSS负责管理实际的文件数据存储，接收来自客户端的文件I&#x2F;O请求，并将数据存储到对应的对象存储目标（OST）上。&#x3D;&#x3D;OSS通过网络将数据分布在多个OST上，实现并行I&#x2F;O操作。&#x3D;</p>
+<p><strong>对象存储目标（OST）</strong>：OST是Lustre文件系统中存储实际文件数据的物理存储设备。&#x3D;&#x3D;OST负责实际的文件数据存储，是Lustre文件系统数据存储的基本单元，数据在OST之间分布存储。&#x3D;</p>
+<p><strong>写操作流程</strong></p>
+<img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/14445f1774cd168570b56e54fd656a5.png" class="" title="Lustre写操作流程">
+
+<p>当客户端想要写入文件时，首先会向元数据服务器（MDS）发起文件打开请求。MDS处理文件打开操作，检查文件是否存在并将文件的元数据返回给客户端。元数据中包含文件的访问权限（如读写权限）和数据存放的位置（即存储服务器OSS）。客户端验证了文件的权限，并且通过元数据知道了存储该文件数据的OSS的具体位置。客户端接下来会向指定的OSS发起写请求。为了处理客户端的写请求，OSS需要为每个写请求分配一个新的bio结构体，在bio结构体中会记录客户端写请求的地址。接着，写操作请求的页（page，表示要写入的数据）也会添加到这个bio结构体中。设置好bio结构体后，OSS会将该结构体提交给底层存储系统，最终数据通过存储目标OST写入存储设备。</p>
+<h2 id="访问模式重塑方案的总体架构"><a href="#访问模式重塑方案的总体架构" class="headerlink" title="访问模式重塑方案的总体架构"></a>访问模式重塑方案的总体架构</h2><h3 id="1-地址重塑操作（Address-Reshaping-Operation）"><a href="#1-地址重塑操作（Address-Reshaping-Operation）" class="headerlink" title="1. 地址重塑操作（Address Reshaping Operation）"></a>1. 地址重塑操作（Address Reshaping Operation）</h3><p>当客户端发送请求时，根据MDS找到存储数据的OSS，然后将请求送达OSS进行处理。当OSS收到请求后，检查收到的请求是读请求还是写请求：</p>
+<ul>
+<li>如果是<strong>写请求</strong>，则将请求的逻辑块地址（LBA）转化为顺序的逻辑块地址。具体来说，它将原始逻辑块地址（oLBA）重塑为顺序的逻辑块地址（tLBA），然后通过重映射表将oLBA和tLBA的对应关系保存。当oLBA和tLBA对被插入重映射表后，写请求通过<code>submit_bio()</code>函数提交到块层（block layer）。在块层中，默认的请求合并算法会将顺序的LBA请求合并成一个大的请求。&#x3D;&#x3D;这种方案可以将随机写请求重塑为顺序写请求，而且可以通过块层将现有的请求合并以减少请求的数量。&#x3D;</li>
+</ul>
+<img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/82239abc8b882cee6f1e03baa0e2333.png" class="" title="地址重塑操作总体结构">
+
+<p>对于<strong>读和覆盖请求</strong>，则需要在重映射表（Remapping Table）中查找现有的oLBA和tLBA对：</p>
+<ul>
+<li>对于<strong>覆盖请求</strong>，首先在重映射表中查找原始逻辑块地址（oLBA）和已重塑的逻辑块地址（tLBA）对。覆盖请求意味着需要更新存储在原tLBA位置的数据。为了确保写入操作是顺序的，系统会为这个oLBA分配一个新的顺序逻辑块地址（tLBA），这个新tLBA将用于存储更新后的数据。这部分无效数据会通过后续的清理操作来处理和回收空间。</li>
+<li>对于<strong>读请求</strong>，由于oLBA已经被重塑为tLBA，所以在获取某个数据时需要根据重映射表，将对应的tLBA找到，再将数据获取。</li>
+</ul>
+<h3 id="2-管理重映射表（Managing-Remapping-Table）"><a href="#2-管理重映射表（Managing-Remapping-Table）" class="headerlink" title="2. 管理重映射表（Managing Remapping Table）"></a>2. 管理重映射表（Managing Remapping Table）</h3><p>在重映射表中记录了oLBA到tLBA的映射关系，主要的作用就是在读取和覆盖操作时为oLBA查找相应的tLBA。对于一个表来说，搜索时间和清理节点时间和表的大小成正比，因此采用多个重映射表而不是单个大的重映射表是必要的选择。多个重映射表的划分范围可以根据磁盘而定：&#x3D;&#x3D;将大型磁盘布局划分为多个小节，为每个小节创建对应的重映射表，这些映射表管理它们自己的逻辑块地址&#x3D;&#x3D;，这样可以减少重映射表中的条目，还可以在进行清理操作时隔离重映射表（一个子节中进行清理操作时，其他的子节还可以处理I&#x2F;O请求）。论文中使用红&#x2F;黑树实现重映射表，因为红&#x2F;黑树有较快的搜索时间。</p>
+<img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/dfbbaa83c350c90030cd44440695d9d.png" class="" title="多个重表示意图">
+
+<p>在上图中，存在两个重映射表（T1和T2），表1负责tLBA1—tLBA90，表2负责tLBA91—tLBA180。在这个例子中，表1已经充满了之前的请求，其中通过表1管理的最后一个tLBA90和oLBA99配对。在表2中现有3个请求（91–93），最近的一个是tLBA93（和oLBA31配对），以及空闲的（tLBA94—tLBA180），这些还未被使用，因此可以处理即将到来的请求。当发出新的请求时（oLBA45和oLBA32），它们被插入到表2（tLBA94和tLBA95中），而不访问表1。</p>
+<h3 id="3-支持崩溃一致性（Supporting-Crash-Consistency）"><a href="#3-支持崩溃一致性（Supporting-Crash-Consistency）" class="headerlink" title="3. 支持崩溃一致性（Supporting Crash Consistency）"></a>3. 支持崩溃一致性（Supporting Crash Consistency）</h3><p>通过写前日志（WAL，在真正修改之前先将相关的日志记录写入稳定存储）的策略来实现崩溃一致性（这里的崩溃一致性指的是重映射表的崩溃一致性）。当请求到达OSS时，首先使用<code>submit_bio()</code>函数将数据写入存储设备OST，在写入完成之后，&#x3D;&#x3D;系统开始为重映射表的更新操作启动一个事务，通过在重映射表文件中写入”Begin Tx”来表示事务的开始。接着，系统将重映射表中需要更新的（oLBA，tLBA）对逐个写入到重映射表文件中，这些对记录了地址重塑后的逻辑块地址。当所有重映射对都写入完成后，系统在重映射表文件中写入”Commit Tx”以表示事务的提交，这一步表示事务已经完成、可以被认为是成功的。&#x3D;&#x3D;最后，系统将这些更新的重映射对插入到驻留在内存中的重映射表中，以便未来的读写请求能够正确地处理。</p>
+<img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/724e3d3010af50fc17f7d6d6a73c968.png" class="" title="崩溃一致性WAL流程">
+
+<p>系统通过重映射文件来作为判断重映射表是否完整的基准。当系统发生崩溃时，可能会有如下的情况：(1)在调用<code>submit_bio()</code>函数时发生崩溃；(2)在往重映射表中写入映射信息时崩溃。针对上述的两种情况，系统无法确定数据的有效性或事务的完整性，因此无法构建重映射表。&#x3D;&#x3D;只有当重映射文件中写入了数据且”Commit Tx”记录存在时，才可以确认事务是完整的&#x3D;&#x3D;，此时可以安全地从文件中读取重映射信息，并将其重新加载到内存中的重映射表。</p>
+<h3 id="4-清理操作（Cleaning-Operation）"><a href="#4-清理操作（Cleaning-Operation）" class="headerlink" title="4. 清理操作（Cleaning Operation）"></a>4. 清理操作（Cleaning Operation）</h3><p>由于tLBA是从一个大的连续地址空间中分配的，因此连续地址空间可能会被耗尽。当有多个覆盖或者删除操作时，会产生很多无效的tLBA，因此需要回收无效的tLBA并创建一个大的连续空间，具体的解决办法如下：</p>
+<ul>
+<li><strong>寻找有效的tLBA</strong>：清理操作首先从重映射表的末尾开始，寻找关联了有效数据的tLBA，这些tLBA上的数据依然是有效的，不应该被删除。</li>
+<li><strong>寻找无效的tLBA</strong>：从重映射表的起始位置开始查找那些已经通过覆盖或删除操作无效化的tLBA。这些无效的tLBA由于其处于重映射表的中间，阻断了有效数据形成的连续地址空间，形成了不连续的”空洞”。</li>
+<li><strong>数据迁移</strong>：在找到有效和无效的tLBA后，清理操作会将关联了有效数据的tLBA上的数据移动到无效化的tLBA上，填补之前无效的tLBA形成的不连续空洞。这样，原本位于无效tLBA后的有效数据可以被迁移到重映射表的前面，逐步消除不连续的块。&#x3D;&#x3D;在进行迁移之后，重映射表会进行相应的更新，把修改后的tLBA的映射关系进行调整，确保数据一致性。&#x3D;</li>
+</ul>
+<p>&#x3D;&#x3D;这个数据迁移的过程会重复进行，直到重映射表中不再有不连续的无效tLBA空洞。清理操作最终会将所有的无效tLBA重新填充为有效数据关联的tLBA。当所有无效tLBA被填充后，清理操作在重映射表的末尾创建了一个大的连续的tLBA空间，这个连续的tLBA空间可以用于新的写请求，从而确保写操作时可以使用顺序的tLBA。&#x3D;</p>
+<p>清理操作流程示例：</p>
+<img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/17077495852ce72bea3df99683c5819.png" class="" title="清理操作流程示例">
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>对于SSD存储介质，顺序存储的IOPS优于随机存储，根据此特性，将随机请求<strong>重映射</strong>为顺序请求可以提升系统的IOPS。论文通过使用重映射表来管理映射前后的逻辑地址，并解决了此项设计可能会引发的三个问题：</p>
+<ol>
+<li><strong>映射前后的逻辑地址之间怎么关联？两者之间的查找过程怎么更快速？</strong> —— 使用重映射表并采用红&#x2F;黑树结构；</li>
+<li><strong>当需要更新&#x2F;删除某个信息时，映射表是怎么工作的？如何优化写操作产生的”空间碎片”？</strong> —— 通过赋予新的tLBA，且将最新的tLBA移动到”空间碎片”中；</li>
+<li><strong>怎么保证系统故障&#x2F;崩溃后的数据一致性？</strong> —— 通过引入重映射文件以及写前日志。</li>
+</ol>
+
+                
+                <p class="end">__END__</p>
+            </div>
+            <div class="article-footer">
+                <div class="suffix-box">
+    <div class="suffix-box-left">
+        <img src="/image/sidebar/avatar.jpg" alt="振兴东北">
+    </div>
+    <div class="suffix-box-right">
+        <span class="suffix-box-title">文章作者：</span>拳击手胖虎
+        <br>
+        <span class="suffix-box-title">文章出处：</span><a href="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/" target="_blank">论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</a>
+        <br>
+        <span class="suffix-box-title">作者签名：</span>不成木讷树，便做自由风
+        <br>
+        <span class="suffix-box-title">关于主题：</span><a href="https://github.com/first19326/Hexo-LiveForCode" target="_blank">Hexo - Live For Code</a>
+        <br>
+        <span class="suffix-box-title">版权声明：</span>文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" title="BY-NC-SA" target="_blank">BY-NC-SA</a> 许可协议，转载请注明出处
+        <br>
+    </div>
+    <div style="clear: both;"></div>
+</div>
+                
+                    <div class="category">
+                        分类：
                         
-                            目前共计 5 篇日志，继续加油！
+                            <a href="/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/">论文阅读</a>
                         
-                    </span>
+                    </div>
+                
+                
+                    <div class="tag">
+                        标签：
+                        
+                            <a href="/tags/SSD/">SSD</a>
+                        
+                            <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8/">分布式存储</a>
+                        
+                            <a href="/tags/Lustre/">Lustre</a>
+                        
+                            <a href="/tags/F2FS/">F2FS</a>
+                        
+                    </div>
+                
+                <div class="article-prev-next">
                     
                     
-                        
-                            <div class="archive-title">
-                                <h2 class="archive-year">2025</h2>
-                            </div>
-                            
-                           
-                        <div class="article">
-                            <div class="article-header">
-                                <h1 class="article-title"><a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/"><span>C++笔记</span></a></h1>
-                                <div class="article-meta">
-                                    <span class="article-time">11-12</span>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/" class="next-prefix">» </a> 下一篇：    <a href="/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/" title="发布于 2026-07-14 08:00">mTLS双向认证：从选型到落地的完整实践</a>
                     
                 </div>
             </div>
             
+    <div class="article-comments">
         
+            <div class="comments-title">
+                评论列表
+            </div>
+        
+        <div class="comments-content">
+            
+                <script src="https://giscus.app/client.js"
+                    data-repo="zblzbl9040/zblzbl9040.github.io"
+                    data-repo-id="R_kgDONJvMDQ"
+                    data-category="Announcements"
+                    data-category-id="DIC_kwDONJvMDc4C-Nmz"
+                    data-mapping="pathname"
+                    data-strict="0"
+                    data-reactions-enabled="1"
+                    data-emit-metadata="0"
+                    data-input-position="bottom"
+                    data-theme="preferred_color_scheme"
+                    data-lang="zh-CN"
+                    crossorigin="anonymous"
+                    async>
+                </script>
+            
+        </div>
+    </div>
+    
+ 
+        </div>
     
 </div>
     <div id="footer">
@@ -118,7 +257,7 @@
                     
                         <li class=""><a href="/tags" class="" target="_self"><span class="iconfont icon-discount-fill"></span>标签</a></li>
                     
-                        <li class=" active "><a href="/archives" class="" target="_self"><span class="iconfont icon-calendar-fill"></span>归档</a></li>
+                        <li class=""><a href="/archives" class="" target="_self"><span class="iconfont icon-calendar-fill"></span>归档</a></li>
                     
                         <li class=""><a href="/donate" class="" target="_self"><span class="iconfont icon-heart-fill"></span>赞赏</a></li>
                     
