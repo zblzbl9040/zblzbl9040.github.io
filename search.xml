@@ -88,8 +88,26 @@
       </tags>
   </entry>
   <entry>
+    <title>Hello World</title>
+    <url>/2026/05/26/hello-world/</url>
+    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
+<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
+<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
+<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
+<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
+]]></content>
+  </entry>
+  <entry>
     <title>mTLS双向认证：从选型到落地的完整实践</title>
-    <url>/2026/08/20/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/</url>
+    <url>/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/</url>
     <content><![CDATA[<h1 id="mTLS双向认证：从选型到落地的完整实践"><a href="#mTLS双向认证：从选型到落地的完整实践" class="headerlink" title="mTLS双向认证：从选型到落地的完整实践"></a>mTLS双向认证：从选型到落地的完整实践</h1><h2 id="问题背景"><a href="#问题背景" class="headerlink" title="问题背景"></a>问题背景</h2><p>在分布式集群中，关键组件之间的通信往往没有安全认证机制——只要知道 IP 和端口，任何节点都能直接加入集群、参与通信。这在内网环境下看似问题不大，但一旦网络边界被突破，整个集群就完全暴露。</p>
 <p>本文记录一次给集群组件间通信加认证机制的调研与落地过程，最终方案是 <strong>mTLS + CA 双向认证</strong>。</p>
 <h2 id="可选方案对比"><a href="#可选方案对比" class="headerlink" title="可选方案对比"></a>可选方案对比</h2><h3 id="1-静态共享-Token"><a href="#1-静态共享-Token" class="headerlink" title="1. 静态共享 Token"></a>1. 静态共享 Token</h3><p>在配置里写一串密钥，所有节点一样，请求带上它，服务端做字符串比对。</p>
@@ -116,10 +134,10 @@
 <p>但单纯配置 mTLS 有一个容易被忽略的问题：它只能保证<strong>集群初始建立时</strong>的安全，&#x3D;&#x3D;不能完全保证&#x3D;&#x3D;<strong>新节点加入</strong>的安全。以 3 节点 Raft 集群为例：把新节点 <code>m4</code> 加入成员表只需要 <code>m1/m2/m3</code> 三个老成员投票，<code>m4</code> 自己并不参与。这样一个没有证书（或没开 TLS）的 <code>m4</code> 依然可能被加进成员表——只是加入后它无法和其他节点通信，集群处于一种”半残”状态。</p>
 <p>解决办法：在把新节点加入成员表<strong>之前</strong>，先做一次 TLS 连通性检查（拨号新节点），TLS 握手通过才允许加入。</p>
 <h2 id="mTLS-的流程"><a href="#mTLS-的流程" class="headerlink" title="mTLS 的流程"></a>mTLS 的流程</h2><p>mTLS 是基于 TLS 的，只是比 TLS 多一些认证过程。先看标准 TLS 握手：</p>
-<img src="/2026/08/20/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/tls-handshake.jpg" class="" title="TLS握手流程">
+<img src="/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/tls-handshake.jpg" class="" title="TLS握手流程">
 
 <p>再看 mTLS：</p>
-<img src="/2026/08/20/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/mtls-handshake.jpg" class="" title="mTLS握手流程">
+<img src="/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/mtls-handshake.jpg" class="" title="mTLS握手流程">
 
 <p>相比标准 TLS，新增的过程是：</p>
 <ol>
@@ -270,24 +288,6 @@
         <tag>PKI</tag>
         <tag>分布式系统</tag>
       </tags>
-  </entry>
-  <entry>
-    <title>Hello World</title>
-    <url>/2026/05/26/hello-world/</url>
-    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
-]]></content>
   </entry>
   <entry>
     <title>C++笔记</title>

@@ -42,17 +42,17 @@
                 <div class="header-subinfo">
                     <p class="article-info-text">
                         <span>
-                            <i class="iconfont icon-time"></i> 发表时间：2026-08-20
+                            <i class="iconfont icon-time"></i> 发表时间：2026-07-14
                         </span>
                         
                             
-                                <span id="/2026/08/20/mTLS双向认证/" class="leancloud_visitors" data-flag-title="mTLS双向认证：从选型到落地的完整实践">
+                                <span id="/2026/07/14/mTLS双向认证/" class="leancloud_visitors" data-flag-title="mTLS双向认证：从选型到落地的完整实践">
                                     <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
                                 </span>
                             
                             
                                 <span>
-                                    <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2026/08/20/mTLS双向认证/"></span>
+                                    <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2026/07/14/mTLS双向认证/"></span>
                                 </span>
                               
                         
@@ -111,10 +111,10 @@
 <p>但单纯配置 mTLS 有一个容易被忽略的问题：它只能保证<strong>集群初始建立时</strong>的安全，&#x3D;&#x3D;不能完全保证&#x3D;&#x3D;<strong>新节点加入</strong>的安全。以 3 节点 Raft 集群为例：把新节点 <code>m4</code> 加入成员表只需要 <code>m1/m2/m3</code> 三个老成员投票，<code>m4</code> 自己并不参与。这样一个没有证书（或没开 TLS）的 <code>m4</code> 依然可能被加进成员表——只是加入后它无法和其他节点通信，集群处于一种”半残”状态。</p>
 <p>解决办法：在把新节点加入成员表<strong>之前</strong>，先做一次 TLS 连通性检查（拨号新节点），TLS 握手通过才允许加入。</p>
 <h2 id="mTLS-的流程"><a href="#mTLS-的流程" class="headerlink" title="mTLS 的流程"></a>mTLS 的流程</h2><p>mTLS 是基于 TLS 的，只是比 TLS 多一些认证过程。先看标准 TLS 握手：</p>
-<img src="/2026/08/20/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/tls-handshake.jpg" class="" title="TLS握手流程">
+<img src="/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/tls-handshake.jpg" class="" title="TLS握手流程">
 
 <p>再看 mTLS：</p>
-<img src="/2026/08/20/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/mtls-handshake.jpg" class="" title="mTLS握手流程">
+<img src="/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/mtls-handshake.jpg" class="" title="mTLS握手流程">
 
 <p>相比标准 TLS，新增的过程是：</p>
 <ol>
@@ -267,7 +267,7 @@
     <div class="suffix-box-right">
         <span class="suffix-box-title">文章作者：</span>拳击手胖虎
         <br>
-        <span class="suffix-box-title">文章出处：</span><a href="/2026/08/20/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/" target="_blank">mTLS双向认证：从选型到落地的完整实践</a>
+        <span class="suffix-box-title">文章出处：</span><a href="/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/" target="_blank">mTLS双向认证：从选型到落地的完整实践</a>
         <br>
         <span class="suffix-box-title">作者签名：</span>不成木讷树，便做自由风
         <br>
