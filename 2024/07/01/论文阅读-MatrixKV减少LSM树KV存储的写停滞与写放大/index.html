@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, shrink-to-fit=no">
+    <meta name="referrer" content="origin">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="Cache-Control" content="no-transform">
+    <meta http-equiv="Cache-Control" content="no-siteapp">
+    <title>
+        
+            论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大
+        
+    </title>
+    <link rel="shortcut icon" href="#"/>
+
+    <link type="text/css" rel="stylesheet" href="/font/LongCang.css">
+    <link type="text/css" rel="stylesheet" href="/font/Monda.css">
+    <link type="text/css" rel="stylesheet" href="/font/NotoSansSC.css">
+    <link type="text/css" rel="stylesheet" href="/font/NotoSerifSC.css">
+    <link type="text/css" rel="stylesheet" href="/font/Playball.css">
+    <link type="text/css" rel="stylesheet" href="/font/PTMono.css">
+    <link type="text/css" rel="stylesheet" href="/font/Roboto.css">
+    <link type="text/css" rel="stylesheet" href="/font/RobotoSlab.css">
+    <link type="text/css" rel="stylesheet" href="/font/Rosario.css">
+    <link type="text/css" rel="stylesheet" href="/font/UbuntuMono.css">
+
+    <link type="text/css" rel="stylesheet" href="/css/base.css">
+    <link type="text/css" rel="stylesheet" href="/css/code.css">
+
+    <script type="text/javascript" src="/js/jquery-3.4.1.min.js"></script>
+<meta name="generator" content="Hexo 7.3.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head>
+<body>
+    <a id="cover"></a>
+    <link type="text/css" rel="stylesheet" href="/css/post.css">
+<div id="header" class="header">
+    <div class="vertical">
+        <div class="inner">
+            
+                <h1 class="header-subtitle">论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大</h1>
+                <div class="header-subinfo">
+                    <p class="article-info-text">
+                        <span>
+                            <i class="iconfont icon-time"></i> 发表时间：2024-07-01
+                        </span>
+                        
+                            
+                                <span id="/2024/07/01/论文阅读-MatrixKV减少LSM树KV存储的写停滞与写放大/" class="leancloud_visitors" data-flag-title="论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大">
+                                    <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
+                                </span>
+                            
+                            
+                                <span>
+                                    <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2024/07/01/论文阅读-MatrixKV减少LSM树KV存储的写停滞与写放大/"></span>
+                                </span>
+                              
+                        
+                    </p>
+                    
+                        
+                            <span class="category-color">论文阅读</span>
+                        
+                    
+                    
+                        
+                            <span class="tag-color">分布式存储</span>
+                        
+                            <span class="tag-color">LSM-tree</span>
+                        
+                            <span class="tag-color">NVM</span>
+                        
+                            <span class="tag-color">RocksDB</span>
+                        
+                    
+                </div>
+            
+        </div>
+    </div>
+    
+</div>
+<div id="container">
+    
+        <!-- 文章页面 -->
+        <div id="article">
+            <div class="toc"></div>
+            <div class="article-body">
+                <h1 id="论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大"><a href="#论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大" class="headerlink" title="论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大"></a>论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大</h1><blockquote>
+<p>论文：<em>MatrixKV: Reducing Write Stalls and Write Amplification in LSM-tree Based KV Stores with Matrix Container in NVM</em></p>
+</blockquote>
+<h2 id="前置知识：LSM树"><a href="#前置知识：LSM树" class="headerlink" title="前置知识：LSM树"></a>前置知识：LSM树</h2><p>&#x3D;&#x3D;LSM树（Log-Structured-Merge-Tree）的名字往往会给初识者一个错误的印象。事实上，LSM树并不像B+树、红黑树一样是一颗严格的树状数据结构，它其实是一种存储结构，目前HBase、LevelDB、RocksDB这些NoSQL存储都是采用的LSM树。&#x3D;&#x3D;</p>
+<p><strong>LSM树的核心特点是&#x3D;&#x3D;利用顺序写来提高写性能&#x3D;&#x3D;，但因为分层（此处分层是指分为内存和文件两部分）的设计会稍微降低读性能。通过牺牲小部分读性能换来高性能写，使得LSM树成为非常流行的存储结构。</strong></p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/1728869960766.png" class="" title="LSM树核心思想">
+
+<p>LSM树的核心思想如上图所示：</p>
+<ol>
+<li>写操作会&#x3D;&#x3D;记录在active memtable（内存中的数据结构，实际上是一个跳表）中&#x3D;&#x3D;，用于保存最近最新的数据，会按照Key有序地组织这些数据。因为数据暂时保存在内存中，而内存并不是可靠存储，断电会丢失数据，因此通常会通过WAL（Write-Ahead Logging，写前日志）的方式来保证数据的可靠性；</li>
+<li>当MemTable达到一定大小后，会转化成<strong>Immutable MemTable</strong>。Immutable MemTable是将MemTable转变为SSTable的一种中间状态，写操作由新的MemTable处理，在转存过程中不阻塞数据更新操作；</li>
+<li>SSTable——有序键值对集合，是LSM树在磁盘中的数据结构。</li>
+</ol>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/1728872407124.png" class="" title="LSM树的顺序写设计">
+
+<p>这里需要关注一个重点：LSM树正如它的名字一样，<strong>会将所有的数据插入、修改、删除等操作记录（注意是操作记录）保存在内存之中，当此类操作达到一定的数据量后，再批量地顺序写入到磁盘当中。</strong>这与B+树不同：B+树数据的更新会直接在原数据所在处修改对应的值，而LSM树的数据更新是日志式的，一条数据更新是直接append一条更新记录完成的。这样设计的目的就是为了<strong>顺序写</strong>——不断地将Immutable MemTable flush到持久化存储即可，而不用去修改之前SSTable中的key。</p>
+<p>因此当MemTable达到一定大小flush到持久化存储变成SSTable后，在不同的SSTable中可能存在相同Key的记录，当然最新的那条记录才是准确的。这样设计虽然大大提高了写性能，但同时也会带来一些问题：</p>
+<ol>
+<li><strong>冗余存储</strong>：对于某个key，实际上除了最新的那条记录外，其他的记录都是冗余无用的，但是仍然占用了存储空间，因此需要进行Compact操作（合并多个SSTable）来清除冗余的记录；</li>
+<li><strong>读取时需要从最新的倒着查询</strong>，直到找到某个key的记录，最坏情况需要查询完所有的SSTable，可以通过索引&#x2F;布隆过滤器来优化查找速度。</li>
+</ol>
+<p>综上所述，Compact操作是十分关键的操作，否则SSTable数量会不断膨胀。&#x3D;&#x3D;在Compact策略上主要有两种基本的策略：size-tiered和leveled（不同的策略主要是针对以下三个部分之间进行权衡和取舍）：&#x3D;&#x3D;</p>
+<ol>
+<li><strong>读放大</strong>：读取数据时实际读取的数据量大于真正的数据量，例如在LSM树中需要先在MemTable查看当前key是否存在，不存在再继续从SSTable中寻找；</li>
+<li><strong>写放大</strong>：写入数据时实际写入的数据量大于真正的数据量，例如在LSM树中写入时可能触发Compact操作，导致实际写入的数据量远大于该key的数据量；</li>
+<li><strong>空间放大</strong>：数据实际占用的磁盘空间比数据的真正大小更多，即上面提到的冗余存储。</li>
+</ol>
+<h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>基于LSM树的键值存储存在<strong>写延迟和写放大</strong>这两个问题：</p>
+<ul>
+<li><strong>写放大</strong>：系统为了写入一小部分数据，需要执行比数据本身大得多的写入操作。LSM-tree结构会将数据写入多个层次中，而这些层次之间需要进行<strong>合并</strong>操作。随着LSM-tree的深度增加（层次增多），合并操作的频率和复杂度都会增加，导致更多的写放大，降低系统的写入效率；</li>
+<li><strong>写延迟（写停滞）</strong>：系统在执行写入操作时，因某些资源耗尽或某些过程（如合并操作）需要大量数据处理，导致应用程序的写入性能几乎降为零。特别是在LSM-tree的<strong>L0层（内存中的写缓存）</strong>和<strong>L1层（持久化到磁盘的第一层）</strong>之间，数据量巨大，合并操作复杂且耗时长，容易导致写入操作阻塞。</li>
+</ul>
+<p>对于上述问题，论文提出的优化主要想法是：<strong>执行更小、更高效的L0-L1压缩来减少写延迟，同时降低LSM树的深度以减少写放大</strong>。具体的实现方法：</p>
+<ol>
+<li>利用矩阵容器重新定位和管理NVM中的L0层；</li>
+<li>设计了新的列压缩技术，在细粒度键范围内将L0压缩为L1；</li>
+<li>增加了LSM树每一级的宽度，来减少深度，从而减轻写放大；</li>
+<li>在矩阵容器中引入了跨行提示搜索，以保持足够的读取性能。</li>
+</ol>
+<p>为了更好地理解基于LSM-tree的键值存储系统，论文对<strong>RocksDB</strong>进行了实验评估，采用<strong>传统的DRAM-SSD存储架构</strong>（DRAM作为内存，SSD作为持久存储）。实验结果如下图所示（&#x3D;&#x3D;其中蓝线代表每10秒的随机写入吞吐量，绿线代表平均吞吐量，红线代表L0-L1压缩的持续时间和处理的数据量&#x3D;&#x3D;）：</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/7acd5d1645e9adebf0ace35969cf0df.png" class="" title="RocksDB吞吐量波动">
+
+<p>可以看到系统的吞吐量会周期性地降至零，这会导致性能的剧烈波动和<strong>长尾延迟</strong>（大部分请求的响应时间相对较短，但会有少量请求的响应时间远远超出平均水平，这些极少数请求的高延迟就是”长尾延迟”）。</p>
+<p>造成上述现象的主要原因是<strong>每次L0-L1层压缩处理的数据量很大</strong>。L0是SSTable的”第一层”，里面的数据是无序的——其中有多个key相同但版本不同的数据，只有最新版的是有用的数据，但L0层不管这么多，它把所有immutable memtable中的数据写入到自己这个层面；L1层保存的是L0中最新的数据。也就是说L0到L1这个阶段做的事就是把L0层中重复的数据筛选出来，在L1中只保留最新的有效数据。而L0-L1层合并的数据量过大的原因在于：L1里面最开始是没有数据的，第一批数据从L0中筛选出来放入L1后，L1中已经有数据了；第二阶段过后，L0中又有新的重复的数据，筛选出来放到L1时，既要保留第一阶段的数据又要合并第二阶段的新数据，随着数据越来越多处理起来的开销就越大。</p>
+<p>MatrixKV针对写停滞以及写放大的现象进行优化，主要设计理念是：&#x3D;&#x3D;利用NVM为L0和L1构建更便宜和更细粒度的压缩，以及减少LSM树的深度来减轻写放大。&#x3D;&#x3D;</p>
+<h2 id="Background-and-Motivation"><a href="#Background-and-Motivation" class="headerlink" title="Background and Motivation"></a>Background and Motivation</h2><h3 id="LSM树的压缩过程"><a href="#LSM树的压缩过程" class="headerlink" title="LSM树的压缩过程"></a>LSM树的压缩过程</h3><ol>
+<li>首先从Li层中选择一个SSTable（称为<strong>受害者SSTable</strong>），并选取多个在Li+1层中与该SSTable有重叠键范围的SSTables（称为<strong>重叠SSTables</strong>）作为压缩数据；</li>
+<li>在压缩的键值范围内，Li层中其他落入该范围的SSTables也会被反向选择（最开始从L1层拿出来一个SSTable（假如编号为S1），然后在L2层中去找和S1键值范围重叠的SSTable（假如找到了S4、S5、S6），然后再回L1层找有没有和S4S5S6键值范围重叠的SSTable）；</li>
+<li>上述步骤1和2中确定的所有SSTables都会被加载到内存中，并进行合并和排序；</li>
+<li>经过合并和排序后，重新生成的SSTables会被写回到Li+1层。</li>
+</ol>
+<h3 id="LSM树的读过程"><a href="#LSM树的读过程" class="headerlink" title="LSM树的读过程"></a>LSM树的读过程</h3><p>active memtable → immutable memtable → SSTable（L0–Ln）</p>
+<h3 id="LSM树的写停滞种类"><a href="#LSM树的写停滞种类" class="headerlink" title="LSM树的写停滞种类"></a>LSM树的写停滞种类</h3><ol>
+<li><strong>Insert stalls（插入停滞）</strong>：当<strong>MemTable</strong>（存放新数据的内存表）已满，而<strong>后台刷写操作（flush）</strong>尚未完成时，所有对LSM树的插入操作都会暂停；</li>
+<li><strong>Flush stalls（刷写停滞）</strong>：如果<strong>L0层</strong>中的SSTables数量太多，达到系统的大小限制时，刷写操作会被阻塞，即当MemTable要刷写数据到L0层时，如果L0层已经超载，刷写操作无法继续；</li>
+<li><strong>Compaction stalls（压缩停滞）</strong>：当存在<strong>过多等待压缩的字节</strong>时，压缩操作会阻塞前台的写入操作。压缩操作是将较浅层（如L0）的SSTables合并到更深层（如L1、L2等）以维持数据的有序性。</li>
+</ol>
+<p>&#x3D;&#x3D;这三种停滞情况会对系统的<strong>写入性能</strong>产生级联效应。如果MemTable不能及时刷写到磁盘（插入停滞）、刷写操作被L0阻塞（刷写停滞）、或者压缩操作无法及时完成（压缩停滞），系统的写入操作将逐步受到影响，最终导致<strong>写入停滞</strong>问题。&#x3D;&#x3D;</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/4b8cb32650b9cc14e6b2820c6418b09.png" class="" title="L0-L1压缩与写停滞">
+
+<p>上图中红线代表每次L0-L1的压缩过程，可以发现每次数据压缩过程和写停滞的过程几乎是同步的，<strong>这意味着L0-L1压缩操作在很大程度上影响了写入请求的处理速度。</strong>仔细观察可以发现：<strong>每次压缩过程处理的数据量平均在3.1G左右，这是由于L0层允许SSTables之间有重叠的键范围，所以几乎所有L0和L1层的SSTable都会参与到L0-L1压缩中。</strong>&#x3D;&#x3D;压缩过程中需要处理大量的数据，这涉及读-合并-写的操作，这些操作占用了CPU周期和SSD的带宽，导致前台的写入请求被阻塞。因此，L0-L1压缩是写停滞的主要原因。&#x3D;&#x3D;</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/33b2f8728a83884e48ea74c5ecc9dbf.png" class="" title="写请求延迟分布">
+
+<p>上图展示了80GB随机负载过程中每个写请求的积累分布函数，<strong>可以看到76%的写请求延迟在48微秒以下，但是其余部分的延迟增加了两个数量级。</strong></p>
+<h3 id="已有方案：NoveLSM"><a href="#已有方案：NoveLSM" class="headerlink" title="已有方案：NoveLSM"></a>已有方案：NoveLSM</h3><img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/ab33cc1f30b64fee18c58b50bebe470.png" class="" title="NoveLSM结构">
+
+<p>NoveLSM的设计包括：&#x3D;&#x3D;(1)采用NVM作为DRAM的替代品，以增加active memtable和immutable memtable的大小；(2)使memtable可变，来允许更新，从而减少压缩&#x3D;&#x3D;。但是上述设计只是推迟了写入停滞，当数据集大小超过memtable的容量时，写停滞仍会发生。而且，扩大的memtable会被刷新到L0中，增加了压缩的数据量，从而导致更严重的写放大。</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/a529a03536dfeaee29cc119a58f747b.png" class="" title="NoveLSM与RocksDB对比">
+
+<p>如上图所示，在使用相同数据集的情况下，NoveLSM与RocksDB相比，整体的加载时间缩短了1.7倍，但是写停滞的时间明显更长（这是因为L0-L1的压缩数据总量超过了16GB，是RocksDB的4.86倍）。</p>
+<h2 id="MatrixKV-Design"><a href="#MatrixKV-Design" class="headerlink" title="MatrixKV Design"></a>MatrixKV Design</h2><p>MatrixKV的整体架构如下图所示：</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/aae2ba9d6e1173bf975d440478a230a.png" class="" title="MatrixKV整体架构">
+
+<h3 id="1-在NVM中使用矩阵容器管理L0"><a href="#1-在NVM中使用矩阵容器管理L0" class="headerlink" title="(1) 在NVM中使用矩阵容器管理L0"></a>(1) 在NVM中使用矩阵容器管理L0</h3><p>在压缩阶段，L0层的数据被压缩到L1层，这些操作是依赖于SSD的，而SSD的速度慢于NVM。因此MatrixKV的设计原则是：&#x3D;&#x3D;将L0层从SSD提升到NVM，并将L0层重新组织为一种称为<strong>矩阵容器（Matrix Container）</strong>的数据管理结构。NVM的字节寻址能力和快速随机访问使得在L0层进行数据管理和压缩操作更加高效。&#x3D;&#x3D;</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/3b93df6be99e7558e95d931e8449b56.png" class="" title="矩阵容器结构">
+
+<p>上图为<strong>矩阵容器</strong>的具体结构，它包括一个接收器（receiver）和一个压缩器（compactor）：接收器负责接收新写入的数据，而压缩器负责将数据进行合并和压缩。</p>
+<p><strong>&#x3D;&#x3D;接收器（Receiver）：&#x3D;&#x3D;</strong></p>
+<ol>
+<li>接收并保存从DRAM中刷新出来的memtables，这些MemTables通过系统的正常操作被刷新到NVM上，接收器就是负责存储这些数据的地方；</li>
+<li>每个被接收的memtable会被序列化成接收器中的一行，称为<strong>RowTable</strong>。这些RowTable按行的方式被逐行添加到矩阵容器中，按照序列号从0到n递增，即每个新的MemTable被刷新后，会作为一个新的RowTable加入矩阵容器；</li>
+<li>接收器的初始大小是一个RowTable，但随着接收更多的MemTable，它会动态增长。当接收器的大小达到其容量限制时（例如占据整个矩阵容器的60%），并且压缩器此时是空的，接收器就会停止接收新的MemTable；</li>
+<li>当接收器达到其容量上限时，它会动态地转变为压缩器。在这个过程中，接收器的逻辑角色从接收数据变成处理和压缩数据，但<strong>不需要进行数据迁移</strong>——接收器中的数据仍然保留在原位置，只是它的作用从接收变成压缩；</li>
+<li>当现有的接收器变成压缩器后，系统会创建一个新的接收器，用来接收从DRAM刷新的新的MemTables。</li>
+</ol>
+<p><strong>&#x3D;&#x3D;RowTable：&#x3D;&#x3D;<strong>由数据区和元数据区组成，数据区负责存储键值对，元数据区保存与这些键值对相关的信息。构建RowTable时，首先从不可变的MemTable中获取所有KV项，并根据</strong>键的顺序</strong>将它们序列化到数据区（这个过程与SSTable类似，都按键顺序存储键值对）。然后为这些键值对生成<strong>元数据</strong>，元数据以<strong>排序数组</strong>的形式组织，数组中的每个元素包含（键、页号、页内偏移量、前向指针）等信息。查找某个KV项时，首先在<strong>元数据的排序数组</strong>中使用二分查找找到目标键，再根据元数据中的<strong>页号</strong>和<strong>偏移量</strong>快速定位到对应的值。&#x3D;&#x3D;<strong>前向指针</strong>提供了跨行的搜索提示，用于在多个RowTable之间的高效读取操作。&#x3D;&#x3D;</p>
+<p>下图为RowTable和传统LSM树中SSTable结构的对比：</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/a9c02d15be6709b33e36fabf9af182a.png" class="" title="RowTable与SSTable对比">
+
+<p><strong>&#x3D;&#x3D;压缩器（Compactor）：&#x3D;&#x3D;<strong>用于选择和合并L0-L1的数据。MatrixKV通过利用NVM的字节可寻址特性以及RowTable结构，使得压缩变得更加高效：它能够只在L0中合并特定的键值范围，与L1中的一部分SSTable合并，而不是合并整个L0和L1层。&#x3D;&#x3D;具体来说，它采用了一种列压缩形式，从而实现仅针对特定的键范围进行压缩，而不需要像传统LSM树那样进行全局压缩。&#x3D;&#x3D;这里”列”的定义是</strong>具有有限数据量的键空间子集</strong>，是列压缩的基本单位——每个列代表的是一部分键空间及其对应的数据集合，来自不同RowTable的KV项，只要它们属于列压缩的键范围，就会逻辑上归为同一个列。<strong>列的大小（即包含的KV项的数量）不是严格固定的，而是根据列压缩的大小阈值来决定，当数据达到这个阈值时，列压缩操作会被触发。</strong></p>
+<p><strong>&#x3D;&#x3D;空间管理：&#x3D;&#x3D;<strong>压缩列后，该列占用的NVM空间将被释放。为了管理这些空间，MatrixKV使用了</strong>分页算法</strong>对NVM空间进行分页管理来处理释放后的空闲空间。在每次压缩操作中，来自同一RowTable的键值对会被部分合并，在这种机制下，最多<strong>每个RowTable</strong>只有<strong>一页</strong>会出现部分碎片化——虽然可能存在部分未被完全释放的页面，但大多数页面在压缩操作后都被完全释放，进入空闲列表。被完全释放的NVM页面（即没有碎片化的页面）会作为<strong>页面大小的单元</strong>添加到<strong>空闲列表（free list）</strong>中，当接收器需要存储新的RowTable时，它将从空闲列表中分配这些空闲页面来存储数据。</p>
+<p>&#x3D;&#x3D;<strong>在矩阵容器中，当列在压缩器中被压缩时，接收器是可以同时继续接收来自DRAM的已刷新的memtable。通过一次释放一列的NVM空间，MatrixKV结束了将整个L0与所有L1合并而导致的写停顿。</strong>&#x3D;&#x3D;</p>
+<h3 id="2-L0-L1的列压缩"><a href="#2-L0-L1的列压缩" class="headerlink" title="(2) L0-L1的列压缩"></a>(2) L0-L1的列压缩</h3><p>列压缩的工作流程为：</p>
+<ol>
+<li>MatrixKV将L1的键空间分隔成多个连续的键范围；</li>
+<li>从L1中的第一个键范围开始，选择该键范围作为合并目标；</li>
+<li>在L0层中，找到符合键值范围的数据（这里会采用多个线程并发地从RowTable中查找符合范围的数据）；</li>
+<li>如果当前键范围内的数据量不足以达到合并的下限，则下一个键范围将加入压缩，继续进行处理；</li>
+<li>选定键范围内的KV项从N个RowTables中选取出来后，形成一个逻辑列；</li>
+<li>一旦确定了逻辑列，就会执行压缩操作，将选定的键范围的数据从L0层压缩到L1层；</li>
+<li>最后，重新生成的SSTables被写回到L1层的SSD中。</li>
+</ol>
+<p>列压缩接着会处理L1的下一个键范围和压缩器中的下一个列，列压缩的键范围在整个键空间中不断旋转，以保证LSM树的平衡性。</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/1d5c79b7b747c7c1d40210c2c840660.png" class="" title="列压缩示例">
+
+<p>上图为列压缩的一个具体例子：首先MatrixKV从L1层选择一个SSTable作为候选压缩对象，这里选择的SSTable的键值范围是0-3。然后系统会搜索位于压缩器中的多个RowTables的元数据数组，通过搜索这些元数据，可以确定在键值范围0-3内的压缩数据量（这里为4）。如果在键值范围0-3内的压缩数据量低于预设的压缩下限（即此时的压缩数据量不够多），MatrixKV会将下一个键值范围3-5加入到压缩范围中，以增加压缩的数据量（如果还不够则继续增加范围，如5-8）。一旦扩展后的键值范围内的压缩数据量超过压缩下限，就可以确定压缩范围，并将这些键值项组成一个逻辑列进行压缩。</p>
+<h3 id="3-减少LSM树的级别"><a href="#3-减少LSM树的级别" class="headerlink" title="(3) 减少LSM树的级别"></a>(3) 减少LSM树的级别</h3><p>&#x3D;&#x3D;总的来说，MatrixKV通过增加每一层的大小限制来减少层数，但仍保持相邻层之间的放大因子（AF）不变。这样，每层之间的压缩操作还是以AF为放大因子，但由于层数减少，总体的写放大效应也会减小。&#x3D;&#x3D;</p>
+<p>在传统的LSM树中，层级变宽的负面影响有：(1) L0层中会包含更多重叠的SSTable文件，这意味着每次做压缩处理时的数据量会大大增加，不仅提升了压缩的开销，也导致了更严重的写停滞；(2) 由于L0中的数据是无序的，当层级变宽后L0层会变得更大、包含更多SSTable文件，这使得查找会变得更加困难。</p>
+<p>&#x3D;&#x3D;MatrixKV通过列压缩来解决第一个问题，通过跨行提示搜索解决第二个问题。&#x3D;&#x3D;</p>
+<h3 id="4-跨行提示搜索"><a href="#4-跨行提示搜索" class="headerlink" title="(4) 跨行提示搜索"></a>(4) 跨行提示搜索</h3><p>在构建RowTable时，会为<strong>每个元数据数组中的元素添加一个前向指针</strong>，这个前向指针指向前一行中第一个不小于当前键的键。&#x3D;&#x3D;通过这个前向指针可以实现在不同的RowTable之间快速跳转，能够更快速地定位到可能包含目标键的RowTable，减少搜索的数据量，从而获得更高的读取效率。&#x3D;&#x3D;</p>
+<p>搜索过程：从最新到达的RowTable开始 → 如果最新的RowTable的键值范围与目标键不重叠，则直接跳到其前一个RowTable → 如果键值范围匹配，则对该RowTable执行二分查找 → 一旦在当前RowTable中找到键范围，则通过前向指针进一步缩小在之前的RowTable中的搜索区域。</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/96ab81f7e4a86bd2ddf90d60a7aefb0.png" class="" title="跨行提示搜索示例">
+
+<p>上图为一次查找的实例：首先在RowTable3中进行查找，发现12在10-23这个范围内，但是并没有12这个键，于是通过前向指针跳转到RowTable2中，这时前向指针指向的键是13和30，&#x3D;&#x3D;当目标键不在这个范围内时，就会将前一个键也加入搜索范围中&#x3D;&#x3D;，此时将会在RowTable2中的8-30范围内查找，重复类似上述的操作，利用前向指针直到成功找到目标键为止。</p>
+<h2 id="Evaluation"><a href="#Evaluation" class="headerlink" title="Evaluation"></a>Evaluation</h2><img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/e78ccb5c59ab52affe18c8a45865d86.png" class="" title="不同负载下的性能对比">
+
+<p>上图为RocksDB-SSD、NoveLSM、MatrixKV和RocksDB-L0-NVM在80GB数据量下，针对不同的value大小和不同的负载场景下的性能对比。可以发现：</p>
+<ol>
+<li>&#x3D;&#x3D;只要将L0层从SSD拿到NVM中，就可以将写性能平均提升65%&#x3D;&#x3D;；</li>
+<li>&#x3D;&#x3D;MatrixKV的随机写性能最好，相比于RocksDB-L0-NVM提高了约3.6倍，相比于NoveLSM提高了2.6倍&#x3D;&#x3D;；</li>
+<li>在顺序写场景下的吞吐量都高于随机写场景下的吞吐量，<strong>因为顺序写入不会产生压缩</strong>；</li>
+<li>在顺序写的场景下，RocksDB-SSD的性能最好，因为其他的KV存储都有一个额外的NVM层，需要额外的数据迁移开销。</li>
+</ol>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/982d881a65ab876788270ebf9c382a3.png" class="" title="不同负载吞吐对比">
+
+<p>结论：&#x3D;&#x3D;MatrixKV在以写入&#x2F;加载为主的工作负载中优势最大（即Load、负载A和负载F）。&#x3D;&#x3D;</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/b557f26f2755afa0c9eef89c004577b.png" class="" title="尾延迟对比">
+
+<p>结论：&#x3D;&#x3D;MatrixKV在所有情况下都降低了尾延迟。&#x3D;&#x3D;</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/f9471fdb6d8de1b091593407dda4b38.png" class="" title="写停滞对比">
+
+<p>结论：&#x3D;&#x3D;MatrixKV减少了写停滞，其他3个KV数据库都有比较明显的写停滞的产生。&#x3D;&#x3D;</p>
+<img src="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/d991b9e24dfb186d0b1303f297c2acb.png" class="" title="写放大对比">
+
+<p>结论：&#x3D;&#x3D;MatrixKV的写放大现象最低。&#x3D;&#x3D;</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>MatrixKV的问题定位非常精准：LSM树的写停滞主要来自L0-L1压缩（单次压缩数据量平均3.1GB，几乎全层的SSTable都参与），而写放大随树的深度增加而增加。它用NVM的矩阵容器（接收器+压缩器）重构L0，配合四个关键技术：</p>
+<table>
+<thead>
+<tr>
+<th>技术</th>
+<th>解决的问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>矩阵容器管理L0</td>
+<td>L0放到NVM上，压缩不再依赖慢速SSD</td>
+</tr>
+<tr>
+<td>列压缩</td>
+<td>只压缩特定键范围，单次压缩数据量大幅减小</td>
+</tr>
+<tr>
+<td>减少LSM树级别</td>
+<td>加宽每层、保持AF不变，降低总写放大</td>
+</tr>
+<tr>
+<td>跨行提示搜索</td>
+<td>前向指针补偿层级变宽带来的读性能损失</td>
+</tr>
+</tbody></table>
+<p>最终在写入为主的负载下相比NoveLSM提升2.6倍，同时显著降低了尾延迟、写停滞和写放大。</p>
+
+                
+                <p class="end">__END__</p>
+            </div>
+            <div class="article-footer">
+                <div class="suffix-box">
+    <div class="suffix-box-left">
+        <img src="/image/sidebar/avatar.jpg" alt="振兴东北">
+    </div>
+    <div class="suffix-box-right">
+        <span class="suffix-box-title">文章作者：</span>拳击手胖虎
+        <br>
+        <span class="suffix-box-title">文章出处：</span><a href="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/" target="_blank">论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大</a>
+        <br>
+        <span class="suffix-box-title">作者签名：</span>不成木讷树，便做自由风
+        <br>
+        <span class="suffix-box-title">关于主题：</span><a href="https://github.com/first19326/Hexo-LiveForCode" target="_blank">Hexo - Live For Code</a>
+        <br>
+        <span class="suffix-box-title">版权声明：</span>文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" title="BY-NC-SA" target="_blank">BY-NC-SA</a> 许可协议，转载请注明出处
+        <br>
+    </div>
+    <div style="clear: both;"></div>
+</div>
+                
+                    <div class="category">
+                        分类：
+                        
+                            <a href="/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/">论文阅读</a>
+                        
+                    </div>
+                
+                
+                    <div class="tag">
+                        标签：
+                        
+                            <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8/">分布式存储</a>
+                        
+                            <a href="/tags/LSM-tree/">LSM-tree</a>
+                        
+                            <a href="/tags/NVM/">NVM</a>
+                        
+                            <a href="/tags/RocksDB/">RocksDB</a>
+                        
+                    </div>
+                
+                <div class="article-prev-next">
+                    
+                        <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/" class="prev-prefix">« </a> 上一篇：    <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/" title="发布于 2025-11-12 10:06">C++笔记</a>
+                        <br>
+                    
+                    
+                        <a href="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/" class="next-prefix">» </a> 下一篇：    <a href="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/" title="发布于 2024-06-27 09:00">论文阅读：理解Ceph对象存储中存储后端的写入行为</a>
+                    
+                </div>
+            </div>
+            
+    <div class="article-comments">
+        
+            <div class="comments-title">
+                评论列表
+            </div>
+        
+        <div class="comments-content">
+            
+                <script src="https://giscus.app/client.js"
+                    data-repo="zblzbl9040/zblzbl9040.github.io"
+                    data-repo-id="R_kgDONJvMDQ"
+                    data-category="Announcements"
+                    data-category-id="DIC_kwDONJvMDc4C-Nmz"
+                    data-mapping="pathname"
+                    data-strict="0"
+                    data-reactions-enabled="1"
+                    data-emit-metadata="0"
+                    data-input-position="bottom"
+                    data-theme="preferred_color_scheme"
+                    data-lang="zh-CN"
+                    crossorigin="anonymous"
+                    async>
+                </script>
+            
+        </div>
+    </div>
+    
+ 
+        </div>
+    
+</div>
+    <div id="footer">
+    <div><span class='face'>ღゝ◡╹)ノ♡</span></div><div>【不成木讷树<span><i class='iconfont icon-like-fill'></i></span>便做自由风】</div><div>&copy; 2020-2023 WorstOne. All Rights Reserved.</div>
+</div>
+    <div id="sidebar">
+    <div class="menu-wrap" style="display:none;">
+        
+            <div class="menu-notice">
+                <span class="iconfont icon-notice"></span>
+                <div class="notice">
+                    <span>不成木讷树，便做自由风</span>
+                </div>
+            </div>
+        
+        <nav class="menu">
+            <div class="menu-introduce"> 
+                <div class="introduce-avatar">
+                    <img src="/image/sidebar/avatar.jpg">
+                </div> 
+                <div class="introduce-info"> 
+                    <div class="introduce-user">
+                        
+                            <a href="https://worstone.cn" target="_blank"><span>拳击手胖虎</span></a>
+                        
+                    </div>
+                </div> 
+            </div> 
+            <div class="menu-list">
+                <ul>
+                    
+                        <li class=""><a href="/" class="" target="_self"><span class="iconfont icon-home-fill"></span>首页</a></li>
+                    
+                        <li class=""><a href="/categories" class="" target="_self"><span class="iconfont icon-folder-fill"></span>分类</a></li>
+                    
+                        <li class=""><a href="/tags" class="" target="_self"><span class="iconfont icon-discount-fill"></span>标签</a></li>
+                    
+                        <li class=""><a href="/archives" class="" target="_self"><span class="iconfont icon-calendar-fill"></span>归档</a></li>
+                    
+                        <li class=""><a href="/donate" class="" target="_self"><span class="iconfont icon-heart-fill"></span>赞赏</a></li>
+                    
+                        <li class=""><a href="/about" class="" target="_self"><span class="iconfont icon-about-fill"></span>关于</a></li>
+                    
+                        <li class=""><a href="/atom.xml" class="" target="_blank"><span class="iconfont icon-rss"></span>订阅</a></li>
+                    
+                        <li class=""><a href="javascript:;" class="search" target="_self"><span class="iconfont icon-search-menu"></span>搜索</a></li>
+                    
+                        <li class=""><a href="/comment" class="" target="_self"><span class="iconfont icon-comments-fill"></span>留言板</a></li>
+                    
+                </ul> 
+            </div> 
+            <div class="menu-link">
+                <div class="box">
+                    <div class="image-box"></div>
+                </div>
+                
+                    <a name="QQ" href="javascript:;" class="image" target="_self" data="/image/sidebar/QQ.jpg"><span class="iconfont icon-qq"></span></a>
+                
+                    <a name="微信" href="javascript:;" class="image" target="_self" data="/image/sidebar/weixin.jpg"><span class="iconfont icon-wechat"></span></a>
+                
+                    <a name="GitHub" href="https://github.com/zblzbl9040" class="" target="_blank" data=""><span class="iconfont icon-github"></span></a>
+                
+            </div> 
+        </nav>
+        <button class="menu-button-close"></button>
+        <div class="morph-shape" id="morph-shape" data-morph-open="M-7.312,0H15c0,0,66,113.339,66,399.5C81,664.006,15,800,15,800H-7.312V0z;M-7.312,0H100c0,0,0,113.839,0,400c0,264.506,0,400,0,400H-7.312V0z">
+            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 800" preserveAspectRatio="none">
+                <path d="M-7.312,0H0c0,0,0,113.839,0,400c0,264.506,0,400,0,400h-7.312V0z"/>
+            </svg>
+        </div>
+    </div>
+    <button class="menu-button-open">MENU</button>
+    <div class="menu-cover"></div>
+</div>
+    <link type="text/css" rel="stylesheet" href="/css/search.css">
+<script type="text/javascript" src="/js/iscroll.js"></script>
+<script type="text/javascript" src="/js/search-local.js"></script>
+<div class="search-window">
+    <div class="search-content">
+        <div class="search-content-icon">
+            <i class="iconfont icon-search"></i>
+        </div>
+        <div id="search-input" class="search-input"></div>
+    </div>
+
+    <div class="search-scroll">
+        <div class="search-result">
+            <div id="search-stats" class="search-stats"></div>
+            <div id="search-hits"></div>
+            <div id="search-pagination" class="search-pagination"></div>
+        </div>
+    </div>
+
+    <span class="search-close-icon">
+        <i class="iconfont icon-close"></i>
+    </span>
+</div>
+    <div id="tools">
+    <div class="progressbar-top"></div>
+    
+    <link type="text/css" rel="stylesheet" href="/css/APlayer.css">
+    <script type="text/javascript" src="/js/APlayer.min.js"></script>
+    <script type="text/javascript" src="/js/Meting.min.js"></script>
+    <script>
+        var meting_api = 'https://api.i-meto.com/meting/api?server=:server&type=:type&id=:id&auth=:auth&r=:r';
+    </script>
+    <meting-js id="3778678" lrcshow="false" server="netease" type="playlist" fixed="true" autoplay="false" loop="all" order="random" preload="auto" volume="0.67" mutex="true"></meting-js>
+
+    <div class="wrap-right">
+    <div class="wrap-right-hide">
+         <div class="wrap-right-button favorites">
+            <div class="iconbox" switch="false">
+                <span class="iconfont icon-favorites"></span>
+            </div>
+            <span class="icontext">关注</span>
+         </div>
+        <div class="wrap-right-button search">
+            <div class="iconbox">
+                <span class="iconfont icon-search-menu"></span>
+            </div>
+            <span class="icontext">搜索</span>
+        </div>
+        <div class="wrap-right-button menu-button">
+            <div class="iconbox">
+                <span class="iconfont icon-menu"></span>
+            </div>
+            <span class="icontext">菜单</span>
+        </div>
+        <div class="wrap-right-button mode">
+            <div class="light">
+                <div class="iconbox">
+                    <span class="iconfont icon-daymode"></span>
+                </div>
+                <span class="icontext">浅色模式</span>
+            </div>
+            <div class="dark">
+                <div class="iconbox">
+                    <span class="iconfont icon-nightmode-fill"></span>
+                </div>
+                <span class="icontext">深色模式</span>
+            </div>
+        </div>
+        <div class="wrap-right-button bottom">
+            <div class="iconbox">
+                <span class="iconfont icon-top"></span>
+            </div>
+            <span class="icontext">跳至底部</span>
+        </div>
+    </div>
+    <div class="wrap-right-show">
+        <div class="wrap-right-button set">
+            <div class="iconbox">
+                <span class="iconfont icon-setting"></span>
+            </div>
+            <span class="icontext">设置</span>
+        </div>
+        <div class="wrap-right-button top">
+            <div class="iconbox">
+                <span class="iconfont icon-top"></span>
+            </div>
+            <span class="icontext">返回顶部</span>
+        </div>
+    </div>
+</div>
+    <div class="loading"></div>
+</div>
+    <script>
+    window.config = {
+        GitHubUserName     : "first19326",
+        GitHubRepositories : "Hexo-LiveForCode",
+
+        User             : "振兴东北",
+        UserAvatar       : "/image/sidebar/avatar.jpg",
+        WebsiteStartDate : "2020-01-01",
+        Home             : "https://worstone.cn",
+
+        WebsiteTitleBlur         : "(◍´꒳`◍) Hi, Live For Code",
+        WebsiteTitleBlurTimeOut  : 500,
+        WebsiteTitleFocus        : "(*´∇｀*) 欢迎回来!",
+        WebsiteTitleFocusTimeOut : 1000,
+        WebsiteFavicon           : {
+            light : "/image/website/logo/logo.png",
+            dark  : "/image/website/logo/logo-dark.png"
+        },
+
+        ProgressBar : {
+            id       : "topProgressBar",
+            color    : "#77B6FF",
+            height   : "2px",
+            duration : 0.2
+        },
+
+        Loading: {
+            rebound : {
+                tension  : 16,
+                friction : 5
+            },
+            spinner : {
+                id     : "spinner",
+                radius : 90,
+                sides  : 3,
+                depth  : 4,
+                colors : {
+                    background : "#F0F0F0",
+                    stroke     : "#272633",
+                    base       : "",
+                    child      : "#272633"
+                },
+                alwaysForward : true,
+                restAt        : 0.5,
+                renderBase    : false
+            }
+        },
+
+        HomeHeaderAnimationRendered : true,
+        HomeHeaderAnimation         : {
+            radius      : 15,
+            density     : 0.2,
+            color       : "rgba(255, 255, 255, .2)",
+            clearOffset : 0.3
+        },
+
+        BackAnimationRendered          : true,
+        IEBrowserBackAnimationRendered : false,
+        BackAnimation                  : {
+            colorSaturation  : "60%",
+            colorBrightness  : "50%",
+            colorAlpha       : 0.5,
+            colorCycleSpeed  : 5,
+            verticalPosition : "random",
+            horizontalSpeed  : 200,
+            ribbonCount      : 3,
+            strokeSize       : 0,
+            parallaxAmount   : -0.2,
+            animateSections  : true
+        },
+
+        HomeHeaderImage : [
+            
+                "/image/header/home.jpg",
+            
+                "/image/header/home.jpeg",
+            
+        ],
+        HomeBannerText  : "",
+
+        ArticleHeaderImage : [
+            
+                "/image/header/article.jpg",
+            
+        ],
+
+        OtherBannerText : "",
+
+        Error : {
+            icon    : "icon-swimming",
+            title   : "PAGE NOT FOUND",
+            content : [
+                
+                    "很抱歉，您访问的页面不存在！",
+                
+                    "可能是输入地址有误或该地址已变更。",
+                
+            ],
+            buttons : [
+                
+                    {
+                        icon  : "icon-home",
+                        text  : "返回首页",
+                        href  : "/",
+                        class : ""
+                    },
+                
+            ]
+        },
+
+        MenuNotice : {
+            enable : true,
+            notice : "不成木讷树，便做自由风",
+            speed  : 20
+        },
+        MenuList : [
+            
+                {
+                    name   : "首页",
+                    icon   : "icon-home-fill",
+                    href   : "/",
+                    type   : "index",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "分类",
+                    icon   : "icon-folder-fill",
+                    href   : "/categories",
+                    type   : "category",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "标签",
+                    icon   : "icon-discount-fill",
+                    href   : "/tags",
+                    type   : "tag",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "归档",
+                    icon   : "icon-calendar-fill",
+                    href   : "/archives",
+                    type   : "archive",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "赞赏",
+                    icon   : "icon-heart-fill",
+                    href   : "/donate",
+                    type   : "donate",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "关于",
+                    icon   : "icon-about-fill",
+                    href   : "/about",
+                    type   : "about",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "订阅",
+                    icon   : "icon-rss",
+                    href   : "/atom.xml",
+                    type   : "",
+                    class  : "",
+                    target : "_blank"
+                },
+            
+                {
+                    name   : "搜索",
+                    icon   : "icon-search-menu",
+                    href   : "javascript:;",
+                    type   : "",
+                    class  : "search",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "留言板",
+                    icon   : "icon-comments-fill",
+                    href   : "/comment",
+                    type   : "comment",
+                    class  : "",
+                    target : "_self"
+                },
+            
+        ],
+        MenuLink : [
+            
+                
+                    {
+                        name   : "QQ",
+                        icon   : "icon-qq",
+                        href   : "javascript:;",
+                        class  : "image",
+                        target : "_self",
+                        image  : "/image/sidebar/QQ.jpg"
+                    },
+                
+                    {
+                        name   : "微信",
+                        icon   : "icon-wechat",
+                        href   : "javascript:;",
+                        class  : "image",
+                        target : "_self",
+                        image  : "/image/sidebar/weixin.jpg"
+                    },
+                
+                    {
+                        name   : "GitHub",
+                        icon   : "icon-github",
+                        href   : "https://github.com/zblzbl9040",
+                        class  : "",
+                        target : "_blank",
+                        image  : ""
+                    },
+                
+            
+        ],
+
+        FooterStyle : 2,
+        BottomText  : "<div><span class='face'>ღゝ◡╹)ノ♡</span></div><div>【不成木讷树<span><i class='iconfont icon-like-fill'></i></span>便做自由风】</div><div>&copy; 2020-2023 WorstOne. All Rights Reserved.</div>",
+
+        ConsoleList : [
+            
+                
+                    [
+                        
+                            
+                                "Based on cnblogs theme SimpleMemory.",
+                            
+                                "",
+                            
+                        
+                    ],
+                
+                    [
+                        
+                            
+                                "SimpleMemory Author:",
+                            
+                                "BNDong",
+                            
+                        
+                    ],
+                
+                    [
+                        
+                            
+                                "Theme:",
+                            
+                                "LiveForCode",
+                            
+                        
+                    ],
+                
+            
+        ],
+
+        FontIconExtend : "",
+
+        Donate : {
+            paypal  : "",
+            bitcoin : "",
+            alipay  : "/image/donate/alipay.jpg",
+            wechat  : "/image/donate/wechat.jpg"
+        },
+
+        Search : {
+            applicationID : "010C3EANT8",
+            apiKey        : "c7abab9f11b79102b9aff7fe6d41447d",
+            indexName     : "Notes",
+            hits          : {
+                page : 10
+            },
+            labels        : {
+                placeholder : "搜索",
+                empty       : "未发现与 「${query}」 相关的内容",
+                stats       : "${hits} 条相关条目，使用了 ${time} 毫秒",
+            }
+        }, 
+
+        Comment : {
+            switch : true,
+            type   : "Giscus",
+        },
+
+        Waline : {
+            el              : ".comments-content",
+            serverURL       : "",
+            path            : window.location.pathname,
+            meta            : "['nick', 'mail', 'link']",
+            requiredMeta    : "['nick', 'mail']",
+            pageSize        : 10,
+            lang            : "zh-cn",
+            locale: {
+                admin       : "博主",
+                anonymous   : "匿名用户",
+                sofa        : "快来做第一个评论的人吧 ~",
+                placeholder : "你是我一生只会遇见一次的惊喜...",
+            },
+            dark            : "html[color-scheme='dark']",
+            search          : false,
+            pageview        : true,
+            comment         : true,
+            copyright       : false,
+        },
+
+        Valine : {
+            el             : ".comments-content",
+            appId          : "srhKtvWPQTWYKh3qX8G8M7v0-gzGzoHsz",
+            appKey         : "8uVSP1q6UlALVC5igYfIfv2h",
+            serverURLs     : "",
+            placeholder    : "你是我一生只会遇见一次的惊喜...",
+            avatar         : "mm",
+            meta           : "nick,mail,link",
+            requiredFields : "nick,mail",
+            pageSize       : 5,
+            lang           : "zh-cn",
+            visitor        : true,
+            enableQQ       : true
+        },
+
+        Tocbot : {
+            switch                : true,
+            tocSelector           : ".toc",
+            contentSelector       : ".article-body",
+            headingSelector       : "h1, h2, h3, h4, h5",
+            headingsOffset        : 0,
+            scrollSmooth          : true,
+            scrollSmoothOffset    : -5,
+            positionFixedSelector : ".toc",
+            positionFixedClass    : "toc-fixed",
+            fixedSidebarOffset    : "",
+        },
+
+        Require : {
+            baseUrl     : "/js/",
+            waitSeconds : 100
+        },
+
+        Music : {
+            type : "Meting"
+        },
+        APlayer : {
+            container : ".aplayer",
+            fixed     : false,
+            autoplay  : false,
+            loop      : "all",
+            order     : "random",
+            preload   : "auto",
+            volume    : 0.67,
+            mutex     : true,
+            lrcType   : 3,
+            audio     : [
+                
+                    {
+                        name   : "Endless Tears",
+                        artist : "CLIFF EDGE",
+                        cover  : "/music/cover/Endless Tears.jpg",
+                        url    : "/music/song/Endless Tears.mp3",
+                        lrc    : "/music/lrc/Endless Tears.lrc"
+                    },
+                
+            ]
+        },
+        Meting : {
+            api      : "https://api.i-meto.com/meting/api",
+            id       : "3778678", 
+            lrcshow  : false, 
+            server   : "netease", 
+            type     : "playlist", 
+            fixed    : true, 
+            autoplay : false, 
+            loop     : "all", 
+            order    : "random", 
+            preload  : "auto", 
+            volume   : 0.67, 
+            mutex    : true
+        },
+
+        Mouse : {
+            enable  : true,
+            options : {
+                size  : 6,
+                sizeF : 24
+            }
+        },
+
+        LazyLoad : {
+            default : "/image/website/lazyload.svg"
+        },
+  
+        Style : {
+            aplayer          : "/css/APlayer.css",
+            archive          : "/css/archive.css",
+            base             : "/css/base.css",
+            clipboard        : "/css/clipboard.css",
+            code             : "/css/code.css",
+            donate           : "/css/donate.css",
+            fancybox         : "/css/jquery.fancybox.css",
+            footer           : "/css/footer.css",
+            iconfont         : "/iconfont/iconfont.css",
+            index            : "/css/index.css",
+            menuBubble       : "/css/menu-bubble.css",
+            mouse            : "/css/mouse.css",
+            page             : "/css/page.css",
+            post             : "/css/post.css",
+            search           : "/css/search.css",
+            tocbot           : "/css/tocbot.css",
+            valine           : "/css/valine.css",
+            waline           : "/css/waline.css",
+            walineCustom     : "/css/waline-custom.css"
+        },
+
+        Script: {
+            aplayer          : "/js/APlayer.min.js",
+            config           : "/js/require.config.js",
+            index            : "/js/index.js",
+            instantSearch    : "/js/instantsearch.min.js",
+            iscroll          : "/js/iscroll.js",
+            jQuery           : "/js/jquery-3.4.1.min.js",
+            loading          : "/js/loading.js",
+            meting           : "/js/Meting.min.js",
+            require          : "/js/require.min.js",
+            waline           : "/js/waline.mjs",
+            pageview         : "/js/pageview.mjs",
+            comment          : "/js/comment.mjs",
+        },
+
+        Font: {
+            LongCang    : "/font/LongCang.css",
+            Monda       : "/font/Monda.css",
+            NotoSansSC  : "/font/NotoSansSC.css",
+            NotoSerifSC : "/font/NotoSerifSC.css",
+            Playball    : "/font/Playball.css",
+            PTMono      : "/font/PTMono.css",
+            Roboto      : "/font/Roboto.css",
+            RobotoSlab  : "/font/RobotoSlab.css",
+            Rosario     : "/font/Rosario.css",
+            UbuntuMono  : "/font/UbuntuMono.css"
+        },
+
+        Suffix : {
+            about : "不成木讷树，便做自由风"
+        },
+            
+        Theme : {
+            url  : "https://github.com/first19326/Hexo-LiveForCode",
+            name : "Hexo - Live For Code"
+        }  
+    };
+</script>
+    <script type="text/javascript" src="/js/index.js"></script>
+</body>
+</html>
