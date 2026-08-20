@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-siteapp">
     <title>
         
-            归档
+            论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案
         
     </title>
     <link rel="shortcut icon" href="#"/>
@@ -33,15 +33,46 @@
 </head>
 <body>
     <a id="cover"></a>
-    <link type="text/css" rel="stylesheet" href="/css/archive.css">
+    <link type="text/css" rel="stylesheet" href="/css/post.css">
 <div id="header" class="header">
     <div class="vertical">
         <div class="inner">
             
-                <h1 class="header-subtitle">归档</h1>
+                <h1 class="header-subtitle">论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</h1>
                 <div class="header-subinfo">
-                    <p class="article-info-text Chinese"></p>
-                    <p class="article-info-text English"></p>                  
+                    <p class="article-info-text">
+                        <span>
+                            <i class="iconfont icon-time"></i> 发表时间：2024-07-12
+                        </span>
+                        
+                            
+                                <span id="/2024/07/12/论文阅读-InPlaceKV基于SSD的KV存储就地更新方案/" class="leancloud_visitors" data-flag-title="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案">
+                                    <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
+                                </span>
+                            
+                            
+                                <span>
+                                    <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2024/07/12/论文阅读-InPlaceKV基于SSD的KV存储就地更新方案/"></span>
+                                </span>
+                              
+                        
+                    </p>
+                    
+                        
+                            <span class="category-color">论文阅读</span>
+                        
+                    
+                    
+                        
+                            <span class="tag-color">SSD</span>
+                        
+                            <span class="tag-color">分布式存储</span>
+                        
+                            <span class="tag-color">LSM-tree</span>
+                        
+                            <span class="tag-color">KV存储</span>
+                        
+                    
                 </div>
             
         </div>
@@ -50,37 +81,202 @@
 </div>
 <div id="container">
     
-        
-            <!-- 归档页面、分类归档页面、标签归档页面 -->
-            <div class="articles">
-                <div class="articles-wrap">
-                    <span class="archive-move-on"></span>
-                    <span class="archive-counter">
+        <!-- 文章页面 -->
+        <div id="article">
+            <div class="toc"></div>
+            <div class="article-body">
+                <h1 id="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"><a href="#论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案" class="headerlink" title="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"></a>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</h1><blockquote>
+<p>论文：<em>InPlaceKV: In-place Update Scheme for SSD-based KV Storage Systems under Update-intensive Workloads</em></p>
+</blockquote>
+<h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>传统的KV存储的写入方式是以追加写的形式写入，而不是采用就地更新的方式来写入键值对。这样的设计是因为在HDD上，顺序访问的性能远远优于随机访问，因此使用顺序写入可以获得更好的吞吐量。<strong>但是由于使用追加写的方式写入键值对，数据会不断地积累，导致需要压缩（对于LSM-tree）或者垃圾回收（对于KV分离方案）。</strong></p>
+<p>论文作者发现，在SSD上，<strong>顺序访问和随机访问的性能差距会随着请求大小的增加而缩小</strong>，也就是说，对于足够大的I&#x2F;O请求，SSD的顺序写和随机写的性能相差不大。因此提出了InPlaceKV：&#x3D;&#x3D;InPlaceKV是基于SSD构建的，它采用就地大型更新方案和热度感知方法进行KV对的更新&#x3D;&#x3D;，而不是使用传统的LSM树的追加方式，这有助于减少因为压缩或GC引发的额外开销。</p>
+<h2 id="LSM-tree结构的优化方向"><a href="#LSM-tree结构的优化方向" class="headerlink" title="LSM-tree结构的优化方向"></a>LSM-tree结构的优化方向</h2><h3 id="1-放宽LSM-tree的全局有序性"><a href="#1-放宽LSM-tree的全局有序性" class="headerlink" title="(1) 放宽LSM-tree的全局有序性"></a>(1) 放宽LSM-tree的全局有序性</h3><p>如PebblesDB、Dostoevsky等。其中：</p>
+<ul>
+<li><strong>PebblesDB</strong>：主要引入了类似跳表的想法，为L1层及以上的层级引入Guard，这样就将同一层划分成了不同的范围，在处理压缩时只会在相同Guard范围内执行，即减少了每次压缩合并时需要遍历的SSTable数量，从而降低开销；</li>
+<li><strong>Dostoevsky</strong>：能够根据工作负载动态调整合并策略的键值存储系统。</li>
+</ul>
+<h3 id="2-KV分离"><a href="#2-KV分离" class="headerlink" title="(2) KV分离"></a>(2) KV分离</h3><p>如WiscKey、DiffKV、HashKV、FenceKV等。KV分离的核心思想是：<code>Key</code>依然存储在LSM树中，但Value存储在单独的<strong>日志结构（Log）</strong>中。在compaction过程中，LSM树只需要处理<code>Key</code>和指向<code>Value</code>的指针，而不需要反复移动<code>Value</code>，通过这种方式来减少写放大。但是这又引出了新的问题→<strong>垃圾回收（GC）</strong>：过期的<code>Value</code>需要通过GC来清理，造成了额外的开销。</p>
+<p>本文提出的InPlaceKV&#x3D;&#x3D;具有热感知就地更新功能，可覆盖无效数据&#x3D;&#x3D;，<strong>且采用了原位更新的日志结构</strong>，而不是LSM树结构，从而消除了压缩造成的写放大，提高了系统吞吐量。</p>
+<h2 id="SSD随机写性能的启发"><a href="#SSD随机写性能的启发" class="headerlink" title="SSD随机写性能的启发"></a>SSD随机写性能的启发</h2><p>NVMe SSD性能测试如下图所示，可以得到结论：<strong>当请求大小从4KB到512KB时，顺序访问和随机访问之间的性能差距越来越小；且当请求大小大于128KB时，随机写入的IOPS与顺序写入的IOPS几乎相同。</strong></p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/d8242140da3f518fff4a776a383e536.png" class="" title="NVMe SSD性能测试">
+
+<p>作者由此提出疑问：对于KV存储系统是否还有必要采用只追加写（append-only）文件的方式？（因为追加写是为了更好地发挥HDD的性能，而当前SSD随机与顺序访问的差距随着请求大小的增加已经几乎没有特别大的差别。）</p>
+<p>本文的主要理念：<strong>利用SSD在进行&#x3D;&#x3D;大规模随机访问&#x3D;&#x3D;时表现出的高性能，来替代传统追加写策略的LSM树方法</strong>。关键问题是：&#x3D;&#x3D;(1)怎么触发大规模更新？&#x3D;&#x3D;因为LSM树的理念就是为了合并小请求，如果抛弃LSM的结构，小请求就无法合并。</p>
+<h3 id="传统方案的写放大从哪来"><a href="#传统方案的写放大从哪来" class="headerlink" title="传统方案的写放大从哪来"></a>传统方案的写放大从哪来</h3><img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741249758007.png" class="" title="LevelDB架构">
+
+<p>上图为LevelDB架构（就是传统的LSM树存储结构），而传统LSM树结构的写放大主要体现在如下过程：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741251264045.png" class="" title="传统LSM树的compaction开销">
+
+<p>即在进行compaction时，需要将SST1、SST2和SST3都读取到内存，丢弃旧的版本值V1、V2、V7和V9，并将最新的有效的KV对进行排序，重新生成新的SST文件。这个过程引入了12个KV对读取和8个KV对写入。</p>
+<p>而KV分离的架构会有额外的GC开销，如下图所示：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/abb93da458359e119a8f8749da0c899.png" class="" title="KV分离的GC开销">
+
+<p>由于KV分离，K依旧放在LSM树中进行compaction，但是由于K很小，它的开销没有传统的LSM树那么大。但是由于V是额外存储在Log中的，对于旧的V就要删除。对于VLog，它有2个指针（头和尾），新值被添加到头指针，而尾指针则告诉我们GC时需要从哪里开始释放空间。每次GC时，会从中读取几个KV对，并通过LSM树查询这些V是否有效，有效的V会被追加回VLog的头部。在上述过程中，GC操作期间需要额外读取7个KV对和写入3个KV对，即产生了额外开销。</p>
+<h2 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h2><ol>
+<li>使用追加写的KV存储（具有传统的LSM树和KV分离）分别会产生压缩和GC操作，这都会使它们的吞吐量下降，尤其是当更新的KV对数量特别大时；</li>
+<li>使用追加写是因为HDD的顺序写和随机写性能相差很多，但是对于现阶段的SSD来说，差距已经不是很明显。</li>
+</ol>
+<p>&#x3D;&#x3D;在KV存储系统中，如何充分利用固态硬盘的大随机存取性能来执行就地更新，而不是仅通过追加写入进行更新？&#x3D;&#x3D;</p>
+<h2 id="Design"><a href="#Design" class="headerlink" title="Design"></a>Design</h2><p>设计目标：</p>
+<ol>
+<li>在基于现代固态硬盘构建的KV存储系统中，<strong>使用大随机存取的就地更新来取代只写附加文件</strong>，消除因为仅追加写入造成的写&#x2F;读放大；</li>
+<li>使用适当的数据结构和工作流程来实现就地更新和大量随机存取的KV存储系统以提高性能；</li>
+<li>提升系统的鲁棒性。因为在大型就地更新单元中，原位置仍有少数KV对处于有效状态（不可能所有的KV对都是无效的），这些有效的KV对应该怎么处理？</li>
+</ol>
+<p>InPlaceKV的架构如下：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/23a4d82edafb8a4267774cae7dac7e0.png" class="" title="InPlaceKV架构">
+
+<p>通过<strong>热度感知分组</strong>来将小块合并，针对合并后的大块进行就地更新来提升性能。</p>
+<h3 id="1-数据结构"><a href="#1-数据结构" class="headerlink" title="1. 数据结构"></a>1. 数据结构</h3><p>&#x3D;&#x3D;内存缓存层&#x3D;&#x3D;中有多种结构：</p>
+<ul>
+<li>**<code>Write_MemTable</code>**：负责缓存新插入的KV对；</li>
+<li>**<code>Update_MemTable</code>**：负责缓存已存在的KV对的更新。</li>
+</ul>
+<p>两个结构的作用类似于LSM-tree的MemTable，本质上是跳表，用于高效地存储和查询KV数据。当<code>Write_MemTable</code>或<code>Update_MemTable</code>的大小达到阈值时（默认是4MB），其中的KV对会<strong>根据热度排序</strong>，然后批量刷写（flush）到SSD。这个排序过程依赖于<code>Frequency_Table</code>。</p>
+<ul>
+<li>**<code>Frequency_Table</code>**：用来记录KV访问频率，这里一个KV对的热度&#x3D;<strong>访问次数</strong>（即在MemTable中被访问的次数），用于flush之前对KV进行热度排序，然后按照热度存储到SSD。&#x3D;&#x3D;高热度KV会被存入同一个Data Block中&#x3D;&#x3D;，以优化后续in-place更新和访问效率；</li>
+<li>**<code>B-tree</code>**：在内存中维护全局有序的KV索引，记录KV在SSD上的存储地址，用于高效查询（这里是支持范围查询的）；</li>
+<li>**<code>FreeList</code>**：记录已删除或已更新KV对的旧存储地址，以便未来回收空间。</li>
+</ul>
+<p>InPlaceKV使用KVLog来存储KV对，每个KVLog由多个数据块组成。排序后的KV块会存储在数据块中，数据块的结构为<code>(ks, k, vs, v)</code>，其中ks表示Key的大小、k表示Key、vs表示Value的大小、v表示Value。</p>
+<h3 id="2-工作流程"><a href="#2-工作流程" class="headerlink" title="2. 工作流程"></a>2. 工作流程</h3><p><strong>(1) 写流程</strong></p>
+<p>在处理写入的KV对时，InPlaceKV首先检查内存中的B-tree，如果返回NULL，则说明这是新写入的KV对，则将其缓冲到<code>Write_MemTable</code>中，并在<code>Frequency_Table</code>中进行更新。如果<code>Write_MemTable</code>已满，则会合并<code>Write_MemTable</code>中的所有KV对（去重），然后根据<code>Frequency_Table</code>中记录的热度进行排序，最后以KVLog的形式刷新到SSD中。</p>
+<p><strong>(2) 更新流程</strong></p>
+<p>依旧是先检查内存中的B-tree：</p>
+<ul>
+<li>如果<strong>key存在，但是没有地址信息</strong>，说明旧版本仍然在<code>Write_MemTable</code>（还没刷到SSD），则直接把更新的KV对缓冲在<code>Write_MemTable</code>；</li>
+<li>如果<strong>Key存在，且有地址信息</strong>，说明旧版本已经被刷到SSD中，此时将更新的KV对缓冲在<code>Update_MemTable</code>中。</li>
+</ul>
+<p>&#x3D;&#x3D;当<code>Update_MemTable</code>已满时，&#x3D;&#x3D;根据如下的算法将其中的KV对刷新到SSD：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/f49f30820300a523557c8b63fd43df5.png" class="" title="Update_MemTable刷盘算法">
+
+<p>对于上述算法：</p>
+<p>InPlaceKV先会为所有<strong>按热度（访问频率）排序</strong>的KV对创建一个迭代器，这些KV对会被划分成多个<strong>逻辑数据块（LDB）</strong>，每个LDB都是一个可以刷入SSD的独立单位。当LDB的大小达到<code>Update_Unit</code>（比如4KB）时，会触发刷盘。此时会计算<strong>哪些更新的KV对属于同一个物理数据块（PDB）</strong>，用<code>Update_Rate</code>去衡量<strong>某个PDB里更新的KV对所占比例</strong>：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Update_Rate = N(PDB-KVs) / N(KVs)</span><br></pre></td></tr></table></figure>
+
+<p>这个<code>Update_Rate</code>反映的是PDB里需要更新的KV数量：</p>
+<ol>
+<li>当<code>Update_Rate == 1</code>时：说明这个PDB所有KV对都需要更新，<strong>直接执行原地大规模更新，无需额外数据迁移</strong>；</li>
+<li>当<code>TH（设置的阈值）&lt; Update_Rate &lt; 1</code>时：说明PDB中大部分KV需要更新。<strong>未更新的KV对迁移到<code>Write_MemTable</code>、在<code>FreeList</code>中记录这些未更新的KV对位置（因为这些位置更新后是空的，是可用的）、执行原地大规模更新</strong>；</li>
+<li>当<code>Update_Rate &lt;= TH</code>时：说明大部分数据是有效的。<strong>新建一个PDB并将数据写入</strong>，这里的新PDB可以是<strong>一个无效数据超过<code>TH</code>的PDB</strong>。</li>
+</ol>
+<p>&#x3D;&#x3D;最后，修改<code>B-tree</code>来反映数据的新位置。&#x3D;&#x3D;</p>
+<p><strong>(3) 读流程</strong></p>
+<ol>
+<li>先检查内存表：检查<code>Write_MemTable</code>和<code>Update_MemTable</code>，如果找到则直接返回；</li>
+<li>检查<code>B-tree</code>：检查该KV对是否存在，以及其在存储系统中的物理地址。如果在<code>B-tree</code>中没找到该KV对，则说明该键值对不存在于存储系统中，可以直接返回查询失败；</li>
+<li>读取PDB：通过<code>B-tree</code>找到KV对的物理地址后，读取PDB并将结果返回。</li>
+</ol>
+<p><strong>(4) 扫描和删除</strong></p>
+<p>对于<strong>扫描操作</strong>来说，InPlaceKV先在<code>B-tree</code>中查找符合扫描范围的叶子节点，因为<code>B-tree</code>存储了KV对（键和值）的地址信息。如果叶子节点包含键和值的地址 → 直接从SSD读取相应的KV对；如果叶子节点没有找到相关的KV对 → 说明这些KV对可能在<code>Write_MemTable</code>或<code>Update_MemTable</code>中，InPlaceKV会在<code>Write_MemTable</code>或<code>Update_MemTable</code>中查找，并返回结果。</p>
+<p>对于<strong>删除操作</strong>来说，它的本质是逻辑删除。InPlaceKV会将KV对记录到<code>FreeList</code>中，并修改<code>B-tree</code>将该KV对标记为已删除，使其不可被查询。在后续的更新操作中，该KV对的内容所占用的空间将会被覆盖。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>InPlaceKV的洞察是一个”反常识”的事实：<strong>追加写是HDD时代的遗产</strong>。当SSD上大请求（&gt;128KB）的随机写与顺序写性能几乎持平时，为规避随机写而付出的compaction&#x2F;GC代价就成了纯负担。它用三个手段替代LSM树：</p>
+<table>
+<thead>
+<tr>
+<th>设计</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>热度感知分组</td>
+<td>高热度KV存入同一Data Block，让”要更新的数据”物理上聚集</td>
+</tr>
+<tr>
+<td>Update_Rate分级</td>
+<td>按更新比例决定原地更新&#x2F;迁移+原地&#x2F;新建PDB，处理部分有效的边界情况</td>
+</tr>
+<tr>
+<td>B-tree全局索引</td>
+<td>支持点查和范围查询，替代LSM树的层层查找</td>
+</tr>
+</tbody></table>
+<p>核心取舍在于：就地更新消除了压缩和GC，代价是引入了热度统计和逻辑&#x2F;物理数据块的管理复杂度，且依赖负载本身具有更新局部性（update-intensive）才能发挥最大效果。</p>
+
+                
+                <p class="end">__END__</p>
+            </div>
+            <div class="article-footer">
+                <div class="suffix-box">
+    <div class="suffix-box-left">
+        <img src="/image/sidebar/avatar.jpg" alt="振兴东北">
+    </div>
+    <div class="suffix-box-right">
+        <span class="suffix-box-title">文章作者：</span>拳击手胖虎
+        <br>
+        <span class="suffix-box-title">文章出处：</span><a href="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/" target="_blank">论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</a>
+        <br>
+        <span class="suffix-box-title">作者签名：</span>不成木讷树，便做自由风
+        <br>
+        <span class="suffix-box-title">关于主题：</span><a href="https://github.com/first19326/Hexo-LiveForCode" target="_blank">Hexo - Live For Code</a>
+        <br>
+        <span class="suffix-box-title">版权声明：</span>文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" title="BY-NC-SA" target="_blank">BY-NC-SA</a> 许可协议，转载请注明出处
+        <br>
+    </div>
+    <div style="clear: both;"></div>
+</div>
+                
+                    <div class="category">
+                        分类：
                         
-                            目前共计 10 篇日志，继续加油！
+                            <a href="/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/">论文阅读</a>
                         
-                    </span>
+                    </div>
+                
+                
+                    <div class="tag">
+                        标签：
+                        
+                            <a href="/tags/SSD/">SSD</a>
+                        
+                            <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8/">分布式存储</a>
+                        
+                            <a href="/tags/LSM-tree/">LSM-tree</a>
+                        
+                            <a href="/tags/KV%E5%AD%98%E5%82%A8/">KV存储</a>
+                        
+                    </div>
+                
+                <div class="article-prev-next">
+                    
+                        <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/" class="prev-prefix">« </a> 上一篇：    <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/" title="发布于 2025-11-12 10:06">C++笔记</a>
+                        <br>
                     
                     
-                        
-                            <div class="archive-title">
-                                <h2 class="archive-year">2025</h2>
-                            </div>
-                            
-                           
-                        <div class="article">
-                            <div class="article-header">
-                                <h1 class="article-title"><a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/"><span>C++笔记</span></a></h1>
-                                <div class="article-meta">
-                                    <span class="article-time">11-12</span>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/" class="next-prefix">» </a> 下一篇：    <a href="/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/" title="发布于 2024-07-01 09:00">论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大</a>
                     
                 </div>
             </div>
             
+    <div class="article-comments">
         
+            <div class="comments-title">
+                评论列表
+            </div>
+        
+        <div class="comments-content">
+            
+                <script src="https://giscus.app/client.js"
+                    data-repo="zblzbl9040/zblzbl9040.github.io"
+                    data-repo-id="R_kgDONJvMDQ"
+                    data-category="Announcements"
+                    data-category-id="DIC_kwDONJvMDc4C-Nmz"
+                    data-mapping="pathname"
+                    data-strict="0"
+                    data-reactions-enabled="1"
+                    data-emit-metadata="0"
+                    data-input-position="bottom"
+                    data-theme="preferred_color_scheme"
+                    data-lang="zh-CN"
+                    crossorigin="anonymous"
+                    async>
+                </script>
+            
+        </div>
+    </div>
+    
+ 
+        </div>
     
 </div>
     <div id="footer">
@@ -118,7 +314,7 @@
                     
                         <li class=""><a href="/tags" class="" target="_self"><span class="iconfont icon-discount-fill"></span>标签</a></li>
                     
-                        <li class=" active "><a href="/archives" class="" target="_self"><span class="iconfont icon-calendar-fill"></span>归档</a></li>
+                        <li class=""><a href="/archives" class="" target="_self"><span class="iconfont icon-calendar-fill"></span>归档</a></li>
                     
                         <li class=""><a href="/donate" class="" target="_self"><span class="iconfont icon-heart-fill"></span>赞赏</a></li>
                     

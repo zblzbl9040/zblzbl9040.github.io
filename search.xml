@@ -395,6 +395,288 @@
       </tags>
   </entry>
   <entry>
+    <title>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</title>
+    <url>/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/</url>
+    <content><![CDATA[<h1 id="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"><a href="#论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案" class="headerlink" title="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"></a>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</h1><blockquote>
+<p>论文：<em>InPlaceKV: In-place Update Scheme for SSD-based KV Storage Systems under Update-intensive Workloads</em></p>
+</blockquote>
+<h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>传统的KV存储的写入方式是以追加写的形式写入，而不是采用就地更新的方式来写入键值对。这样的设计是因为在HDD上，顺序访问的性能远远优于随机访问，因此使用顺序写入可以获得更好的吞吐量。<strong>但是由于使用追加写的方式写入键值对，数据会不断地积累，导致需要压缩（对于LSM-tree）或者垃圾回收（对于KV分离方案）。</strong></p>
+<p>论文作者发现，在SSD上，<strong>顺序访问和随机访问的性能差距会随着请求大小的增加而缩小</strong>，也就是说，对于足够大的I&#x2F;O请求，SSD的顺序写和随机写的性能相差不大。因此提出了InPlaceKV：&#x3D;&#x3D;InPlaceKV是基于SSD构建的，它采用就地大型更新方案和热度感知方法进行KV对的更新&#x3D;&#x3D;，而不是使用传统的LSM树的追加方式，这有助于减少因为压缩或GC引发的额外开销。</p>
+<h2 id="LSM-tree结构的优化方向"><a href="#LSM-tree结构的优化方向" class="headerlink" title="LSM-tree结构的优化方向"></a>LSM-tree结构的优化方向</h2><h3 id="1-放宽LSM-tree的全局有序性"><a href="#1-放宽LSM-tree的全局有序性" class="headerlink" title="(1) 放宽LSM-tree的全局有序性"></a>(1) 放宽LSM-tree的全局有序性</h3><p>如PebblesDB、Dostoevsky等。其中：</p>
+<ul>
+<li><strong>PebblesDB</strong>：主要引入了类似跳表的想法，为L1层及以上的层级引入Guard，这样就将同一层划分成了不同的范围，在处理压缩时只会在相同Guard范围内执行，即减少了每次压缩合并时需要遍历的SSTable数量，从而降低开销；</li>
+<li><strong>Dostoevsky</strong>：能够根据工作负载动态调整合并策略的键值存储系统。</li>
+</ul>
+<h3 id="2-KV分离"><a href="#2-KV分离" class="headerlink" title="(2) KV分离"></a>(2) KV分离</h3><p>如WiscKey、DiffKV、HashKV、FenceKV等。KV分离的核心思想是：<code>Key</code>依然存储在LSM树中，但Value存储在单独的<strong>日志结构（Log）</strong>中。在compaction过程中，LSM树只需要处理<code>Key</code>和指向<code>Value</code>的指针，而不需要反复移动<code>Value</code>，通过这种方式来减少写放大。但是这又引出了新的问题→<strong>垃圾回收（GC）</strong>：过期的<code>Value</code>需要通过GC来清理，造成了额外的开销。</p>
+<p>本文提出的InPlaceKV&#x3D;&#x3D;具有热感知就地更新功能，可覆盖无效数据&#x3D;&#x3D;，<strong>且采用了原位更新的日志结构</strong>，而不是LSM树结构，从而消除了压缩造成的写放大，提高了系统吞吐量。</p>
+<h2 id="SSD随机写性能的启发"><a href="#SSD随机写性能的启发" class="headerlink" title="SSD随机写性能的启发"></a>SSD随机写性能的启发</h2><p>NVMe SSD性能测试如下图所示，可以得到结论：<strong>当请求大小从4KB到512KB时，顺序访问和随机访问之间的性能差距越来越小；且当请求大小大于128KB时，随机写入的IOPS与顺序写入的IOPS几乎相同。</strong></p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/d8242140da3f518fff4a776a383e536.png" class="" title="NVMe SSD性能测试">
+
+<p>作者由此提出疑问：对于KV存储系统是否还有必要采用只追加写（append-only）文件的方式？（因为追加写是为了更好地发挥HDD的性能，而当前SSD随机与顺序访问的差距随着请求大小的增加已经几乎没有特别大的差别。）</p>
+<p>本文的主要理念：<strong>利用SSD在进行&#x3D;&#x3D;大规模随机访问&#x3D;&#x3D;时表现出的高性能，来替代传统追加写策略的LSM树方法</strong>。关键问题是：&#x3D;&#x3D;(1)怎么触发大规模更新？&#x3D;&#x3D;因为LSM树的理念就是为了合并小请求，如果抛弃LSM的结构，小请求就无法合并。</p>
+<h3 id="传统方案的写放大从哪来"><a href="#传统方案的写放大从哪来" class="headerlink" title="传统方案的写放大从哪来"></a>传统方案的写放大从哪来</h3><img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741249758007.png" class="" title="LevelDB架构">
+
+<p>上图为LevelDB架构（就是传统的LSM树存储结构），而传统LSM树结构的写放大主要体现在如下过程：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741251264045.png" class="" title="传统LSM树的compaction开销">
+
+<p>即在进行compaction时，需要将SST1、SST2和SST3都读取到内存，丢弃旧的版本值V1、V2、V7和V9，并将最新的有效的KV对进行排序，重新生成新的SST文件。这个过程引入了12个KV对读取和8个KV对写入。</p>
+<p>而KV分离的架构会有额外的GC开销，如下图所示：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/abb93da458359e119a8f8749da0c899.png" class="" title="KV分离的GC开销">
+
+<p>由于KV分离，K依旧放在LSM树中进行compaction，但是由于K很小，它的开销没有传统的LSM树那么大。但是由于V是额外存储在Log中的，对于旧的V就要删除。对于VLog，它有2个指针（头和尾），新值被添加到头指针，而尾指针则告诉我们GC时需要从哪里开始释放空间。每次GC时，会从中读取几个KV对，并通过LSM树查询这些V是否有效，有效的V会被追加回VLog的头部。在上述过程中，GC操作期间需要额外读取7个KV对和写入3个KV对，即产生了额外开销。</p>
+<h2 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h2><ol>
+<li>使用追加写的KV存储（具有传统的LSM树和KV分离）分别会产生压缩和GC操作，这都会使它们的吞吐量下降，尤其是当更新的KV对数量特别大时；</li>
+<li>使用追加写是因为HDD的顺序写和随机写性能相差很多，但是对于现阶段的SSD来说，差距已经不是很明显。</li>
+</ol>
+<p>&#x3D;&#x3D;在KV存储系统中，如何充分利用固态硬盘的大随机存取性能来执行就地更新，而不是仅通过追加写入进行更新？&#x3D;&#x3D;</p>
+<h2 id="Design"><a href="#Design" class="headerlink" title="Design"></a>Design</h2><p>设计目标：</p>
+<ol>
+<li>在基于现代固态硬盘构建的KV存储系统中，<strong>使用大随机存取的就地更新来取代只写附加文件</strong>，消除因为仅追加写入造成的写&#x2F;读放大；</li>
+<li>使用适当的数据结构和工作流程来实现就地更新和大量随机存取的KV存储系统以提高性能；</li>
+<li>提升系统的鲁棒性。因为在大型就地更新单元中，原位置仍有少数KV对处于有效状态（不可能所有的KV对都是无效的），这些有效的KV对应该怎么处理？</li>
+</ol>
+<p>InPlaceKV的架构如下：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/23a4d82edafb8a4267774cae7dac7e0.png" class="" title="InPlaceKV架构">
+
+<p>通过<strong>热度感知分组</strong>来将小块合并，针对合并后的大块进行就地更新来提升性能。</p>
+<h3 id="1-数据结构"><a href="#1-数据结构" class="headerlink" title="1. 数据结构"></a>1. 数据结构</h3><p>&#x3D;&#x3D;内存缓存层&#x3D;&#x3D;中有多种结构：</p>
+<ul>
+<li>**<code>Write_MemTable</code>**：负责缓存新插入的KV对；</li>
+<li>**<code>Update_MemTable</code>**：负责缓存已存在的KV对的更新。</li>
+</ul>
+<p>两个结构的作用类似于LSM-tree的MemTable，本质上是跳表，用于高效地存储和查询KV数据。当<code>Write_MemTable</code>或<code>Update_MemTable</code>的大小达到阈值时（默认是4MB），其中的KV对会<strong>根据热度排序</strong>，然后批量刷写（flush）到SSD。这个排序过程依赖于<code>Frequency_Table</code>。</p>
+<ul>
+<li>**<code>Frequency_Table</code>**：用来记录KV访问频率，这里一个KV对的热度&#x3D;<strong>访问次数</strong>（即在MemTable中被访问的次数），用于flush之前对KV进行热度排序，然后按照热度存储到SSD。&#x3D;&#x3D;高热度KV会被存入同一个Data Block中&#x3D;&#x3D;，以优化后续in-place更新和访问效率；</li>
+<li>**<code>B-tree</code>**：在内存中维护全局有序的KV索引，记录KV在SSD上的存储地址，用于高效查询（这里是支持范围查询的）；</li>
+<li>**<code>FreeList</code>**：记录已删除或已更新KV对的旧存储地址，以便未来回收空间。</li>
+</ul>
+<p>InPlaceKV使用KVLog来存储KV对，每个KVLog由多个数据块组成。排序后的KV块会存储在数据块中，数据块的结构为<code>(ks, k, vs, v)</code>，其中ks表示Key的大小、k表示Key、vs表示Value的大小、v表示Value。</p>
+<h3 id="2-工作流程"><a href="#2-工作流程" class="headerlink" title="2. 工作流程"></a>2. 工作流程</h3><p><strong>(1) 写流程</strong></p>
+<p>在处理写入的KV对时，InPlaceKV首先检查内存中的B-tree，如果返回NULL，则说明这是新写入的KV对，则将其缓冲到<code>Write_MemTable</code>中，并在<code>Frequency_Table</code>中进行更新。如果<code>Write_MemTable</code>已满，则会合并<code>Write_MemTable</code>中的所有KV对（去重），然后根据<code>Frequency_Table</code>中记录的热度进行排序，最后以KVLog的形式刷新到SSD中。</p>
+<p><strong>(2) 更新流程</strong></p>
+<p>依旧是先检查内存中的B-tree：</p>
+<ul>
+<li>如果<strong>key存在，但是没有地址信息</strong>，说明旧版本仍然在<code>Write_MemTable</code>（还没刷到SSD），则直接把更新的KV对缓冲在<code>Write_MemTable</code>；</li>
+<li>如果<strong>Key存在，且有地址信息</strong>，说明旧版本已经被刷到SSD中，此时将更新的KV对缓冲在<code>Update_MemTable</code>中。</li>
+</ul>
+<p>&#x3D;&#x3D;当<code>Update_MemTable</code>已满时，&#x3D;&#x3D;根据如下的算法将其中的KV对刷新到SSD：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/f49f30820300a523557c8b63fd43df5.png" class="" title="Update_MemTable刷盘算法">
+
+<p>对于上述算法：</p>
+<p>InPlaceKV先会为所有<strong>按热度（访问频率）排序</strong>的KV对创建一个迭代器，这些KV对会被划分成多个<strong>逻辑数据块（LDB）</strong>，每个LDB都是一个可以刷入SSD的独立单位。当LDB的大小达到<code>Update_Unit</code>（比如4KB）时，会触发刷盘。此时会计算<strong>哪些更新的KV对属于同一个物理数据块（PDB）</strong>，用<code>Update_Rate</code>去衡量<strong>某个PDB里更新的KV对所占比例</strong>：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Update_Rate = N(PDB-KVs) / N(KVs)</span><br></pre></td></tr></table></figure>
+
+<p>这个<code>Update_Rate</code>反映的是PDB里需要更新的KV数量：</p>
+<ol>
+<li>当<code>Update_Rate == 1</code>时：说明这个PDB所有KV对都需要更新，<strong>直接执行原地大规模更新，无需额外数据迁移</strong>；</li>
+<li>当<code>TH（设置的阈值）&lt; Update_Rate &lt; 1</code>时：说明PDB中大部分KV需要更新。<strong>未更新的KV对迁移到<code>Write_MemTable</code>、在<code>FreeList</code>中记录这些未更新的KV对位置（因为这些位置更新后是空的，是可用的）、执行原地大规模更新</strong>；</li>
+<li>当<code>Update_Rate &lt;= TH</code>时：说明大部分数据是有效的。<strong>新建一个PDB并将数据写入</strong>，这里的新PDB可以是<strong>一个无效数据超过<code>TH</code>的PDB</strong>。</li>
+</ol>
+<p>&#x3D;&#x3D;最后，修改<code>B-tree</code>来反映数据的新位置。&#x3D;&#x3D;</p>
+<p><strong>(3) 读流程</strong></p>
+<ol>
+<li>先检查内存表：检查<code>Write_MemTable</code>和<code>Update_MemTable</code>，如果找到则直接返回；</li>
+<li>检查<code>B-tree</code>：检查该KV对是否存在，以及其在存储系统中的物理地址。如果在<code>B-tree</code>中没找到该KV对，则说明该键值对不存在于存储系统中，可以直接返回查询失败；</li>
+<li>读取PDB：通过<code>B-tree</code>找到KV对的物理地址后，读取PDB并将结果返回。</li>
+</ol>
+<p><strong>(4) 扫描和删除</strong></p>
+<p>对于<strong>扫描操作</strong>来说，InPlaceKV先在<code>B-tree</code>中查找符合扫描范围的叶子节点，因为<code>B-tree</code>存储了KV对（键和值）的地址信息。如果叶子节点包含键和值的地址 → 直接从SSD读取相应的KV对；如果叶子节点没有找到相关的KV对 → 说明这些KV对可能在<code>Write_MemTable</code>或<code>Update_MemTable</code>中，InPlaceKV会在<code>Write_MemTable</code>或<code>Update_MemTable</code>中查找，并返回结果。</p>
+<p>对于<strong>删除操作</strong>来说，它的本质是逻辑删除。InPlaceKV会将KV对记录到<code>FreeList</code>中，并修改<code>B-tree</code>将该KV对标记为已删除，使其不可被查询。在后续的更新操作中，该KV对的内容所占用的空间将会被覆盖。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>InPlaceKV的洞察是一个”反常识”的事实：<strong>追加写是HDD时代的遗产</strong>。当SSD上大请求（&gt;128KB）的随机写与顺序写性能几乎持平时，为规避随机写而付出的compaction&#x2F;GC代价就成了纯负担。它用三个手段替代LSM树：</p>
+<table>
+<thead>
+<tr>
+<th>设计</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>热度感知分组</td>
+<td>高热度KV存入同一Data Block，让”要更新的数据”物理上聚集</td>
+</tr>
+<tr>
+<td>Update_Rate分级</td>
+<td>按更新比例决定原地更新&#x2F;迁移+原地&#x2F;新建PDB，处理部分有效的边界情况</td>
+</tr>
+<tr>
+<td>B-tree全局索引</td>
+<td>支持点查和范围查询，替代LSM树的层层查找</td>
+</tr>
+</tbody></table>
+<p>核心取舍在于：就地更新消除了压缩和GC，代价是引入了热度统计和逻辑&#x2F;物理数据块的管理复杂度，且依赖负载本身具有更新局部性（update-intensive）才能发挥最大效果。</p>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>SSD</tag>
+        <tag>分布式存储</tag>
+        <tag>LSM-tree</tag>
+        <tag>KV存储</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>论文阅读：理解Ceph对象存储中存储后端的写入行为</title>
+    <url>/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<h1 id="论文阅读：理解Ceph对象存储中存储后端的写入行为"><a href="#论文阅读：理解Ceph对象存储中存储后端的写入行为" class="headerlink" title="论文阅读：理解Ceph对象存储中存储后端的写入行为"></a>论文阅读：理解Ceph对象存储中存储后端的写入行为</h1><blockquote>
+<p>论文：<em>Understanding Write Behaviors of Storage Backends in Ceph Object Store</em></p>
+</blockquote>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>论文作者对Ceph提供的三种存储后端（FileStore、KStore和BlueStore）通过微基准测试与长期工作负载的综合分析进行了测试，主要聚焦于WAF（写放大系数）。</p>
+<p>核心发现：&#x3D;&#x3D;不管是哪种存储后端，WAF都大于13&#x3D;&#x3D;。其中BlueStore的综合性能最稳定，FileStore在SSD上的表现最好，BlueStore在HDD上表现不错。</p>
+<p>这三种存储后端的写放大的来源如下：</p>
+<p><strong>FileStore</strong>：需要先将数据写入独立的journal（日志设备），然后再写入主存储区。这本应是”双写（double write）”，即写流量为2倍，但实验发现实际是<strong>3倍</strong>。因为文件系统本身也有自己的日志系统，即数据流程变成：<strong>数据 → Ceph journal → 文件系统 → 文件系统 journal → 真正写入位置</strong>。&#x3D;&#x3D;结果导致：<strong>文件系统的元数据+日志流量 ≈ 原始数据量大小</strong>，写放大更严重。&#x3D;&#x3D;</p>
+<p><strong>KStore</strong>：KStore采用RocksDB存储元数据。由于RocksDB的LSM-tree结构，后台会进行大量compaction。实验发现：&#x3D;&#x3D;几乎所有写流量都来自compaction，而不是用户写入的数据。&#x3D;&#x3D;</p>
+<p><strong>BlueStore</strong>：数据直接写入裸设备，不经过文件系统，因此它<strong>避免了FileStore的journaling of journal问题</strong>。但是它的写放大依旧存在，主要来源是”Ceph仍使用RocksDB存储元数据和对象属性”，这些RocksDB写流量的大小<strong>超过真实数据写入量的3倍</strong>。简而言之：<strong>BlueStore解决了日志嵌套的问题，但RocksDB的元数据写放大仍然很严重。</strong></p>
+<h2 id="Background"><a href="#Background" class="headerlink" title="Background"></a>Background</h2><h3 id="Ceph的三种存储接口"><a href="#Ceph的三种存储接口" class="headerlink" title="Ceph的三种存储接口"></a>Ceph的三种存储接口</h3><table>
+<thead>
+<tr>
+<th>存储类型</th>
+<th>描述</th>
+<th>举例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对象存储（Object Storage）</td>
+<td>类似 Amazon S3、Swift，存储对象（Object）</td>
+<td>Ceph Object Storage（RADOS Gateway）</td>
+</tr>
+<tr>
+<td>块存储（Block Storage）</td>
+<td>给虚拟机或系统提供块设备</td>
+<td>Ceph RBD（RADOS Block Device）</td>
+</tr>
+<tr>
+<td>文件系统（File System）</td>
+<td>类似分布式文件系统</td>
+<td>CephFS</td>
+</tr>
+</tbody></table>
+<p>虽然提供三种不同形态的服务，但<strong>它们的底层都是建立在同一个统一核心：&#x3D;&#x3D;RADOS&#x3D;&#x3D;（Reliable Autonomic Distributed Object Store）之上</strong>。RADOS层运行着Ceph内部的关键组件：</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>全称</th>
+<th>是否是守护进程（Daemon）</th>
+<th>是否运行在 RADOS 层？</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>MON</strong></td>
+<td>Monitor</td>
+<td>✅ 是</td>
+<td>✅ 是</td>
+<td>保存并管理集群状态（如 OSD 列表、集群地图），负责一致性和选举</td>
+</tr>
+<tr>
+<td><strong>MDS</strong></td>
+<td>Metadata Server</td>
+<td>✅ 是</td>
+<td>✅ 是（但只用于 CephFS 文件系统）</td>
+<td>管理文件系统的目录、权限和名称等元数据</td>
+</tr>
+<tr>
+<td><strong>OSD</strong></td>
+<td>Object Storage Daemon</td>
+<td>✅ 是</td>
+<td>✅ 是</td>
+<td>存储数据对象、处理读写请求、执行数据复制和恢复</td>
+</tr>
+</tbody></table>
+<h3 id="Ceph与传统分布式存储的区别"><a href="#Ceph与传统分布式存储的区别" class="headerlink" title="Ceph与传统分布式存储的区别"></a>Ceph与传统分布式存储的区别</h3><ol>
+<li>客户端可以<strong>直接联系负责该数据的主OSD节点（primary OSD）</strong>，无需中间服务器；</li>
+<li>不需要固定的元数据服务器来告诉客户端”数据在哪里”；</li>
+<li>数据的位置是通过<strong>CRUSH算法</strong>算出来的，而不是查表得到。</li>
+</ol>
+<h3 id="BlueStore的定位"><a href="#BlueStore的定位" class="headerlink" title="BlueStore的定位"></a>BlueStore的定位</h3><p>BlueStore是Ceph的另一种存储后端，其核心理念在于高效管理对象数据，突破FileStore的局限性。FileStore存在的问题之一是外部日志记录导致的双重写入开销。BlueStore则直接将对象数据存储于原始块设备，同时使用RocksDB管理元数据。由于跳过了本地文件系统层，可规避日志记录等文件系统开销。</p>
+<p>需注意的是，由于运行RocksDB仍需文件系统支持，BlueStore内部集成了名为BlueFS的轻量级用户级文件系统。此外，Ceph通常需处理大量对象，且常需按顺序枚举所有对象以进行一致性检查和恢复，然而POSIX并未提供从多个目录高效检索对象的方法。使用RocksDB的另一优势在于，Ceph能够轻松检索并枚举系统中存储的所有对象。</p>
+<h2 id="微基准测试结果"><a href="#微基准测试结果" class="headerlink" title="微基准测试结果"></a>微基准测试结果</h2><h3 id="FileStore"><a href="#FileStore" class="headerlink" title="FileStore"></a>FileStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/d995d2090d5b758453b8043d301818f9.png" class="" title="FileStore微基准测试结果">
+
+<p>4KB写入在Ceph内部的路径为：</p>
+<p><strong>(1) 客户端定位数据应该写到哪个OSD</strong></p>
+<p>客户端通过CRUSH算法在O(1)时间内计算出负责该对象的<strong>主OSD</strong>，然后将写请求发送给主OSD。</p>
+<p><strong>(2) 写副本</strong></p>
+<p>主OSD将写请求转发给另外两个OSD（即副本#2和副本#3）。因为副本机制（replication factor &#x3D; 3），这一步本身就会<strong>产生3倍流量</strong>。</p>
+<p><strong>(3) 在每个OSD内部，数据会被打包成一个”事务”</strong></p>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对象数据（object data）</td>
+<td>你写入的 4KB 数据</td>
+</tr>
+<tr>
+<td>对象元数据（object metadata）</td>
+<td>比如对象大小、时间戳、offset 等</td>
+</tr>
+<tr>
+<td>LevelDB（或 RocksDB）键值对</td>
+<td>存储对象索引与属性，用来快速定位和管理对象</td>
+</tr>
+</tbody></table>
+<p><strong>(4) FileStore接收到这个事务后，会做两件事（双写来源）：</strong></p>
+<ol>
+<li><p><strong>先写Ceph Journal（预写日志，Write-Ahead Logging）</strong>：保护事务的原子性（可崩溃恢复），这是第一部分写放大来源；</p>
+</li>
+<li><p><strong>再把这份事务写入XFS（真实数据 + LevelDB数据 + 文件系统元数据）</strong>：</p>
+<ul>
+<li>真实文件写入 &#x3D; object data；</li>
+<li>LevelDB的写放大（LSM-tree会产生compaction）；</li>
+<li>XFS文件系统写元数据 + XFS Journaling。</li>
+</ul>
+<p>这是第二次写放大，导致”journal of journal（日志的日志）”问题。</p>
+</li>
+</ol>
+<p>所以4KB写入的WAF因子很大且有波动性，但是随着写入请求大小的增大，直至4MB时，WAF收敛至6，因为相对于请求大小，对象元数据、键值对、文件系统元数据和文件系统日志的占比会相对缩小。</p>
+<h3 id="BlueStore"><a href="#BlueStore" class="headerlink" title="BlueStore"></a>BlueStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/f9c30590713a818b6c4c260315e01a59.png" class="" title="BlueStore微基准测试结果">
+
+<p>可以发现第3次写（3rd Write）的WAF很高，论文解释原因为：BlueStore按<strong>最小分配粒度 &#x3D; 64KB Chunk</strong>来管理数据。当写入请求落在某个Chunk中间、且打破了它的连续性时，BlueStore必须做：&#x3D;&#x3D;把当前64KB Chunk中未写满的部分用<strong>零填充（zero padding）</strong>，然后整个64KB写入磁盘。&#x3D;&#x3D;</p>
+<blockquote>
+<p>笔者注：在Ceph官网实际调研后发现，现在BlueStore默认的最小分配粒度已经是4KB了，也就是说这里补0带来的WAF应该已经没有了。总体上BlueStore效果更好，因为没有了日志双写问题。</p>
+</blockquote>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这篇论文的价值在于系统性地量化了Ceph三种存储后端的写放大来源：</p>
+<table>
+<thead>
+<tr>
+<th>后端</th>
+<th>主要写放大来源</th>
+<th>关键问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FileStore</td>
+<td>Journal双写 + 文件系统日志（journal of journal）</td>
+<td>双写实际为3倍而非2倍</td>
+</tr>
+<tr>
+<td>KStore</td>
+<td>RocksDB的LSM-tree compaction</td>
+<td>写流量几乎全来自compaction</td>
+</tr>
+<tr>
+<td>BlueStore</td>
+<td>RocksDB元数据写流量（超过真实数据3倍）</td>
+<td>解决了日志嵌套但元数据放大仍在</td>
+</tr>
+</tbody></table>
+<p>结论指向一个明确的方向：<strong>分布式存储系统的后端如果想进一步降低写放大，要么换掉LSM-tree的元数据方案，要么优化元数据的落盘路径</strong>——这也与后续一系列针对RocksDB&#x2F;BlueStore的优化工作（如MatrixKV、就地更新方案等）相呼应。</p>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>分布式存储</tag>
+        <tag>Ceph</tag>
+        <tag>BlueStore</tag>
+        <tag>写放大</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大</title>
     <url>/2024/07/01/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-MatrixKV%E5%87%8F%E5%B0%91LSM%E6%A0%91KV%E5%AD%98%E5%82%A8%E7%9A%84%E5%86%99%E5%81%9C%E6%BB%9E%E4%B8%8E%E5%86%99%E6%94%BE%E5%A4%A7/</url>
     <content><![CDATA[<h1 id="论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大"><a href="#论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大" class="headerlink" title="论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大"></a>论文阅读：MatrixKV——利用NVM中的矩阵容器减少LSM树KV存储的写停滞与写放大</h1><blockquote>
@@ -658,6 +940,73 @@
       </tags>
   </entry>
   <entry>
+    <title>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</title>
+    <url>/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/</url>
+    <content><![CDATA[<h1 id="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能"><a href="#论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能" class="headerlink" title="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能"></a>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能</h1><blockquote>
+<p>论文：<em>Improving I&#x2F;O performance in distributed file systems for flash-based SSDs by access pattern reshaping</em></p>
+</blockquote>
+<p>这篇文章的核心思想是：<strong>通过将分布式文件系统（Lustre）中写请求的地址进行重塑，把SSD上的随机写重构为顺序写，来减少写放大效应、提高写入性能</strong>。在展开方案之前，先补充两个背景知识：F2FS文件系统和Lustre文件系统。</p>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><h3 id="F2FS文件系统（Flash-Friendly-File-System）"><a href="#F2FS文件系统（Flash-Friendly-File-System）" class="headerlink" title="F2FS文件系统（Flash Friendly File System）"></a>F2FS文件系统（Flash Friendly File System）</h3><p>F2FS可以极大程度上避免碎片产生。相对于传统日志型文件系统，F2FS在<strong>wandering tree</strong>和<strong>GC</strong>方面有一定的优化，可以复用离散的数据页写入数据，显著减少GC带来的卡顿。</p>
+<p><strong>wandering tree</strong>：在文件更新时，指向文件的Direct Pointer（直接指针）由于数据异地更新，也会随之更新；同时指向这个Direct Pointer的Indirect Pointer（间接指针）也会更新，然后保存这个Indirect Pointer的inode（存储文件元数据的结构体）、inode block map（记录块分配情况的表）等结构也需要更新，这样会导致频繁的metadata更新。</p>
+<h3 id="Lustre文件系统"><a href="#Lustre文件系统" class="headerlink" title="Lustre文件系统"></a>Lustre文件系统</h3><img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/1553ffc55c4f184bfbbf8499a14ebd8.png" class="" title="Lustre文件系统总体结构">
+
+<p>上图为Lustre文件系统的总体结构，主要由客户端、元数据服务器、元数据目标、对象存储服务器和对象存储目标组成：</p>
+<p><strong>客户端（Client）</strong>：是Lustre文件系统的用户接口，负责向元数据服务器（MDS）和对象存储服务器（OSS）发送文件系统请求。&#x3D;&#x3D;客户端能将用户的I&#x2F;O请求转发到合适的服务器，并从服务器接收数据。&#x3D;</p>
+<p><strong>元数据服务器（MDS）</strong>：负责管理文件系统的元数据，包括文件名、目录结构、文件权限、文件大小、文件所在的对象存储目标（OST）等信息。&#x3D;&#x3D;当客户端发出文件操作请求时，MDS会查询并返回相关的元数据信息，使客户端知道应该从哪个OST获取文件数据。&#x3D;</p>
+<p><strong>元数据目标（MDT）</strong>：MDT是存储在MDS上的物理存储设备，用于存储文件系统的元数据。&#x3D;&#x3D;MDT是元数据的实际存储位置，负责保存和检索文件系统的元数据内容。多个MDT可以分担元数据的存储负载，从而提高元数据访问的并行度和整体性能。&#x3D;</p>
+<p><strong>对象存储服务器（OSS）</strong>：OSS负责管理实际的文件数据存储，接收来自客户端的文件I&#x2F;O请求，并将数据存储到对应的对象存储目标（OST）上。&#x3D;&#x3D;OSS通过网络将数据分布在多个OST上，实现并行I&#x2F;O操作。&#x3D;</p>
+<p><strong>对象存储目标（OST）</strong>：OST是Lustre文件系统中存储实际文件数据的物理存储设备。&#x3D;&#x3D;OST负责实际的文件数据存储，是Lustre文件系统数据存储的基本单元，数据在OST之间分布存储。&#x3D;</p>
+<p><strong>写操作流程</strong></p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/14445f1774cd168570b56e54fd656a5.png" class="" title="Lustre写操作流程">
+
+<p>当客户端想要写入文件时，首先会向元数据服务器（MDS）发起文件打开请求。MDS处理文件打开操作，检查文件是否存在并将文件的元数据返回给客户端。元数据中包含文件的访问权限（如读写权限）和数据存放的位置（即存储服务器OSS）。客户端验证了文件的权限，并且通过元数据知道了存储该文件数据的OSS的具体位置。客户端接下来会向指定的OSS发起写请求。为了处理客户端的写请求，OSS需要为每个写请求分配一个新的bio结构体，在bio结构体中会记录客户端写请求的地址。接着，写操作请求的页（page，表示要写入的数据）也会添加到这个bio结构体中。设置好bio结构体后，OSS会将该结构体提交给底层存储系统，最终数据通过存储目标OST写入存储设备。</p>
+<h2 id="访问模式重塑方案的总体架构"><a href="#访问模式重塑方案的总体架构" class="headerlink" title="访问模式重塑方案的总体架构"></a>访问模式重塑方案的总体架构</h2><h3 id="1-地址重塑操作（Address-Reshaping-Operation）"><a href="#1-地址重塑操作（Address-Reshaping-Operation）" class="headerlink" title="1. 地址重塑操作（Address Reshaping Operation）"></a>1. 地址重塑操作（Address Reshaping Operation）</h3><p>当客户端发送请求时，根据MDS找到存储数据的OSS，然后将请求送达OSS进行处理。当OSS收到请求后，检查收到的请求是读请求还是写请求：</p>
+<ul>
+<li>如果是<strong>写请求</strong>，则将请求的逻辑块地址（LBA）转化为顺序的逻辑块地址。具体来说，它将原始逻辑块地址（oLBA）重塑为顺序的逻辑块地址（tLBA），然后通过重映射表将oLBA和tLBA的对应关系保存。当oLBA和tLBA对被插入重映射表后，写请求通过<code>submit_bio()</code>函数提交到块层（block layer）。在块层中，默认的请求合并算法会将顺序的LBA请求合并成一个大的请求。&#x3D;&#x3D;这种方案可以将随机写请求重塑为顺序写请求，而且可以通过块层将现有的请求合并以减少请求的数量。&#x3D;</li>
+</ul>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/82239abc8b882cee6f1e03baa0e2333.png" class="" title="地址重塑操作总体结构">
+
+<p>对于<strong>读和覆盖请求</strong>，则需要在重映射表（Remapping Table）中查找现有的oLBA和tLBA对：</p>
+<ul>
+<li>对于<strong>覆盖请求</strong>，首先在重映射表中查找原始逻辑块地址（oLBA）和已重塑的逻辑块地址（tLBA）对。覆盖请求意味着需要更新存储在原tLBA位置的数据。为了确保写入操作是顺序的，系统会为这个oLBA分配一个新的顺序逻辑块地址（tLBA），这个新tLBA将用于存储更新后的数据。这部分无效数据会通过后续的清理操作来处理和回收空间。</li>
+<li>对于<strong>读请求</strong>，由于oLBA已经被重塑为tLBA，所以在获取某个数据时需要根据重映射表，将对应的tLBA找到，再将数据获取。</li>
+</ul>
+<h3 id="2-管理重映射表（Managing-Remapping-Table）"><a href="#2-管理重映射表（Managing-Remapping-Table）" class="headerlink" title="2. 管理重映射表（Managing Remapping Table）"></a>2. 管理重映射表（Managing Remapping Table）</h3><p>在重映射表中记录了oLBA到tLBA的映射关系，主要的作用就是在读取和覆盖操作时为oLBA查找相应的tLBA。对于一个表来说，搜索时间和清理节点时间和表的大小成正比，因此采用多个重映射表而不是单个大的重映射表是必要的选择。多个重映射表的划分范围可以根据磁盘而定：&#x3D;&#x3D;将大型磁盘布局划分为多个小节，为每个小节创建对应的重映射表，这些映射表管理它们自己的逻辑块地址&#x3D;&#x3D;，这样可以减少重映射表中的条目，还可以在进行清理操作时隔离重映射表（一个子节中进行清理操作时，其他的子节还可以处理I&#x2F;O请求）。论文中使用红&#x2F;黑树实现重映射表，因为红&#x2F;黑树有较快的搜索时间。</p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/dfbbaa83c350c90030cd44440695d9d.png" class="" title="多个重表示意图">
+
+<p>在上图中，存在两个重映射表（T1和T2），表1负责tLBA1—tLBA90，表2负责tLBA91—tLBA180。在这个例子中，表1已经充满了之前的请求，其中通过表1管理的最后一个tLBA90和oLBA99配对。在表2中现有3个请求（91–93），最近的一个是tLBA93（和oLBA31配对），以及空闲的（tLBA94—tLBA180），这些还未被使用，因此可以处理即将到来的请求。当发出新的请求时（oLBA45和oLBA32），它们被插入到表2（tLBA94和tLBA95中），而不访问表1。</p>
+<h3 id="3-支持崩溃一致性（Supporting-Crash-Consistency）"><a href="#3-支持崩溃一致性（Supporting-Crash-Consistency）" class="headerlink" title="3. 支持崩溃一致性（Supporting Crash Consistency）"></a>3. 支持崩溃一致性（Supporting Crash Consistency）</h3><p>通过写前日志（WAL，在真正修改之前先将相关的日志记录写入稳定存储）的策略来实现崩溃一致性（这里的崩溃一致性指的是重映射表的崩溃一致性）。当请求到达OSS时，首先使用<code>submit_bio()</code>函数将数据写入存储设备OST，在写入完成之后，&#x3D;&#x3D;系统开始为重映射表的更新操作启动一个事务，通过在重映射表文件中写入”Begin Tx”来表示事务的开始。接着，系统将重映射表中需要更新的（oLBA，tLBA）对逐个写入到重映射表文件中，这些对记录了地址重塑后的逻辑块地址。当所有重映射对都写入完成后，系统在重映射表文件中写入”Commit Tx”以表示事务的提交，这一步表示事务已经完成、可以被认为是成功的。&#x3D;&#x3D;最后，系统将这些更新的重映射对插入到驻留在内存中的重映射表中，以便未来的读写请求能够正确地处理。</p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/724e3d3010af50fc17f7d6d6a73c968.png" class="" title="崩溃一致性WAL流程">
+
+<p>系统通过重映射文件来作为判断重映射表是否完整的基准。当系统发生崩溃时，可能会有如下的情况：(1)在调用<code>submit_bio()</code>函数时发生崩溃；(2)在往重映射表中写入映射信息时崩溃。针对上述的两种情况，系统无法确定数据的有效性或事务的完整性，因此无法构建重映射表。&#x3D;&#x3D;只有当重映射文件中写入了数据且”Commit Tx”记录存在时，才可以确认事务是完整的&#x3D;&#x3D;，此时可以安全地从文件中读取重映射信息，并将其重新加载到内存中的重映射表。</p>
+<h3 id="4-清理操作（Cleaning-Operation）"><a href="#4-清理操作（Cleaning-Operation）" class="headerlink" title="4. 清理操作（Cleaning Operation）"></a>4. 清理操作（Cleaning Operation）</h3><p>由于tLBA是从一个大的连续地址空间中分配的，因此连续地址空间可能会被耗尽。当有多个覆盖或者删除操作时，会产生很多无效的tLBA，因此需要回收无效的tLBA并创建一个大的连续空间，具体的解决办法如下：</p>
+<ul>
+<li><strong>寻找有效的tLBA</strong>：清理操作首先从重映射表的末尾开始，寻找关联了有效数据的tLBA，这些tLBA上的数据依然是有效的，不应该被删除。</li>
+<li><strong>寻找无效的tLBA</strong>：从重映射表的起始位置开始查找那些已经通过覆盖或删除操作无效化的tLBA。这些无效的tLBA由于其处于重映射表的中间，阻断了有效数据形成的连续地址空间，形成了不连续的”空洞”。</li>
+<li><strong>数据迁移</strong>：在找到有效和无效的tLBA后，清理操作会将关联了有效数据的tLBA上的数据移动到无效化的tLBA上，填补之前无效的tLBA形成的不连续空洞。这样，原本位于无效tLBA后的有效数据可以被迁移到重映射表的前面，逐步消除不连续的块。&#x3D;&#x3D;在进行迁移之后，重映射表会进行相应的更新，把修改后的tLBA的映射关系进行调整，确保数据一致性。&#x3D;</li>
+</ul>
+<p>&#x3D;&#x3D;这个数据迁移的过程会重复进行，直到重映射表中不再有不连续的无效tLBA空洞。清理操作最终会将所有的无效tLBA重新填充为有效数据关联的tLBA。当所有无效tLBA被填充后，清理操作在重映射表的末尾创建了一个大的连续的tLBA空间，这个连续的tLBA空间可以用于新的写请求，从而确保写操作时可以使用顺序的tLBA。&#x3D;</p>
+<p>清理操作流程示例：</p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/17077495852ce72bea3df99683c5819.png" class="" title="清理操作流程示例">
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>对于SSD存储介质，顺序存储的IOPS优于随机存储，根据此特性，将随机请求<strong>重映射</strong>为顺序请求可以提升系统的IOPS。论文通过使用重映射表来管理映射前后的逻辑地址，并解决了此项设计可能会引发的三个问题：</p>
+<ol>
+<li><strong>映射前后的逻辑地址之间怎么关联？两者之间的查找过程怎么更快速？</strong> —— 使用重映射表并采用红&#x2F;黑树结构；</li>
+<li><strong>当需要更新&#x2F;删除某个信息时，映射表是怎么工作的？如何优化写操作产生的”空间碎片”？</strong> —— 通过赋予新的tLBA，且将最新的tLBA移动到”空间碎片”中；</li>
+<li><strong>怎么保证系统故障&#x2F;崩溃后的数据一致性？</strong> —— 通过引入重映射文件以及写前日志。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>SSD</tag>
+        <tag>分布式存储</tag>
+        <tag>Lustre</tag>
+        <tag>F2FS</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>论文阅读：重构分布式块存储系统以提升随机写性能</title>
     <url>/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/</url>
     <content><![CDATA[<h1 id="论文阅读：重构分布式块存储系统以提升随机写性能"><a href="#论文阅读：重构分布式块存储系统以提升随机写性能" class="headerlink" title="论文阅读：重构分布式块存储系统以提升随机写性能"></a>论文阅读：重构分布式块存储系统以提升随机写性能</h1><blockquote>
@@ -863,237 +1212,9 @@
       </categories>
       <tags>
         <tag>分布式存储</tag>
+        <tag>Ceph</tag>
         <tag>NVMe</tag>
-        <tag>Ceph</tag>
         <tag>块存储</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>论文阅读：理解Ceph对象存储中存储后端的写入行为</title>
-    <url>/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/</url>
-    <content><![CDATA[<h1 id="论文阅读：理解Ceph对象存储中存储后端的写入行为"><a href="#论文阅读：理解Ceph对象存储中存储后端的写入行为" class="headerlink" title="论文阅读：理解Ceph对象存储中存储后端的写入行为"></a>论文阅读：理解Ceph对象存储中存储后端的写入行为</h1><blockquote>
-<p>论文：<em>Understanding Write Behaviors of Storage Backends in Ceph Object Store</em></p>
-</blockquote>
-<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>论文作者对Ceph提供的三种存储后端（FileStore、KStore和BlueStore）通过微基准测试与长期工作负载的综合分析进行了测试，主要聚焦于WAF（写放大系数）。</p>
-<p>核心发现：&#x3D;&#x3D;不管是哪种存储后端，WAF都大于13&#x3D;&#x3D;。其中BlueStore的综合性能最稳定，FileStore在SSD上的表现最好，BlueStore在HDD上表现不错。</p>
-<p>这三种存储后端的写放大的来源如下：</p>
-<p><strong>FileStore</strong>：需要先将数据写入独立的journal（日志设备），然后再写入主存储区。这本应是”双写（double write）”，即写流量为2倍，但实验发现实际是<strong>3倍</strong>。因为文件系统本身也有自己的日志系统，即数据流程变成：<strong>数据 → Ceph journal → 文件系统 → 文件系统 journal → 真正写入位置</strong>。&#x3D;&#x3D;结果导致：<strong>文件系统的元数据+日志流量 ≈ 原始数据量大小</strong>，写放大更严重。&#x3D;&#x3D;</p>
-<p><strong>KStore</strong>：KStore采用RocksDB存储元数据。由于RocksDB的LSM-tree结构，后台会进行大量compaction。实验发现：&#x3D;&#x3D;几乎所有写流量都来自compaction，而不是用户写入的数据。&#x3D;&#x3D;</p>
-<p><strong>BlueStore</strong>：数据直接写入裸设备，不经过文件系统，因此它<strong>避免了FileStore的journaling of journal问题</strong>。但是它的写放大依旧存在，主要来源是”Ceph仍使用RocksDB存储元数据和对象属性”，这些RocksDB写流量的大小<strong>超过真实数据写入量的3倍</strong>。简而言之：<strong>BlueStore解决了日志嵌套的问题，但RocksDB的元数据写放大仍然很严重。</strong></p>
-<h2 id="Background"><a href="#Background" class="headerlink" title="Background"></a>Background</h2><h3 id="Ceph的三种存储接口"><a href="#Ceph的三种存储接口" class="headerlink" title="Ceph的三种存储接口"></a>Ceph的三种存储接口</h3><table>
-<thead>
-<tr>
-<th>存储类型</th>
-<th>描述</th>
-<th>举例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>对象存储（Object Storage）</td>
-<td>类似 Amazon S3、Swift，存储对象（Object）</td>
-<td>Ceph Object Storage（RADOS Gateway）</td>
-</tr>
-<tr>
-<td>块存储（Block Storage）</td>
-<td>给虚拟机或系统提供块设备</td>
-<td>Ceph RBD（RADOS Block Device）</td>
-</tr>
-<tr>
-<td>文件系统（File System）</td>
-<td>类似分布式文件系统</td>
-<td>CephFS</td>
-</tr>
-</tbody></table>
-<p>虽然提供三种不同形态的服务，但<strong>它们的底层都是建立在同一个统一核心：&#x3D;&#x3D;RADOS&#x3D;&#x3D;（Reliable Autonomic Distributed Object Store）之上</strong>。RADOS层运行着Ceph内部的关键组件：</p>
-<table>
-<thead>
-<tr>
-<th>名称</th>
-<th>全称</th>
-<th>是否是守护进程（Daemon）</th>
-<th>是否运行在 RADOS 层？</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong>MON</strong></td>
-<td>Monitor</td>
-<td>✅ 是</td>
-<td>✅ 是</td>
-<td>保存并管理集群状态（如 OSD 列表、集群地图），负责一致性和选举</td>
-</tr>
-<tr>
-<td><strong>MDS</strong></td>
-<td>Metadata Server</td>
-<td>✅ 是</td>
-<td>✅ 是（但只用于 CephFS 文件系统）</td>
-<td>管理文件系统的目录、权限和名称等元数据</td>
-</tr>
-<tr>
-<td><strong>OSD</strong></td>
-<td>Object Storage Daemon</td>
-<td>✅ 是</td>
-<td>✅ 是</td>
-<td>存储数据对象、处理读写请求、执行数据复制和恢复</td>
-</tr>
-</tbody></table>
-<h3 id="Ceph与传统分布式存储的区别"><a href="#Ceph与传统分布式存储的区别" class="headerlink" title="Ceph与传统分布式存储的区别"></a>Ceph与传统分布式存储的区别</h3><ol>
-<li>客户端可以<strong>直接联系负责该数据的主OSD节点（primary OSD）</strong>，无需中间服务器；</li>
-<li>不需要固定的元数据服务器来告诉客户端”数据在哪里”；</li>
-<li>数据的位置是通过<strong>CRUSH算法</strong>算出来的，而不是查表得到。</li>
-</ol>
-<h3 id="BlueStore的定位"><a href="#BlueStore的定位" class="headerlink" title="BlueStore的定位"></a>BlueStore的定位</h3><p>BlueStore是Ceph的另一种存储后端，其核心理念在于高效管理对象数据，突破FileStore的局限性。FileStore存在的问题之一是外部日志记录导致的双重写入开销。BlueStore则直接将对象数据存储于原始块设备，同时使用RocksDB管理元数据。由于跳过了本地文件系统层，可规避日志记录等文件系统开销。</p>
-<p>需注意的是，由于运行RocksDB仍需文件系统支持，BlueStore内部集成了名为BlueFS的轻量级用户级文件系统。此外，Ceph通常需处理大量对象，且常需按顺序枚举所有对象以进行一致性检查和恢复，然而POSIX并未提供从多个目录高效检索对象的方法。使用RocksDB的另一优势在于，Ceph能够轻松检索并枚举系统中存储的所有对象。</p>
-<h2 id="微基准测试结果"><a href="#微基准测试结果" class="headerlink" title="微基准测试结果"></a>微基准测试结果</h2><h3 id="FileStore"><a href="#FileStore" class="headerlink" title="FileStore"></a>FileStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/d995d2090d5b758453b8043d301818f9.png" class="" title="FileStore微基准测试结果">
-
-<p>4KB写入在Ceph内部的路径为：</p>
-<p><strong>(1) 客户端定位数据应该写到哪个OSD</strong></p>
-<p>客户端通过CRUSH算法在O(1)时间内计算出负责该对象的<strong>主OSD</strong>，然后将写请求发送给主OSD。</p>
-<p><strong>(2) 写副本</strong></p>
-<p>主OSD将写请求转发给另外两个OSD（即副本#2和副本#3）。因为副本机制（replication factor &#x3D; 3），这一步本身就会<strong>产生3倍流量</strong>。</p>
-<p><strong>(3) 在每个OSD内部，数据会被打包成一个”事务”</strong></p>
-<table>
-<thead>
-<tr>
-<th>内容</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>对象数据（object data）</td>
-<td>你写入的 4KB 数据</td>
-</tr>
-<tr>
-<td>对象元数据（object metadata）</td>
-<td>比如对象大小、时间戳、offset 等</td>
-</tr>
-<tr>
-<td>LevelDB（或 RocksDB）键值对</td>
-<td>存储对象索引与属性，用来快速定位和管理对象</td>
-</tr>
-</tbody></table>
-<p><strong>(4) FileStore接收到这个事务后，会做两件事（双写来源）：</strong></p>
-<ol>
-<li><p><strong>先写Ceph Journal（预写日志，Write-Ahead Logging）</strong>：保护事务的原子性（可崩溃恢复），这是第一部分写放大来源；</p>
-</li>
-<li><p><strong>再把这份事务写入XFS（真实数据 + LevelDB数据 + 文件系统元数据）</strong>：</p>
-<ul>
-<li>真实文件写入 &#x3D; object data；</li>
-<li>LevelDB的写放大（LSM-tree会产生compaction）；</li>
-<li>XFS文件系统写元数据 + XFS Journaling。</li>
-</ul>
-<p>这是第二次写放大，导致”journal of journal（日志的日志）”问题。</p>
-</li>
-</ol>
-<p>所以4KB写入的WAF因子很大且有波动性，但是随着写入请求大小的增大，直至4MB时，WAF收敛至6，因为相对于请求大小，对象元数据、键值对、文件系统元数据和文件系统日志的占比会相对缩小。</p>
-<h3 id="BlueStore"><a href="#BlueStore" class="headerlink" title="BlueStore"></a>BlueStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/f9c30590713a818b6c4c260315e01a59.png" class="" title="BlueStore微基准测试结果">
-
-<p>可以发现第3次写（3rd Write）的WAF很高，论文解释原因为：BlueStore按<strong>最小分配粒度 &#x3D; 64KB Chunk</strong>来管理数据。当写入请求落在某个Chunk中间、且打破了它的连续性时，BlueStore必须做：&#x3D;&#x3D;把当前64KB Chunk中未写满的部分用<strong>零填充（zero padding）</strong>，然后整个64KB写入磁盘。&#x3D;&#x3D;</p>
-<blockquote>
-<p>笔者注：在Ceph官网实际调研后发现，现在BlueStore默认的最小分配粒度已经是4KB了，也就是说这里补0带来的WAF应该已经没有了。总体上BlueStore效果更好，因为没有了日志双写问题。</p>
-</blockquote>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这篇论文的价值在于系统性地量化了Ceph三种存储后端的写放大来源：</p>
-<table>
-<thead>
-<tr>
-<th>后端</th>
-<th>主要写放大来源</th>
-<th>关键问题</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>FileStore</td>
-<td>Journal双写 + 文件系统日志（journal of journal）</td>
-<td>双写实际为3倍而非2倍</td>
-</tr>
-<tr>
-<td>KStore</td>
-<td>RocksDB的LSM-tree compaction</td>
-<td>写流量几乎全来自compaction</td>
-</tr>
-<tr>
-<td>BlueStore</td>
-<td>RocksDB元数据写流量（超过真实数据3倍）</td>
-<td>解决了日志嵌套但元数据放大仍在</td>
-</tr>
-</tbody></table>
-<p>结论指向一个明确的方向：<strong>分布式存储系统的后端如果想进一步降低写放大，要么换掉LSM-tree的元数据方案，要么优化元数据的落盘路径</strong>——这也与后续一系列针对RocksDB&#x2F;BlueStore的优化工作（如MatrixKV、就地更新方案等）相呼应。</p>
-]]></content>
-      <categories>
-        <category>论文阅读</category>
-      </categories>
-      <tags>
-        <tag>分布式存储</tag>
-        <tag>Ceph</tag>
-        <tag>BlueStore</tag>
-        <tag>写放大</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</title>
-    <url>/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/</url>
-    <content><![CDATA[<h1 id="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能"><a href="#论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能" class="headerlink" title="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能"></a>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能</h1><blockquote>
-<p>论文：<em>Improving I&#x2F;O performance in distributed file systems for flash-based SSDs by access pattern reshaping</em></p>
-</blockquote>
-<p>这篇文章的核心思想是：<strong>通过将分布式文件系统（Lustre）中写请求的地址进行重塑，把SSD上的随机写重构为顺序写，来减少写放大效应、提高写入性能</strong>。在展开方案之前，先补充两个背景知识：F2FS文件系统和Lustre文件系统。</p>
-<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><h3 id="F2FS文件系统（Flash-Friendly-File-System）"><a href="#F2FS文件系统（Flash-Friendly-File-System）" class="headerlink" title="F2FS文件系统（Flash Friendly File System）"></a>F2FS文件系统（Flash Friendly File System）</h3><p>F2FS可以极大程度上避免碎片产生。相对于传统日志型文件系统，F2FS在<strong>wandering tree</strong>和<strong>GC</strong>方面有一定的优化，可以复用离散的数据页写入数据，显著减少GC带来的卡顿。</p>
-<p><strong>wandering tree</strong>：在文件更新时，指向文件的Direct Pointer（直接指针）由于数据异地更新，也会随之更新；同时指向这个Direct Pointer的Indirect Pointer（间接指针）也会更新，然后保存这个Indirect Pointer的inode（存储文件元数据的结构体）、inode block map（记录块分配情况的表）等结构也需要更新，这样会导致频繁的metadata更新。</p>
-<h3 id="Lustre文件系统"><a href="#Lustre文件系统" class="headerlink" title="Lustre文件系统"></a>Lustre文件系统</h3><img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/1553ffc55c4f184bfbbf8499a14ebd8.png" class="" title="Lustre文件系统总体结构">
-
-<p>上图为Lustre文件系统的总体结构，主要由客户端、元数据服务器、元数据目标、对象存储服务器和对象存储目标组成：</p>
-<p><strong>客户端（Client）</strong>：是Lustre文件系统的用户接口，负责向元数据服务器（MDS）和对象存储服务器（OSS）发送文件系统请求。&#x3D;&#x3D;客户端能将用户的I&#x2F;O请求转发到合适的服务器，并从服务器接收数据。&#x3D;</p>
-<p><strong>元数据服务器（MDS）</strong>：负责管理文件系统的元数据，包括文件名、目录结构、文件权限、文件大小、文件所在的对象存储目标（OST）等信息。&#x3D;&#x3D;当客户端发出文件操作请求时，MDS会查询并返回相关的元数据信息，使客户端知道应该从哪个OST获取文件数据。&#x3D;</p>
-<p><strong>元数据目标（MDT）</strong>：MDT是存储在MDS上的物理存储设备，用于存储文件系统的元数据。&#x3D;&#x3D;MDT是元数据的实际存储位置，负责保存和检索文件系统的元数据内容。多个MDT可以分担元数据的存储负载，从而提高元数据访问的并行度和整体性能。&#x3D;</p>
-<p><strong>对象存储服务器（OSS）</strong>：OSS负责管理实际的文件数据存储，接收来自客户端的文件I&#x2F;O请求，并将数据存储到对应的对象存储目标（OST）上。&#x3D;&#x3D;OSS通过网络将数据分布在多个OST上，实现并行I&#x2F;O操作。&#x3D;</p>
-<p><strong>对象存储目标（OST）</strong>：OST是Lustre文件系统中存储实际文件数据的物理存储设备。&#x3D;&#x3D;OST负责实际的文件数据存储，是Lustre文件系统数据存储的基本单元，数据在OST之间分布存储。&#x3D;</p>
-<p><strong>写操作流程</strong></p>
-<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/14445f1774cd168570b56e54fd656a5.png" class="" title="Lustre写操作流程">
-
-<p>当客户端想要写入文件时，首先会向元数据服务器（MDS）发起文件打开请求。MDS处理文件打开操作，检查文件是否存在并将文件的元数据返回给客户端。元数据中包含文件的访问权限（如读写权限）和数据存放的位置（即存储服务器OSS）。客户端验证了文件的权限，并且通过元数据知道了存储该文件数据的OSS的具体位置。客户端接下来会向指定的OSS发起写请求。为了处理客户端的写请求，OSS需要为每个写请求分配一个新的bio结构体，在bio结构体中会记录客户端写请求的地址。接着，写操作请求的页（page，表示要写入的数据）也会添加到这个bio结构体中。设置好bio结构体后，OSS会将该结构体提交给底层存储系统，最终数据通过存储目标OST写入存储设备。</p>
-<h2 id="访问模式重塑方案的总体架构"><a href="#访问模式重塑方案的总体架构" class="headerlink" title="访问模式重塑方案的总体架构"></a>访问模式重塑方案的总体架构</h2><h3 id="1-地址重塑操作（Address-Reshaping-Operation）"><a href="#1-地址重塑操作（Address-Reshaping-Operation）" class="headerlink" title="1. 地址重塑操作（Address Reshaping Operation）"></a>1. 地址重塑操作（Address Reshaping Operation）</h3><p>当客户端发送请求时，根据MDS找到存储数据的OSS，然后将请求送达OSS进行处理。当OSS收到请求后，检查收到的请求是读请求还是写请求：</p>
-<ul>
-<li>如果是<strong>写请求</strong>，则将请求的逻辑块地址（LBA）转化为顺序的逻辑块地址。具体来说，它将原始逻辑块地址（oLBA）重塑为顺序的逻辑块地址（tLBA），然后通过重映射表将oLBA和tLBA的对应关系保存。当oLBA和tLBA对被插入重映射表后，写请求通过<code>submit_bio()</code>函数提交到块层（block layer）。在块层中，默认的请求合并算法会将顺序的LBA请求合并成一个大的请求。&#x3D;&#x3D;这种方案可以将随机写请求重塑为顺序写请求，而且可以通过块层将现有的请求合并以减少请求的数量。&#x3D;</li>
-</ul>
-<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/82239abc8b882cee6f1e03baa0e2333.png" class="" title="地址重塑操作总体结构">
-
-<p>对于<strong>读和覆盖请求</strong>，则需要在重映射表（Remapping Table）中查找现有的oLBA和tLBA对：</p>
-<ul>
-<li>对于<strong>覆盖请求</strong>，首先在重映射表中查找原始逻辑块地址（oLBA）和已重塑的逻辑块地址（tLBA）对。覆盖请求意味着需要更新存储在原tLBA位置的数据。为了确保写入操作是顺序的，系统会为这个oLBA分配一个新的顺序逻辑块地址（tLBA），这个新tLBA将用于存储更新后的数据。这部分无效数据会通过后续的清理操作来处理和回收空间。</li>
-<li>对于<strong>读请求</strong>，由于oLBA已经被重塑为tLBA，所以在获取某个数据时需要根据重映射表，将对应的tLBA找到，再将数据获取。</li>
-</ul>
-<h3 id="2-管理重映射表（Managing-Remapping-Table）"><a href="#2-管理重映射表（Managing-Remapping-Table）" class="headerlink" title="2. 管理重映射表（Managing Remapping Table）"></a>2. 管理重映射表（Managing Remapping Table）</h3><p>在重映射表中记录了oLBA到tLBA的映射关系，主要的作用就是在读取和覆盖操作时为oLBA查找相应的tLBA。对于一个表来说，搜索时间和清理节点时间和表的大小成正比，因此采用多个重映射表而不是单个大的重映射表是必要的选择。多个重映射表的划分范围可以根据磁盘而定：&#x3D;&#x3D;将大型磁盘布局划分为多个小节，为每个小节创建对应的重映射表，这些映射表管理它们自己的逻辑块地址&#x3D;&#x3D;，这样可以减少重映射表中的条目，还可以在进行清理操作时隔离重映射表（一个子节中进行清理操作时，其他的子节还可以处理I&#x2F;O请求）。论文中使用红&#x2F;黑树实现重映射表，因为红&#x2F;黑树有较快的搜索时间。</p>
-<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/dfbbaa83c350c90030cd44440695d9d.png" class="" title="多个重表示意图">
-
-<p>在上图中，存在两个重映射表（T1和T2），表1负责tLBA1—tLBA90，表2负责tLBA91—tLBA180。在这个例子中，表1已经充满了之前的请求，其中通过表1管理的最后一个tLBA90和oLBA99配对。在表2中现有3个请求（91–93），最近的一个是tLBA93（和oLBA31配对），以及空闲的（tLBA94—tLBA180），这些还未被使用，因此可以处理即将到来的请求。当发出新的请求时（oLBA45和oLBA32），它们被插入到表2（tLBA94和tLBA95中），而不访问表1。</p>
-<h3 id="3-支持崩溃一致性（Supporting-Crash-Consistency）"><a href="#3-支持崩溃一致性（Supporting-Crash-Consistency）" class="headerlink" title="3. 支持崩溃一致性（Supporting Crash Consistency）"></a>3. 支持崩溃一致性（Supporting Crash Consistency）</h3><p>通过写前日志（WAL，在真正修改之前先将相关的日志记录写入稳定存储）的策略来实现崩溃一致性（这里的崩溃一致性指的是重映射表的崩溃一致性）。当请求到达OSS时，首先使用<code>submit_bio()</code>函数将数据写入存储设备OST，在写入完成之后，&#x3D;&#x3D;系统开始为重映射表的更新操作启动一个事务，通过在重映射表文件中写入”Begin Tx”来表示事务的开始。接着，系统将重映射表中需要更新的（oLBA，tLBA）对逐个写入到重映射表文件中，这些对记录了地址重塑后的逻辑块地址。当所有重映射对都写入完成后，系统在重映射表文件中写入”Commit Tx”以表示事务的提交，这一步表示事务已经完成、可以被认为是成功的。&#x3D;&#x3D;最后，系统将这些更新的重映射对插入到驻留在内存中的重映射表中，以便未来的读写请求能够正确地处理。</p>
-<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/724e3d3010af50fc17f7d6d6a73c968.png" class="" title="崩溃一致性WAL流程">
-
-<p>系统通过重映射文件来作为判断重映射表是否完整的基准。当系统发生崩溃时，可能会有如下的情况：(1)在调用<code>submit_bio()</code>函数时发生崩溃；(2)在往重映射表中写入映射信息时崩溃。针对上述的两种情况，系统无法确定数据的有效性或事务的完整性，因此无法构建重映射表。&#x3D;&#x3D;只有当重映射文件中写入了数据且”Commit Tx”记录存在时，才可以确认事务是完整的&#x3D;&#x3D;，此时可以安全地从文件中读取重映射信息，并将其重新加载到内存中的重映射表。</p>
-<h3 id="4-清理操作（Cleaning-Operation）"><a href="#4-清理操作（Cleaning-Operation）" class="headerlink" title="4. 清理操作（Cleaning Operation）"></a>4. 清理操作（Cleaning Operation）</h3><p>由于tLBA是从一个大的连续地址空间中分配的，因此连续地址空间可能会被耗尽。当有多个覆盖或者删除操作时，会产生很多无效的tLBA，因此需要回收无效的tLBA并创建一个大的连续空间，具体的解决办法如下：</p>
-<ul>
-<li><strong>寻找有效的tLBA</strong>：清理操作首先从重映射表的末尾开始，寻找关联了有效数据的tLBA，这些tLBA上的数据依然是有效的，不应该被删除。</li>
-<li><strong>寻找无效的tLBA</strong>：从重映射表的起始位置开始查找那些已经通过覆盖或删除操作无效化的tLBA。这些无效的tLBA由于其处于重映射表的中间，阻断了有效数据形成的连续地址空间，形成了不连续的”空洞”。</li>
-<li><strong>数据迁移</strong>：在找到有效和无效的tLBA后，清理操作会将关联了有效数据的tLBA上的数据移动到无效化的tLBA上，填补之前无效的tLBA形成的不连续空洞。这样，原本位于无效tLBA后的有效数据可以被迁移到重映射表的前面，逐步消除不连续的块。&#x3D;&#x3D;在进行迁移之后，重映射表会进行相应的更新，把修改后的tLBA的映射关系进行调整，确保数据一致性。&#x3D;</li>
-</ul>
-<p>&#x3D;&#x3D;这个数据迁移的过程会重复进行，直到重映射表中不再有不连续的无效tLBA空洞。清理操作最终会将所有的无效tLBA重新填充为有效数据关联的tLBA。当所有无效tLBA被填充后，清理操作在重映射表的末尾创建了一个大的连续的tLBA空间，这个连续的tLBA空间可以用于新的写请求，从而确保写操作时可以使用顺序的tLBA。&#x3D;</p>
-<p>清理操作流程示例：</p>
-<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/17077495852ce72bea3df99683c5819.png" class="" title="清理操作流程示例">
-
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>对于SSD存储介质，顺序存储的IOPS优于随机存储，根据此特性，将随机请求<strong>重映射</strong>为顺序请求可以提升系统的IOPS。论文通过使用重映射表来管理映射前后的逻辑地址，并解决了此项设计可能会引发的三个问题：</p>
-<ol>
-<li><strong>映射前后的逻辑地址之间怎么关联？两者之间的查找过程怎么更快速？</strong> —— 使用重映射表并采用红&#x2F;黑树结构；</li>
-<li><strong>当需要更新&#x2F;删除某个信息时，映射表是怎么工作的？如何优化写操作产生的”空间碎片”？</strong> —— 通过赋予新的tLBA，且将最新的tLBA移动到”空间碎片”中；</li>
-<li><strong>怎么保证系统故障&#x2F;崩溃后的数据一致性？</strong> —— 通过引入重映射文件以及写前日志。</li>
-</ol>
-]]></content>
-      <categories>
-        <category>论文阅读</category>
-      </categories>
-      <tags>
-        <tag>SSD</tag>
-        <tag>分布式存储</tag>
-        <tag>Lustre</tag>
-        <tag>F2FS</tag>
       </tags>
   </entry>
   <entry>
