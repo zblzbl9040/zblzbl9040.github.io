@@ -1,6 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>SSD的内部结构</title>
+    <url>/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/</url>
+    <content><![CDATA[<h1 id="SSD的内部结构"><a href="#SSD的内部结构" class="headerlink" title="SSD的内部结构"></a>SSD的内部结构</h1><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/dcbba826b52f1170afb42c3c99eb39a.jpg" class="" title="SSD结构图">
+
+<p>SSD主要由控制单元(SSD控制器、主机接口、DRAM等)和存储单元(主要是NAND FLASH闪存颗粒)构成。数据通过接口进入主控，经主控中转调配后存储到各个闪存颗粒中。</p>
+<h2 id="三大组成部分"><a href="#三大组成部分" class="headerlink" title="三大组成部分"></a>三大组成部分</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/feef6f6e8f6043f9b24b61dc895cecb8.png" class="" title="SSD三大组成部分">
+
+<p>主要有三大部分组成：与Host对接的界面(Host interface), 闪存转换层FTL以及闪存对接界面(Flash interface)。</p>
+<p><strong>Host interface</strong>采用的协议包括：</p>
+<ul>
+<li>SATA</li>
+<li>PCIe&#x2F;NVMe SSD协议</li>
+</ul>
+<p><strong>闪存转换层FTL</strong>是主控的核心部分，主要实现：</p>
+<ul>
+<li>磨损平衡（Wear-leveling）</li>
+<li>垃圾数据回收（Garbage Collection）</li>
+<li>坏块管理（Bad Block Management）</li>
+<li>数据纠错处理（ECC, Error Correction Code）</li>
+</ul>
+<p><strong>Flash interface</strong>包括了SSD主控的flash controller，用来控制主控与NAND闪存之间的数据传输。</p>
+<p>NAND闪存是数据归属地，NAND颗粒的存在，赋予了SSD储存数据的使命。为了提高存储的性能，主控会通过不同的通道（Channel）操作NAND闪存。</p>
+<h2 id="NAND-flash在分布式存储中的应用"><a href="#NAND-flash在分布式存储中的应用" class="headerlink" title="NAND flash在分布式存储中的应用"></a>NAND flash在分布式存储中的应用</h2><ul>
+<li><strong>高性能缓存</strong>：用作读写缓存</li>
+<li><strong>元数据存储</strong>：用作存储系统元数据</li>
+<li><strong>日志存储</strong>：存储事务日志、大量的日志信息</li>
+<li><strong>全闪存阵列</strong>：使用全NAND闪存的存储阵列</li>
+<li><strong>混合存储系统</strong>：使用NAND存储热数据，HDD存储冷数据</li>
+<li><strong>大数据处理</strong>：NAND闪存加速数据读写，提升数据处理效率</li>
+<li><strong>分布式文件系统</strong>：使用NAND闪存提升MDS的性能</li>
+</ul>
+<h2 id="主流研究方向"><a href="#主流研究方向" class="headerlink" title="主流研究方向"></a>主流研究方向</h2><h3 id="1-性能优化"><a href="#1-性能优化" class="headerlink" title="(1) 性能优化"></a>(1) 性能优化</h3><p>全SSD用做分布式存储系统中的存储介质，应该在系统层面怎么优化能够使SSD的性能发挥到最大？</p>
+<p><strong>系统(软件)层面的开销会影响硬件层面的开销</strong>，因此需要在系统层面针对SSD的特性进行优化，使得SSD的性能尽可能的发挥最大。</p>
+<p>主要优化方式就4种：</p>
+<ol>
+<li>将随机写改成顺序写 √</li>
+<li>增大并行任务量</li>
+<li>多个事务合并成一个事务进行处理 √</li>
+<li>冷热数据分离 √</li>
+</ol>
+<h3 id="2-故障处理"><a href="#2-故障处理" class="headerlink" title="(2) 故障处理"></a>(2) 故障处理</h3><p>使用SSD用作分布式存储的存储介质时，固态硬盘出现故障应该怎么解决？(预测or优化使故障率降低)</p>
+<p><strong>优化设备层</strong>，降低硬盘故障率。</p>
+<h2 id="NAND颗粒的内部结构"><a href="#NAND颗粒的内部结构" class="headerlink" title="NAND颗粒的内部结构"></a>NAND颗粒的内部结构</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/5744007b365f2dd103641b40530808d.png" class="" title="NAND颗粒内部结构">
+<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/ade71ef313fe861e16125198071c6bb.png" class="" title="NAND颗粒结构">
+
+<p><strong>Page</strong>是闪存存储的最小读写单元、<strong>Block</strong>是闪存存储的最小擦除单元。</p>
+<h3 id="Cell能存储数据的原理"><a href="#Cell能存储数据的原理" class="headerlink" title="Cell能存储数据的原理"></a>Cell能存储数据的原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/08cce0f065bc66b40396dc669b26db7.png" class="" title="浮栅晶体管结构">
+<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b4d43ea1609804503ff82bfc5cbe67c.png" class="" title="存储原理">
+
+<p>在存储数据时，通过施加电压，让电子穿过<strong>隧穿层</strong>达到<strong>浮栅层</strong>，根据<strong>浮栅层</strong>的电子数量来判断是’0’还是’1’。</p>
+<p>浮栅晶体管能存放多大的数据取决于对<strong>浮栅层</strong>中电子数量的粒度划分。</p>
+<p>寿命有限的原因是通过施加电压让电子反复穿过<strong>隧穿层</strong>，会破环<strong>隧穿层</strong>的结构，导致不能再有效的保持<strong>浮栅层</strong>中的电荷。</p>
+<h3 id="存储类型"><a href="#存储类型" class="headerlink" title="存储类型"></a>存储类型</h3><ul>
+<li><strong>SLC</strong>：单层单元，每个单元存储位数(1bit)，电压只有两种状态(0和1)</li>
+<li><strong>MLC</strong>：多层单元，每个单元存储位数(2bit)，电压有四种状态(00,01,10,11)</li>
+<li><strong>TLC</strong>：三层单元，每个单元存储位数(3bit)，电压有八种状态(000,001,010,011,100,101,110,111)</li>
+<li><strong>QLC</strong>：四层单元，每个单元存储位数(4bit)，电压有十六种状态(0000,0001,……,1111)</li>
+</ul>
+<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/3225ebbed6033e2a5bc71bc1cb30b57.png" class="" title="SLC&#x2F;MLC&#x2F;TLC&#x2F;QLC对比">
+
+<h2 id="写放大"><a href="#写放大" class="headerlink" title="写放大"></a>写放大</h2><p><strong>写放大</strong>：指的是在执行写入操作时，SSD硬盘发生的写入量，实际要远大于实际写入的数据量。</p>
+<p><strong>原因</strong>：NAND数据写入的方式是以页面为单位写入，但是要想删除数据却要以块为单位。</p>
+<h3 id="降低写放大的方法"><a href="#降低写放大的方法" class="headerlink" title="降低写放大的方法"></a>降低写放大的方法</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b6aaf6b4393362c87b9434bc2a0543c.png" class="" title="降低写放大的方法">
+
+<ul>
+<li>磨损均衡：将写操作均匀分布到各个块上，避免某些块过度磨损</li>
+<li>垃圾回收：及时回收无效数据，腾出空间</li>
+<li>预留空间：保留部分空间作为缓冲区</li>
+</ul>
+<h3 id="磨损均衡原理"><a href="#磨损均衡原理" class="headerlink" title="磨损均衡原理"></a>磨损均衡原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/c24b32c2668cc724120e8413202e202.png" class="" title="磨损均衡原理">
+
+<ul>
+<li><strong>动态磨损均衡</strong>：更多的使用擦除次数较少的块</li>
+<li><strong>静态磨损平衡</strong>：将冷数据迁移到磨损程度较高的块上，使磨损均匀分布。为了尽量减少块之间的磨损差异，额外的开销以迁移的形式增加。</li>
+</ul>
+<h2 id="SSD和HDD的关键区别"><a href="#SSD和HDD的关键区别" class="headerlink" title="SSD和HDD的关键区别"></a>SSD和HDD的关键区别</h2><p>除了吞吐量和延迟外，HDD会将来自主机的多个请求序列化到单个队列中，每次处理一次，而SSD可以同时处理多个请求，因为SSD将多个芯片连接到多个管道，虽然每个管道一次只能处理一个请求，但多个通道的存在允许同时访问不同的芯片。因此SSD的并发性能优势不可忽略。</p>
+]]></content>
+      <categories>
+        <category>存储</category>
+      </categories>
+      <tags>
+        <tag>SSD</tag>
+        <tag>存储系统</tag>
+        <tag>硬件</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Raft共识算法原理与实现</title>
     <url>/2026/06/15/Raft%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0/</url>
     <content><![CDATA[<h1 id="Raft共识算法原理与实现"><a href="#Raft共识算法原理与实现" class="headerlink" title="Raft共识算法原理与实现"></a>Raft共识算法原理与实现</h1><p>最近在做分布式存储项目某个模块的功能开发时，涉及到了Raft集群选举的相关知识，忽然发现自己对Raft共识算法的理解只停留在书面的八股文阶段，同时网上的大部分资料也只是讨论了Raft的设计思维，因此特意拜读了一下Raft的原文《In Search of an Understandable Consensus Algorithm》。</p>
@@ -121,93 +208,6 @@
         <tag>Raft</tag>
         <tag>分布式一致性</tag>
         <tag>共识算法</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>SSD的内部结构</title>
-    <url>/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/</url>
-    <content><![CDATA[<h1 id="SSD的内部结构"><a href="#SSD的内部结构" class="headerlink" title="SSD的内部结构"></a>SSD的内部结构</h1><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/dcbba826b52f1170afb42c3c99eb39a.jpg" class="" title="SSD结构图">
-
-<p>SSD主要由控制单元(SSD控制器、主机接口、DRAM等)和存储单元(主要是NAND FLASH闪存颗粒)构成。数据通过接口进入主控，经主控中转调配后存储到各个闪存颗粒中。</p>
-<h2 id="三大组成部分"><a href="#三大组成部分" class="headerlink" title="三大组成部分"></a>三大组成部分</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/feef6f6e8f6043f9b24b61dc895cecb8.png" class="" title="SSD三大组成部分">
-
-<p>主要有三大部分组成：与Host对接的界面(Host interface), 闪存转换层FTL以及闪存对接界面(Flash interface)。</p>
-<p><strong>Host interface</strong>采用的协议包括：</p>
-<ul>
-<li>SATA</li>
-<li>PCIe&#x2F;NVMe SSD协议</li>
-</ul>
-<p><strong>闪存转换层FTL</strong>是主控的核心部分，主要实现：</p>
-<ul>
-<li>磨损平衡（Wear-leveling）</li>
-<li>垃圾数据回收（Garbage Collection）</li>
-<li>坏块管理（Bad Block Management）</li>
-<li>数据纠错处理（ECC, Error Correction Code）</li>
-</ul>
-<p><strong>Flash interface</strong>包括了SSD主控的flash controller，用来控制主控与NAND闪存之间的数据传输。</p>
-<p>NAND闪存是数据归属地，NAND颗粒的存在，赋予了SSD储存数据的使命。为了提高存储的性能，主控会通过不同的通道（Channel）操作NAND闪存。</p>
-<h2 id="NAND-flash在分布式存储中的应用"><a href="#NAND-flash在分布式存储中的应用" class="headerlink" title="NAND flash在分布式存储中的应用"></a>NAND flash在分布式存储中的应用</h2><ul>
-<li><strong>高性能缓存</strong>：用作读写缓存</li>
-<li><strong>元数据存储</strong>：用作存储系统元数据</li>
-<li><strong>日志存储</strong>：存储事务日志、大量的日志信息</li>
-<li><strong>全闪存阵列</strong>：使用全NAND闪存的存储阵列</li>
-<li><strong>混合存储系统</strong>：使用NAND存储热数据，HDD存储冷数据</li>
-<li><strong>大数据处理</strong>：NAND闪存加速数据读写，提升数据处理效率</li>
-<li><strong>分布式文件系统</strong>：使用NAND闪存提升MDS的性能</li>
-</ul>
-<h2 id="主流研究方向"><a href="#主流研究方向" class="headerlink" title="主流研究方向"></a>主流研究方向</h2><h3 id="1-性能优化"><a href="#1-性能优化" class="headerlink" title="(1) 性能优化"></a>(1) 性能优化</h3><p>全SSD用做分布式存储系统中的存储介质，应该在系统层面怎么优化能够使SSD的性能发挥到最大？</p>
-<p><strong>系统(软件)层面的开销会影响硬件层面的开销</strong>，因此需要在系统层面针对SSD的特性进行优化，使得SSD的性能尽可能的发挥最大。</p>
-<p>主要优化方式就4种：</p>
-<ol>
-<li>将随机写改成顺序写 √</li>
-<li>增大并行任务量</li>
-<li>多个事务合并成一个事务进行处理 √</li>
-<li>冷热数据分离 √</li>
-</ol>
-<h3 id="2-故障处理"><a href="#2-故障处理" class="headerlink" title="(2) 故障处理"></a>(2) 故障处理</h3><p>使用SSD用作分布式存储的存储介质时，固态硬盘出现故障应该怎么解决？(预测or优化使故障率降低)</p>
-<p><strong>优化设备层</strong>，降低硬盘故障率。</p>
-<h2 id="NAND颗粒的内部结构"><a href="#NAND颗粒的内部结构" class="headerlink" title="NAND颗粒的内部结构"></a>NAND颗粒的内部结构</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/5744007b365f2dd103641b40530808d.png" class="" title="NAND颗粒内部结构">
-<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/ade71ef313fe861e16125198071c6bb.png" class="" title="NAND颗粒结构">
-
-<p><strong>Page</strong>是闪存存储的最小读写单元、<strong>Block</strong>是闪存存储的最小擦除单元。</p>
-<h3 id="Cell能存储数据的原理"><a href="#Cell能存储数据的原理" class="headerlink" title="Cell能存储数据的原理"></a>Cell能存储数据的原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/08cce0f065bc66b40396dc669b26db7.png" class="" title="浮栅晶体管结构">
-<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b4d43ea1609804503ff82bfc5cbe67c.png" class="" title="存储原理">
-
-<p>在存储数据时，通过施加电压，让电子穿过<strong>隧穿层</strong>达到<strong>浮栅层</strong>，根据<strong>浮栅层</strong>的电子数量来判断是’0’还是’1’。</p>
-<p>浮栅晶体管能存放多大的数据取决于对<strong>浮栅层</strong>中电子数量的粒度划分。</p>
-<p>寿命有限的原因是通过施加电压让电子反复穿过<strong>隧穿层</strong>，会破环<strong>隧穿层</strong>的结构，导致不能再有效的保持<strong>浮栅层</strong>中的电荷。</p>
-<h3 id="存储类型"><a href="#存储类型" class="headerlink" title="存储类型"></a>存储类型</h3><ul>
-<li><strong>SLC</strong>：单层单元，每个单元存储位数(1bit)，电压只有两种状态(0和1)</li>
-<li><strong>MLC</strong>：多层单元，每个单元存储位数(2bit)，电压有四种状态(00,01,10,11)</li>
-<li><strong>TLC</strong>：三层单元，每个单元存储位数(3bit)，电压有八种状态(000,001,010,011,100,101,110,111)</li>
-<li><strong>QLC</strong>：四层单元，每个单元存储位数(4bit)，电压有十六种状态(0000,0001,……,1111)</li>
-</ul>
-<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/3225ebbed6033e2a5bc71bc1cb30b57.png" class="" title="SLC&#x2F;MLC&#x2F;TLC&#x2F;QLC对比">
-
-<h2 id="写放大"><a href="#写放大" class="headerlink" title="写放大"></a>写放大</h2><p><strong>写放大</strong>：指的是在执行写入操作时，SSD硬盘发生的写入量，实际要远大于实际写入的数据量。</p>
-<p><strong>原因</strong>：NAND数据写入的方式是以页面为单位写入，但是要想删除数据却要以块为单位。</p>
-<h3 id="降低写放大的方法"><a href="#降低写放大的方法" class="headerlink" title="降低写放大的方法"></a>降低写放大的方法</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b6aaf6b4393362c87b9434bc2a0543c.png" class="" title="降低写放大的方法">
-
-<ul>
-<li>磨损均衡：将写操作均匀分布到各个块上，避免某些块过度磨损</li>
-<li>垃圾回收：及时回收无效数据，腾出空间</li>
-<li>预留空间：保留部分空间作为缓冲区</li>
-</ul>
-<h3 id="磨损均衡原理"><a href="#磨损均衡原理" class="headerlink" title="磨损均衡原理"></a>磨损均衡原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/c24b32c2668cc724120e8413202e202.png" class="" title="磨损均衡原理">
-
-<ul>
-<li><strong>动态磨损均衡</strong>：更多的使用擦除次数较少的块</li>
-<li><strong>静态磨损平衡</strong>：将冷数据迁移到磨损程度较高的块上，使磨损均匀分布。为了尽量减少块之间的磨损差异，额外的开销以迁移的形式增加。</li>
-</ul>
-<h2 id="SSD和HDD的关键区别"><a href="#SSD和HDD的关键区别" class="headerlink" title="SSD和HDD的关键区别"></a>SSD和HDD的关键区别</h2><p>除了吞吐量和延迟外，HDD会将来自主机的多个请求序列化到单个队列中，每次处理一次，而SSD可以同时处理多个请求，因为SSD将多个芯片连接到多个管道，虽然每个管道一次只能处理一个请求，但多个通道的存在允许同时访问不同的芯片。因此SSD的并发性能优势不可忽略。</p>
-]]></content>
-      <categories>
-        <category>存储</category>
-      </categories>
-      <tags>
-        <tag>SSD</tag>
-        <tag>存储系统</tag>
-        <tag>硬件</tag>
       </tags>
   </entry>
   <entry>
@@ -395,124 +395,171 @@
       </tags>
   </entry>
   <entry>
-    <title>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</title>
-    <url>/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/</url>
-    <content><![CDATA[<h1 id="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"><a href="#论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案" class="headerlink" title="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"></a>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</h1><blockquote>
-<p>论文：<em>InPlaceKV: In-place Update Scheme for SSD-based KV Storage Systems under Update-intensive Workloads</em></p>
+    <title>论文阅读：CARP——面向流数据的范围查询优化索引</title>
+    <url>/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/</url>
+    <content><![CDATA[<h1 id="论文阅读：CARP——面向流数据的范围查询优化索引"><a href="#论文阅读：CARP——面向流数据的范围查询优化索引" class="headerlink" title="论文阅读：CARP——面向流数据的范围查询优化索引"></a>论文阅读：CARP——面向流数据的范围查询优化索引</h1><blockquote>
+<p>论文：<em>CARP: Range Query-Optimized Indexing for Streaming Data</em></p>
 </blockquote>
-<h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>传统的KV存储的写入方式是以追加写的形式写入，而不是采用就地更新的方式来写入键值对。这样的设计是因为在HDD上，顺序访问的性能远远优于随机访问，因此使用顺序写入可以获得更好的吞吐量。<strong>但是由于使用追加写的方式写入键值对，数据会不断地积累，导致需要压缩（对于LSM-tree）或者垃圾回收（对于KV分离方案）。</strong></p>
-<p>论文作者发现，在SSD上，<strong>顺序访问和随机访问的性能差距会随着请求大小的增加而缩小</strong>，也就是说，对于足够大的I&#x2F;O请求，SSD的顺序写和随机写的性能相差不大。因此提出了InPlaceKV：&#x3D;&#x3D;InPlaceKV是基于SSD构建的，它采用就地大型更新方案和热度感知方法进行KV对的更新&#x3D;&#x3D;，而不是使用传统的LSM树的追加方式，这有助于减少因为压缩或GC引发的额外开销。</p>
-<h2 id="LSM-tree结构的优化方向"><a href="#LSM-tree结构的优化方向" class="headerlink" title="LSM-tree结构的优化方向"></a>LSM-tree结构的优化方向</h2><h3 id="1-放宽LSM-tree的全局有序性"><a href="#1-放宽LSM-tree的全局有序性" class="headerlink" title="(1) 放宽LSM-tree的全局有序性"></a>(1) 放宽LSM-tree的全局有序性</h3><p>如PebblesDB、Dostoevsky等。其中：</p>
-<ul>
-<li><strong>PebblesDB</strong>：主要引入了类似跳表的想法，为L1层及以上的层级引入Guard，这样就将同一层划分成了不同的范围，在处理压缩时只会在相同Guard范围内执行，即减少了每次压缩合并时需要遍历的SSTable数量，从而降低开销；</li>
-<li><strong>Dostoevsky</strong>：能够根据工作负载动态调整合并策略的键值存储系统。</li>
-</ul>
-<h3 id="2-KV分离"><a href="#2-KV分离" class="headerlink" title="(2) KV分离"></a>(2) KV分离</h3><p>如WiscKey、DiffKV、HashKV、FenceKV等。KV分离的核心思想是：<code>Key</code>依然存储在LSM树中，但Value存储在单独的<strong>日志结构（Log）</strong>中。在compaction过程中，LSM树只需要处理<code>Key</code>和指向<code>Value</code>的指针，而不需要反复移动<code>Value</code>，通过这种方式来减少写放大。但是这又引出了新的问题→<strong>垃圾回收（GC）</strong>：过期的<code>Value</code>需要通过GC来清理，造成了额外的开销。</p>
-<p>本文提出的InPlaceKV&#x3D;&#x3D;具有热感知就地更新功能，可覆盖无效数据&#x3D;&#x3D;，<strong>且采用了原位更新的日志结构</strong>，而不是LSM树结构，从而消除了压缩造成的写放大，提高了系统吞吐量。</p>
-<h2 id="SSD随机写性能的启发"><a href="#SSD随机写性能的启发" class="headerlink" title="SSD随机写性能的启发"></a>SSD随机写性能的启发</h2><p>NVMe SSD性能测试如下图所示，可以得到结论：<strong>当请求大小从4KB到512KB时，顺序访问和随机访问之间的性能差距越来越小；且当请求大小大于128KB时，随机写入的IOPS与顺序写入的IOPS几乎相同。</strong></p>
-<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/d8242140da3f518fff4a776a383e536.png" class="" title="NVMe SSD性能测试">
-
-<p>作者由此提出疑问：对于KV存储系统是否还有必要采用只追加写（append-only）文件的方式？（因为追加写是为了更好地发挥HDD的性能，而当前SSD随机与顺序访问的差距随着请求大小的增加已经几乎没有特别大的差别。）</p>
-<p>本文的主要理念：<strong>利用SSD在进行&#x3D;&#x3D;大规模随机访问&#x3D;&#x3D;时表现出的高性能，来替代传统追加写策略的LSM树方法</strong>。关键问题是：&#x3D;&#x3D;(1)怎么触发大规模更新？&#x3D;&#x3D;因为LSM树的理念就是为了合并小请求，如果抛弃LSM的结构，小请求就无法合并。</p>
-<h3 id="传统方案的写放大从哪来"><a href="#传统方案的写放大从哪来" class="headerlink" title="传统方案的写放大从哪来"></a>传统方案的写放大从哪来</h3><img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741249758007.png" class="" title="LevelDB架构">
-
-<p>上图为LevelDB架构（就是传统的LSM树存储结构），而传统LSM树结构的写放大主要体现在如下过程：</p>
-<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741251264045.png" class="" title="传统LSM树的compaction开销">
-
-<p>即在进行compaction时，需要将SST1、SST2和SST3都读取到内存，丢弃旧的版本值V1、V2、V7和V9，并将最新的有效的KV对进行排序，重新生成新的SST文件。这个过程引入了12个KV对读取和8个KV对写入。</p>
-<p>而KV分离的架构会有额外的GC开销，如下图所示：</p>
-<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/abb93da458359e119a8f8749da0c899.png" class="" title="KV分离的GC开销">
-
-<p>由于KV分离，K依旧放在LSM树中进行compaction，但是由于K很小，它的开销没有传统的LSM树那么大。但是由于V是额外存储在Log中的，对于旧的V就要删除。对于VLog，它有2个指针（头和尾），新值被添加到头指针，而尾指针则告诉我们GC时需要从哪里开始释放空间。每次GC时，会从中读取几个KV对，并通过LSM树查询这些V是否有效，有效的V会被追加回VLog的头部。在上述过程中，GC操作期间需要额外读取7个KV对和写入3个KV对，即产生了额外开销。</p>
-<h2 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h2><ol>
-<li>使用追加写的KV存储（具有传统的LSM树和KV分离）分别会产生压缩和GC操作，这都会使它们的吞吐量下降，尤其是当更新的KV对数量特别大时；</li>
-<li>使用追加写是因为HDD的顺序写和随机写性能相差很多，但是对于现阶段的SSD来说，差距已经不是很明显。</li>
-</ol>
-<p>&#x3D;&#x3D;在KV存储系统中，如何充分利用固态硬盘的大随机存取性能来执行就地更新，而不是仅通过追加写入进行更新？&#x3D;&#x3D;</p>
-<h2 id="Design"><a href="#Design" class="headerlink" title="Design"></a>Design</h2><p>设计目标：</p>
+<h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>当前HPC应用会产生大量的数据，由于存储带宽的限制，如何组织、存储这些数据是一个挑战，因为<strong>存储带宽远小于计算带宽</strong>。且HPC需要周期性中断进行检查点I&#x2F;O（为了实现数据持久化以及数据一致性，大量计算产生的数据需要被存储处理），这些持久化的数据是巨大的，如果没有合适的索引或者排序机制，数据存储后查询会非常低效。</p>
+<p>现有的优化查询的方法主要有2种：</p>
 <ol>
-<li>在基于现代固态硬盘构建的KV存储系统中，<strong>使用大随机存取的就地更新来取代只写附加文件</strong>，消除因为仅追加写入造成的写&#x2F;读放大；</li>
-<li>使用适当的数据结构和工作流程来实现就地更新和大量随机存取的KV存储系统以提高性能；</li>
-<li>提升系统的鲁棒性。因为在大型就地更新单元中，原位置仍有少数KV对处于有效状态（不可能所有的KV对都是无效的），这些有效的KV对应该怎么处理？</li>
+<li><strong>排序后处理</strong>：即先写入数据，再进行排序，使查询更快，&#x3D;&#x3D;但是排序的计算开销是非常大的&#x3D;&#x3D;；</li>
+<li><strong>原位索引</strong>：在写入数据时进行索引，&#x3D;&#x3D;这种方法虽然写入效率高，但是范围查询速度慢（因为缺少数据局部性）&#x3D;&#x3D;。</li>
 </ol>
-<p>InPlaceKV的架构如下：</p>
-<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/23a4d82edafb8a4267774cae7dac7e0.png" class="" title="InPlaceKV架构">
-
-<p>通过<strong>热度感知分组</strong>来将小块合并，针对合并后的大块进行就地更新来提升性能。</p>
-<h3 id="1-数据结构"><a href="#1-数据结构" class="headerlink" title="1. 数据结构"></a>1. 数据结构</h3><p>&#x3D;&#x3D;内存缓存层&#x3D;&#x3D;中有多种结构：</p>
-<ul>
-<li>**<code>Write_MemTable</code>**：负责缓存新插入的KV对；</li>
-<li>**<code>Update_MemTable</code>**：负责缓存已存在的KV对的更新。</li>
-</ul>
-<p>两个结构的作用类似于LSM-tree的MemTable，本质上是跳表，用于高效地存储和查询KV数据。当<code>Write_MemTable</code>或<code>Update_MemTable</code>的大小达到阈值时（默认是4MB），其中的KV对会<strong>根据热度排序</strong>，然后批量刷写（flush）到SSD。这个排序过程依赖于<code>Frequency_Table</code>。</p>
-<ul>
-<li>**<code>Frequency_Table</code>**：用来记录KV访问频率，这里一个KV对的热度&#x3D;<strong>访问次数</strong>（即在MemTable中被访问的次数），用于flush之前对KV进行热度排序，然后按照热度存储到SSD。&#x3D;&#x3D;高热度KV会被存入同一个Data Block中&#x3D;&#x3D;，以优化后续in-place更新和访问效率；</li>
-<li>**<code>B-tree</code>**：在内存中维护全局有序的KV索引，记录KV在SSD上的存储地址，用于高效查询（这里是支持范围查询的）；</li>
-<li>**<code>FreeList</code>**：记录已删除或已更新KV对的旧存储地址，以便未来回收空间。</li>
-</ul>
-<p>InPlaceKV使用KVLog来存储KV对，每个KVLog由多个数据块组成。排序后的KV块会存储在数据块中，数据块的结构为<code>(ks, k, vs, v)</code>，其中ks表示Key的大小、k表示Key、vs表示Value的大小、v表示Value。</p>
-<h3 id="2-工作流程"><a href="#2-工作流程" class="headerlink" title="2. 工作流程"></a>2. 工作流程</h3><p><strong>(1) 写流程</strong></p>
-<p>在处理写入的KV对时，InPlaceKV首先检查内存中的B-tree，如果返回NULL，则说明这是新写入的KV对，则将其缓冲到<code>Write_MemTable</code>中，并在<code>Frequency_Table</code>中进行更新。如果<code>Write_MemTable</code>已满，则会合并<code>Write_MemTable</code>中的所有KV对（去重），然后根据<code>Frequency_Table</code>中记录的热度进行排序，最后以KVLog的形式刷新到SSD中。</p>
-<p><strong>(2) 更新流程</strong></p>
-<p>依旧是先检查内存中的B-tree：</p>
-<ul>
-<li>如果<strong>key存在，但是没有地址信息</strong>，说明旧版本仍然在<code>Write_MemTable</code>（还没刷到SSD），则直接把更新的KV对缓冲在<code>Write_MemTable</code>；</li>
-<li>如果<strong>Key存在，且有地址信息</strong>，说明旧版本已经被刷到SSD中，此时将更新的KV对缓冲在<code>Update_MemTable</code>中。</li>
-</ul>
-<p>&#x3D;&#x3D;当<code>Update_MemTable</code>已满时，&#x3D;&#x3D;根据如下的算法将其中的KV对刷新到SSD：</p>
-<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/f49f30820300a523557c8b63fd43df5.png" class="" title="Update_MemTable刷盘算法">
-
-<p>对于上述算法：</p>
-<p>InPlaceKV先会为所有<strong>按热度（访问频率）排序</strong>的KV对创建一个迭代器，这些KV对会被划分成多个<strong>逻辑数据块（LDB）</strong>，每个LDB都是一个可以刷入SSD的独立单位。当LDB的大小达到<code>Update_Unit</code>（比如4KB）时，会触发刷盘。此时会计算<strong>哪些更新的KV对属于同一个物理数据块（PDB）</strong>，用<code>Update_Rate</code>去衡量<strong>某个PDB里更新的KV对所占比例</strong>：</p>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Update_Rate = N(PDB-KVs) / N(KVs)</span><br></pre></td></tr></table></figure>
-
-<p>这个<code>Update_Rate</code>反映的是PDB里需要更新的KV数量：</p>
+<p>本文目标：<strong>希望在不进行额外的排序后处理的情况下，实现高效的范围查询</strong>，&#x3D;&#x3D;需要使用基于重排序的原位索引&#x3D;&#x3D;。</p>
+<p>挑战：</p>
 <ol>
-<li>当<code>Update_Rate == 1</code>时：说明这个PDB所有KV对都需要更新，<strong>直接执行原地大规模更新，无需额外数据迁移</strong>；</li>
-<li>当<code>TH（设置的阈值）&lt; Update_Rate &lt; 1</code>时：说明PDB中大部分KV需要更新。<strong>未更新的KV对迁移到<code>Write_MemTable</code>、在<code>FreeList</code>中记录这些未更新的KV对位置（因为这些位置更新后是空的，是可用的）、执行原地大规模更新</strong>；</li>
-<li>当<code>Update_Rate &lt;= TH</code>时：说明大部分数据是有效的。<strong>新建一个PDB并将数据写入</strong>，这里的新PDB可以是<strong>一个无效数据超过<code>TH</code>的PDB</strong>。</li>
+<li>想要在数据网络传输的过程中实现重排序，会增加网络端的计算负载（如何实现轻量级的数据重组织机制？低计算开销、低内存占用）；</li>
+<li>科学计算的数据分布高度倾斜且随时间变化（这意味着数据划分的方式必须是自适应的，否则会出现某些分区数据过载的情况）。</li>
 </ol>
-<p>&#x3D;&#x3D;最后，修改<code>B-tree</code>来反映数据的新位置。&#x3D;&#x3D;</p>
-<p><strong>(3) 读流程</strong></p>
+<h2 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h2><p>作者用下图表示当前的索引方法没有任何一个能够同时实现<strong>原位高效索引</strong>和<strong>高效范围查询</strong>：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/3af7641485a0caf873c4917d4da9943.png" class="" title="四种索引方法对比">
+
+<p><strong>排序索引</strong>：一种<strong>按索引键排序</strong>的数据结构，常见实现是<strong>B+树</strong>或<strong>LSM-Tree</strong>。<strong>索引和数据是分离的</strong>，索引存储的是<strong>键值和指向数据的指针</strong>，数据本身可以是<strong>无序的</strong>。</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/1741410599926.png" class="" title="排序索引">
+
+<p><strong>聚簇索引</strong>：数据存储顺序与索引顺序一致，即数据按照索引键进行物理排序。<strong>索引和数据是一起存储的</strong>，不像排序索引那样存储分离。</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/1741410729398.png" class="" title="聚簇索引">
+
+<p><strong>辅助索引</strong>：额外的索引，不改变数据存储顺序。<strong>索引存储的是键值+数据位置指针</strong>，类似排序索引，但不一定是排序的。</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/1741410794628.png" class="" title="辅助索引">
+
+<p><strong>原位索引</strong>：在数据写入存储前就完成索引分区，不需要后续的排序或索引构建，<strong>数据按照键值范围分区存储</strong>，提高范围查询性能。</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/1741410860394.png" class="" title="原位索引">
+
+<h3 id="两个真实科学计算负载的数据分布"><a href="#两个真实科学计算负载的数据分布" class="headerlink" title="两个真实科学计算负载的数据分布"></a>两个真实科学计算负载的数据分布</h3><p><strong>VPIC等离子物理模拟磁重联粒子分布图</strong>：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/2d4f222a0bf63b82b4f0d3fb2898645.png" class="" title="VPIC粒子能量分布">
+
+<p>&#x3D;&#x3D;可以得到一个信息：&#x3D;&#x3D;起初，大多数粒子的能量分布在0和1之间，随着模拟实验的进行（时间推移），能量分布的尾部越来越长、越来越重。在模拟的后半段，20%~30%的数据包含在尾部，产生了一个介于16和64之间的第二模式双峰分布。</p>
+<p><strong>Phoebus基于网格的流体力学爆炸波能量分布图</strong>：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/9e851232a39e1ff5c4c3e9474dcb829.png" class="" title="Phoebus能量分布">
+
+<p>&#x3D;&#x3D;依旧可以得到信息：&#x3D;&#x3D;能量分布存在着高度倾斜的情况。</p>
+<p>上述两个实验数据的目的都是为了说明<strong>任何静态范围分区方案都无法适应这种倾斜和动态的键分布</strong>，&#x3D;&#x3D;体现了动态的、自适应的范围分区的重要性&#x3D;&#x3D;。</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/d54f6807d01f1048c516020bffe3d1c.png" class="" title="CARP分区过程逻辑视图">
+
+<p>上图为CARP分区过程的逻辑视图：(1) CARP不影响应用程序的运行时间，它<strong>使用空闲的CPU和网络容量，以必要的速度转换数据，使存储达到饱和</strong>；(2) <strong>使用部分排序</strong>，既能保持范围查询的高性能，又避免了全局排序带来的高写入成本。</p>
+<p><strong>设计理念：</strong></p>
 <ol>
-<li>先检查内存表：检查<code>Write_MemTable</code>和<code>Update_MemTable</code>，如果找到则直接返回；</li>
-<li>检查<code>B-tree</code>：检查该KV对是否存在，以及其在存储系统中的物理地址。如果在<code>B-tree</code>中没找到该KV对，则说明该键值对不存在于存储系统中，可以直接返回查询失败；</li>
-<li>读取PDB：通过<code>B-tree</code>找到KV对的物理地址后，读取PDB并将结果返回。</li>
+<li><strong>写入性能</strong>：传统的动态分区可能需要对数据进行重分区，甚至重新分布数据，导致额外的I&#x2F;O。而CARP的策略是&#x3D;&#x3D;动态地调整分区边界，但是不移动已存入存储的数据，只需要记录新的分区边界信息，在之后的查询时根据最新边界查询数据&#x3D;&#x3D;；</li>
+<li><strong>查询性能</strong>：CARP对每个计算节点都设置一个独立的数据分区，这样查询时就可以并行处理多个分区，提高查询吞吐量；其次在数据写入时就会将小写入合并成较大的SSTables，在查询时就可以通过大块读取来提高查询时的吞吐量；</li>
+<li><strong>适应性</strong>：数据分布可能会随着时间发生变化，CARP可以自适应调整分区，避免数据倾斜（<strong>不会重排已存数据，只会动态调整分区边界</strong>）。</li>
 </ol>
-<p><strong>(4) 扫描和删除</strong></p>
-<p>对于<strong>扫描操作</strong>来说，InPlaceKV先在<code>B-tree</code>中查找符合扫描范围的叶子节点，因为<code>B-tree</code>存储了KV对（键和值）的地址信息。如果叶子节点包含键和值的地址 → 直接从SSD读取相应的KV对；如果叶子节点没有找到相关的KV对 → 说明这些KV对可能在<code>Write_MemTable</code>或<code>Update_MemTable</code>中，InPlaceKV会在<code>Write_MemTable</code>或<code>Update_MemTable</code>中查找，并返回结果。</p>
-<p>对于<strong>删除操作</strong>来说，它的本质是逻辑删除。InPlaceKV会将KV对记录到<code>FreeList</code>中，并修改<code>B-tree</code>将该KV对标记为已删除，使其不可被查询。在后续的更新操作中，该KV对的内容所占用的空间将会被覆盖。</p>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>InPlaceKV的洞察是一个”反常识”的事实：<strong>追加写是HDD时代的遗产</strong>。当SSD上大请求（&gt;128KB）的随机写与顺序写性能几乎持平时，为规避随机写而付出的compaction&#x2F;GC代价就成了纯负担。它用三个手段替代LSM树：</p>
+<h2 id="Design"><a href="#Design" class="headerlink" title="Design"></a>Design</h2><h3 id="一、数据如何到达正确的计算节点"><a href="#一、数据如何到达正确的计算节点" class="headerlink" title="一、数据如何到达正确的计算节点"></a>一、数据如何到达正确的计算节点</h3><p>CARP的通信架构如下：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/ef93825aa6618606f7c6ed9407f58bd.png" class="" title="CARP通信架构">
+
+<p>每个计算节点（Rank）上，从上到下的结构是：App I&#x2F;O → CARP → Shuffle Sender → Shuffle Receiver → KoiDB。<strong>计算节点不停地产生计算数据，这些计算数据是由App I&#x2F;O产生的，CARP在每个计算节点上都部署。当进行计算时，App I&#x2F;O产生的数据由CARP以数据流的形式拦截，然后通过Shuffle Sender进行多个计算节点之间的全对全的洗牌（shuffle），使得洗牌之后在同一个Rank上的Key有着共同的特点（方便之后的范围查询），然后Shuffle Receiver负责接收这些有相同特点的Key，每个计算节点上全对全洗牌后的数据都由KoiDB负责存储。</strong></p>
+<h3 id="二、什么时候触发重新分区"><a href="#二、什么时候触发重新分区" class="headerlink" title="二、什么时候触发重新分区"></a>二、什么时候触发重新分区</h3><p>CARP检测应用数据如何流入Shuffle Sender，来判断分区是否合理：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/d4f5d393c6785c7dcd309d9331628f3.png" class="" title="CARP监测的数据流路径">
+
+<p>三种可能情况的数据流：</p>
+<ol>
+<li>&#x3D;&#x3D;正常情况&#x3D;&#x3D;：<strong>CARP按照已分配的分区范围进行数据洗牌，所有计算节点共享相同的分区表，用于存储当前的键值范围信息。</strong>即数据被正确地路由到对应的Rank；每个Rank只接收自己负责的键值范围的数据；所有的计算节点共享一张”分区表”来记录当前的数据分区规则。此外，键值分布信息也会存储在本地，用于之后重新分区时的决策；</li>
+<li>&#x3D;&#x3D;超出边界&#x3D;&#x3D;：随着模拟的进行，会不断产生新的键值。如果某个Rank需要插入一个超出当前分区表范围的键值，它将被暂存到OOB Buffer（Out-Of-Bounds Buffer）。当OOB Buffer达到阈值时，CARP触发重新分区（即积累足够多的”新数据”后再进行批量调整，避免出现新键值后立刻重新分区）；</li>
+<li>&#x3D;&#x3D;需要重新平衡&#x3D;&#x3D;：这里的<strong>触发机制</strong>用于应对在同一个计算周期（Epoch）内的数据分布变化。因为在每个Epoch结束之后都会重新初始化分区，为了在同一个Epoch运行期间适应数据分布的变化，CARP需要在特定的时间间隔触发重新分区（&#x3D;&#x3D;因为CARP认为定期重新分区是一种更简单且高效的方法：不需要额外的后台通信；定期重新调整分区可以有效适应数据分布变化&#x3D;&#x3D;）。</li>
+</ol>
+<h3 id="三、如何确定新分区？"><a href="#三、如何确定新分区？" class="headerlink" title="三、如何确定新分区？"></a>三、如何确定新分区？</h3><p>CARP通过<strong>重新协商（renegotiation）</strong>调整分区边界，使得数据存储和查询的负载更加均衡。</p>
+<p><strong>重新协商的过程如下：</strong></p>
+<ol>
+<li><strong>触发重新协商</strong>：某个Rank触发重新协商，通知所有Ranks开始该过程，并暂停Shuffling；</li>
+<li><strong>计算全局键值分布</strong>：所有的Ranks计算自己的本地键值分布，并将这些统计数据发送到Rank0，Rank0负责合并数据，形成全局分布估计；</li>
+<li><strong>计算新分区表</strong>：根据最新的全局键值分布，计算一个更均衡的新分区表，并广播到所有计算节点；</li>
+<li><strong>切换到新分区表</strong>：所有Ranks更新自己的分区表，并根据新规则清空OOB缓冲区中的数据，将其重新分配到正确的分区；</li>
+<li><strong>恢复数据洗牌</strong>：所有Ranks重置本地分布统计信息，并恢复Shuffling，使用新的分区表继续进行数据路由。</li>
+</ol>
+<p>&#x3D;&#x3D;上面介绍的重新协商由<strong>触发机制</strong>启动，<strong>触发机制</strong>可以在任何Rank上被触发。&#x3D;&#x3D;</p>
+<p><strong>如何计算全局键值分布？</strong></p>
+<p>当触发重新协商之后，会通过<strong>直方图采样</strong>和<strong>枢轴点合并</strong>来计算全局分布。（采用<strong>直方图采样</strong>是为了在降低统计开销的同时尽可能准确地估计数据分布；而<strong>枢轴点（pivot）</strong>表示的是键值分布的关键点，它们将整个键值范围划分为K个相等的数据块。）</p>
+<p><strong>(1) 如何在Rank上维护直方图？</strong></p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">假如Rank1观察到以下键值：</span><br><span class="line"></span><br><span class="line">温度（Temperature）：</span><br><span class="line">10°C, 12°C, 18°C, 25°C, 35°C, 40°C, 42°C, 50°C, 55°C, 60°C</span><br><span class="line"></span><br><span class="line">CARP可能会构建一个直方图：</span><br><span class="line">键值范围（Bins）    计数（Count）</span><br><span class="line">--------------------------------</span><br><span class="line">  0°C - 20°C        3</span><br><span class="line"> 20°C - 40°C        3</span><br><span class="line"> 40°C - 60°C        4</span><br></pre></td></tr></table></figure>
+
+<p><strong>(2) 如何计算枢轴点？</strong></p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">假如一个Rank的直方图如下：</span><br><span class="line">键值范围（Bins）    计数（Count）</span><br><span class="line">--------------------------------</span><br><span class="line">  0°C - 20°C        1000</span><br><span class="line"> 20°C - 40°C        5000</span><br><span class="line"> 40°C - 60°C        2000</span><br><span class="line"></span><br><span class="line">此时我们希望计算K=3个枢轴点：根据直方图的计数值，找到合适的划分点，例如：</span><br><span class="line">Pivots: 15°C, 35°C, 50°C</span><br></pre></td></tr></table></figure>
+
+<p>&#x3D;&#x3D;在计算枢轴点时，还会将Rank的OOB缓冲区中的数据加入计算。且对于<strong>数据偏斜</strong>的范围，CARP会在这些区域计算更多的枢轴点，来更精确地捕获分布特性。&#x3D;&#x3D;</p>
+<p>每个Rank都会计算自己的<strong>枢轴点</strong>，表示它本地的数据分布情况。之后所有的Ranks都会发送<strong>枢轴点</strong>到Rank0，Rank0负责合并这些<strong>枢轴点</strong>（采用枢轴点合并算法）。合并全局的枢轴点后，会重新划分键值范围，最终生成新的分区表，并将其广播到所有的Ranks。</p>
+<p>整体流程如下图所示：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/83a1c7dbc4b71b419c0e8b47bed841f.png" class="" title="重新协商整体流程">
+
+<p><strong>如何触发重新协商？（两个触发器：OOB触发器和负载重新平衡触发器）</strong></p>
+<p><strong>1. OOB触发器</strong>（用于应对当某些数据的键值超出了当前分区范围时，需要扩展分区）</p>
+<p>之前提到了，每个Rank都有一个OOB Buffer，<strong>CARP会为每个OOB Buffer设置一个大小</strong>，当OOB缓冲区被填满时，就会由<strong>OOB触发器</strong>触发<strong>重新协商</strong>。这时，在重新协商的过程中，所有Ranks的OOB缓冲区中的内容都会被分解到新的分区表中。一旦重新协商完成，OOB缓冲区中的键就会被刷新到各自的目的地。</p>
+<p>此触发器的另一个作用是：当CARP运行的第一个计算周期开始时，系统还没有分区表，所有的Ranks会先把数据存入OOB缓冲区，并在第一个计算周期结束后触发重新协商，以计算初始分区表。&#x3D;&#x3D;这样，CARP能够自动启用而不需要人为指定初始分区规则。&#x3D;&#x3D;</p>
+<p><strong>2. 负载重新平衡触发器</strong>（用于应对随时间变化的数据分布偏移，防止分区负载不均衡）</p>
+<p>CARP采用了固定时间间隔触发的方式。作者经过实验发现，采用这种固定间隔的重新协商能够更好地优化分区，而不会影响系统性能。</p>
+<h3 id="四、存储后端KoiDB"><a href="#四、存储后端KoiDB" class="headerlink" title="四、存储后端KoiDB"></a>四、存储后端KoiDB</h3><p>每个Rank上都有一个本地的KoiDB实例，独立管理自己的数据，各个KoiDB之间互不干涉来保证系统的可扩展性。</p>
+<p>KoiDB的磁盘日志格式如下：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/1c5bbfa61e06abb3a54088222ff524a.png" class="" title="KoiDB磁盘日志格式">
+
+<p>经过CARP数据洗牌后，数据到达目标Rank进入KoiDB，KoiDB会先将洗牌后的数据存入内存缓冲区，当缓冲区满时，数据会被压缩，形成SSTable，并追加到日志存储。这里的压缩操作包括（可选）：按键值排序、K-V分离存储。同时SST文件的键值范围和存储位置会记录在Manifest Block（索引）中，在查询时可以直接通过Manifest Block来直接找到要查询的SST，减少查询时的I&#x2F;O开销。&#x3D;&#x3D;KoiDB还支持<strong>双缓冲</strong>，即数据写入不会因为压缩阻塞，前台继续接收新数据，后台异步进行压缩和持久化。&#x3D;&#x3D;</p>
+<p>KoiDB采用”追加写入”的方式来避免随机写入（提升存储吞吐量），由上图可知，KoiDB的磁盘组织结构符合LSM-Tree结构的写入模式，适用于大规模存储。</p>
+<p><strong>KoiDB关于查询的优化：</strong></p>
+<ol>
+<li><strong>重新分区优化SST</strong>：当CARP重新协商后，分区表会发生变化，可能会有一部分键值”漂移”，导致数据被错误地送到旧分区。&#x3D;&#x3D;KoiDB的解决方法是：同时维护多个打开的SST文件，将漂移的键值单独存入一个SST&#x3D;&#x3D;；</li>
+<li><strong>子分区优化SST</strong>：KoiDB可以设置更小的SST文件，来减少查询时的读取I&#x2F;O。</li>
+</ol>
+<h2 id="Evaluation"><a href="#Evaluation" class="headerlink" title="Evaluation"></a>Evaluation</h2><p>CARP主要与三种代表不同研究方向的现有方法进行对比：DeltaFS（高效写入的哈希分区）、FastQuery（基于辅助索引的查询优化方案）、TritonSort（基于数据重排序的高效存储方案）。</p>
+<h3 id="1-查询性能"><a href="#1-查询性能" class="headerlink" title="1. 查询性能"></a>1. 查询性能</h3><img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/d6a18a44af25ad9f4f91731b93f312a.png" class="" title="查询性能对比">
+
+<p>（左图为查询延迟，右图为4种不同索引方法在摄取188GB VPIC数据时的有效I&#x2F;O）</p>
+<p>对于图a：<strong>查询选择性</strong>表示<strong>查询结果占整个数据集的比例</strong>。结论：&#x3D;&#x3D;CARP在大多数情况下与TritonSort相当，但在<strong>低选择性查询（小范围查询&lt;0.05%）时略慢</strong>，因为CARP需要合并多个SST文件。&#x3D;&#x3D;</p>
+<p>对于图b：横坐标为计算节点的个数（表示系统扩展时的性能变化）。结论：&#x3D;&#x3D;CARP和TritonSort在高并发时能接近存储瓶颈，表明其扩展性较好。&#x3D;&#x3D;</p>
+<h3 id="2-写入路径"><a href="#2-写入路径" class="headerlink" title="2. 写入路径"></a>2. 写入路径</h3><img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/13137a975ef1ee8e6ebb06ca55a1321.png" class="" title="静态分区方案对比">
+
+<p>上图表示不同静态分区方案在生成负载均衡分区时的表现。纵轴是负载标准差（越小表示负载越均衡），横轴是模拟时间步。</p>
+<p>结论：<strong>固定初始分区（绿色）最差</strong>，说明工作负载随着时间演化，初始分区变得严重不均衡；<strong>沿用上一次分区（橙色）有所改善</strong>，但在负载变化剧烈的时期仍然不理想；<strong>始终采用当前最优分区（紫色）最好</strong>，但这个方法可能需要较高的计算开销。&#x3D;&#x3D;该实验说明<strong>分区表需要动态调整，以适应不断变化的工作负载</strong>，否则负载均衡性会变差。&#x3D;&#x3D;</p>
+<h3 id="3-重新协商的开销与效果"><a href="#3-重新协商的开销与效果" class="headerlink" title="3. 重新协商的开销与效果"></a>3. 重新协商的开销与效果</h3><p>CARP使用reduction tree（规约树）结构来进行重新协商，使用IPoIB（模拟的网络栈）。</p>
+<p>不同枢轴点下的重新协商协议扩展性（目的是测试重新协商协议在不同规模和不同枢轴点数量下的时间开销）：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/0c6572f8c2a40680bef89a666430f58.png" class="" title="重新协商协议扩展性">
+
+<p>结论：&#x3D;&#x3D;对于512个pivot，即便是2048个ranks下，单轮重新协商的延迟仍然只有150ms，证明了CARP在大规模系统中的高效性。&#x3D;&#x3D;</p>
+<p>不同pivot数量对直方图准确性的影响：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/870fc440902e361cfd6cc5a73807e40.png" class="" title="pivot数量对负载均衡的影响">
+
+<p>结论：&#x3D;&#x3D;更多的pivot→更好的负载均衡，但当pivot超过256时收益递减；对于最后两个时间步，即使pivot数量较多，仍然比前面时间步的负载均衡效果差（因为这些时间步的数据分布高度倾斜，呈现长尾分布）。&#x3D;&#x3D;</p>
+<p>不同的重新协商频率对负载标准差的影响：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/2ebfca9f8688983d90c2682957cb0e5.png" class="" title="重新协商频率对负载标准差的影响">
+
+<p>结论：&#x3D;&#x3D;枢轴点数量越多，负载均衡性越好；6x及以上的重新协商频率差别不明显，说明过多的重新协商不会显著提升负载均衡性。&#x3D;&#x3D;</p>
+<p>不同的重新协商频率对写性能的影响：</p>
+<img src="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/54c694a63b0b76ec9d2d38c0e39140d.png" class="" title="重新协商频率对写性能的影响">
+
+<p>结论：&#x3D;&#x3D;频繁的重新协商不会显著增加写入时间（这是因为重新协商带来的负载均衡改进可以抵消其额外开销）。&#x3D;&#x3D;</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>CARP解决的核心矛盾是：HPC流式数据想支持高效范围查询，传统上要么付出昂贵的全局排序代价，要么忍受原位索引糟糕的查询局部性。它的答案是<strong>在数据流入存储的网络路径上做轻量的重排序</strong>——通过全对全shuffle让相同键范围的数据落到同一节点，配合动态分区边界调整（只改边界、不动已存数据）适应倾斜且漂移的数据分布。几个值得记住的设计点：</p>
 <table>
 <thead>
 <tr>
 <th>设计</th>
-<th>作用</th>
+<th>要点</th>
 </tr>
 </thead>
 <tbody><tr>
-<td>热度感知分组</td>
-<td>高热度KV存入同一Data Block，让”要更新的数据”物理上聚集</td>
+<td>全对全shuffle</td>
+<td>利用空闲CPU和网络容量，在传输路径上完成部分排序</td>
 </tr>
 <tr>
-<td>Update_Rate分级</td>
-<td>按更新比例决定原地更新&#x2F;迁移+原地&#x2F;新建PDB，处理部分有效的边界情况</td>
+<td>重新协商机制</td>
+<td>直方图采样+枢轴点合并计算全局分布，单轮仅需150ms@2048节点</td>
 </tr>
 <tr>
-<td>B-tree全局索引</td>
-<td>支持点查和范围查询，替代LSM树的层层查找</td>
+<td>双触发器</td>
+<td>OOB触发器应对越界键、定时触发器应对分布漂移，且可自动初始化</td>
+</tr>
+<tr>
+<td>KoiDB存储后端</td>
+<td>追加写入+双缓冲+Manifest索引，多SST文件吸收分区漂移的键</td>
 </tr>
 </tbody></table>
-<p>核心取舍在于：就地更新消除了压缩和GC，代价是引入了热度统计和逻辑&#x2F;物理数据块的管理复杂度，且依赖负载本身具有更新局部性（update-intensive）才能发挥最大效果。</p>
+<p>代价是低选择性小范围查询略慢于全局排序方案（需合并多个SST），这是用部分排序换取低写入开销的合理取舍。</p>
 ]]></content>
       <categories>
         <category>论文阅读</category>
       </categories>
       <tags>
-        <tag>SSD</tag>
-        <tag>分布式存储</tag>
-        <tag>LSM-tree</tag>
-        <tag>KV存储</tag>
+        <tag>HPC</tag>
+        <tag>索引</tag>
+        <tag>流数据</tag>
+        <tag>范围查询</tag>
       </tags>
   </entry>
   <entry>
@@ -674,6 +721,127 @@
         <tag>Ceph</tag>
         <tag>BlueStore</tag>
         <tag>写放大</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</title>
+    <url>/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/</url>
+    <content><![CDATA[<h1 id="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"><a href="#论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案" class="headerlink" title="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"></a>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</h1><blockquote>
+<p>论文：<em>InPlaceKV: In-place Update Scheme for SSD-based KV Storage Systems under Update-intensive Workloads</em></p>
+</blockquote>
+<h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>传统的KV存储的写入方式是以追加写的形式写入，而不是采用就地更新的方式来写入键值对。这样的设计是因为在HDD上，顺序访问的性能远远优于随机访问，因此使用顺序写入可以获得更好的吞吐量。<strong>但是由于使用追加写的方式写入键值对，数据会不断地积累，导致需要压缩（对于LSM-tree）或者垃圾回收（对于KV分离方案）。</strong></p>
+<p>论文作者发现，在SSD上，<strong>顺序访问和随机访问的性能差距会随着请求大小的增加而缩小</strong>，也就是说，对于足够大的I&#x2F;O请求，SSD的顺序写和随机写的性能相差不大。因此提出了InPlaceKV：&#x3D;&#x3D;InPlaceKV是基于SSD构建的，它采用就地大型更新方案和热度感知方法进行KV对的更新&#x3D;&#x3D;，而不是使用传统的LSM树的追加方式，这有助于减少因为压缩或GC引发的额外开销。</p>
+<h2 id="LSM-tree结构的优化方向"><a href="#LSM-tree结构的优化方向" class="headerlink" title="LSM-tree结构的优化方向"></a>LSM-tree结构的优化方向</h2><h3 id="1-放宽LSM-tree的全局有序性"><a href="#1-放宽LSM-tree的全局有序性" class="headerlink" title="(1) 放宽LSM-tree的全局有序性"></a>(1) 放宽LSM-tree的全局有序性</h3><p>如PebblesDB、Dostoevsky等。其中：</p>
+<ul>
+<li><strong>PebblesDB</strong>：主要引入了类似跳表的想法，为L1层及以上的层级引入Guard，这样就将同一层划分成了不同的范围，在处理压缩时只会在相同Guard范围内执行，即减少了每次压缩合并时需要遍历的SSTable数量，从而降低开销；</li>
+<li><strong>Dostoevsky</strong>：能够根据工作负载动态调整合并策略的键值存储系统。</li>
+</ul>
+<h3 id="2-KV分离"><a href="#2-KV分离" class="headerlink" title="(2) KV分离"></a>(2) KV分离</h3><p>如WiscKey、DiffKV、HashKV、FenceKV等。KV分离的核心思想是：<code>Key</code>依然存储在LSM树中，但Value存储在单独的<strong>日志结构（Log）</strong>中。在compaction过程中，LSM树只需要处理<code>Key</code>和指向<code>Value</code>的指针，而不需要反复移动<code>Value</code>，通过这种方式来减少写放大。但是这又引出了新的问题→<strong>垃圾回收（GC）</strong>：过期的<code>Value</code>需要通过GC来清理，造成了额外的开销。</p>
+<p>本文提出的InPlaceKV&#x3D;&#x3D;具有热感知就地更新功能，可覆盖无效数据&#x3D;&#x3D;，<strong>且采用了原位更新的日志结构</strong>，而不是LSM树结构，从而消除了压缩造成的写放大，提高了系统吞吐量。</p>
+<h2 id="SSD随机写性能的启发"><a href="#SSD随机写性能的启发" class="headerlink" title="SSD随机写性能的启发"></a>SSD随机写性能的启发</h2><p>NVMe SSD性能测试如下图所示，可以得到结论：<strong>当请求大小从4KB到512KB时，顺序访问和随机访问之间的性能差距越来越小；且当请求大小大于128KB时，随机写入的IOPS与顺序写入的IOPS几乎相同。</strong></p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/d8242140da3f518fff4a776a383e536.png" class="" title="NVMe SSD性能测试">
+
+<p>作者由此提出疑问：对于KV存储系统是否还有必要采用只追加写（append-only）文件的方式？（因为追加写是为了更好地发挥HDD的性能，而当前SSD随机与顺序访问的差距随着请求大小的增加已经几乎没有特别大的差别。）</p>
+<p>本文的主要理念：<strong>利用SSD在进行&#x3D;&#x3D;大规模随机访问&#x3D;&#x3D;时表现出的高性能，来替代传统追加写策略的LSM树方法</strong>。关键问题是：&#x3D;&#x3D;(1)怎么触发大规模更新？&#x3D;&#x3D;因为LSM树的理念就是为了合并小请求，如果抛弃LSM的结构，小请求就无法合并。</p>
+<h3 id="传统方案的写放大从哪来"><a href="#传统方案的写放大从哪来" class="headerlink" title="传统方案的写放大从哪来"></a>传统方案的写放大从哪来</h3><img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741249758007.png" class="" title="LevelDB架构">
+
+<p>上图为LevelDB架构（就是传统的LSM树存储结构），而传统LSM树结构的写放大主要体现在如下过程：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741251264045.png" class="" title="传统LSM树的compaction开销">
+
+<p>即在进行compaction时，需要将SST1、SST2和SST3都读取到内存，丢弃旧的版本值V1、V2、V7和V9，并将最新的有效的KV对进行排序，重新生成新的SST文件。这个过程引入了12个KV对读取和8个KV对写入。</p>
+<p>而KV分离的架构会有额外的GC开销，如下图所示：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/abb93da458359e119a8f8749da0c899.png" class="" title="KV分离的GC开销">
+
+<p>由于KV分离，K依旧放在LSM树中进行compaction，但是由于K很小，它的开销没有传统的LSM树那么大。但是由于V是额外存储在Log中的，对于旧的V就要删除。对于VLog，它有2个指针（头和尾），新值被添加到头指针，而尾指针则告诉我们GC时需要从哪里开始释放空间。每次GC时，会从中读取几个KV对，并通过LSM树查询这些V是否有效，有效的V会被追加回VLog的头部。在上述过程中，GC操作期间需要额外读取7个KV对和写入3个KV对，即产生了额外开销。</p>
+<h2 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h2><ol>
+<li>使用追加写的KV存储（具有传统的LSM树和KV分离）分别会产生压缩和GC操作，这都会使它们的吞吐量下降，尤其是当更新的KV对数量特别大时；</li>
+<li>使用追加写是因为HDD的顺序写和随机写性能相差很多，但是对于现阶段的SSD来说，差距已经不是很明显。</li>
+</ol>
+<p>&#x3D;&#x3D;在KV存储系统中，如何充分利用固态硬盘的大随机存取性能来执行就地更新，而不是仅通过追加写入进行更新？&#x3D;&#x3D;</p>
+<h2 id="Design"><a href="#Design" class="headerlink" title="Design"></a>Design</h2><p>设计目标：</p>
+<ol>
+<li>在基于现代固态硬盘构建的KV存储系统中，<strong>使用大随机存取的就地更新来取代只写附加文件</strong>，消除因为仅追加写入造成的写&#x2F;读放大；</li>
+<li>使用适当的数据结构和工作流程来实现就地更新和大量随机存取的KV存储系统以提高性能；</li>
+<li>提升系统的鲁棒性。因为在大型就地更新单元中，原位置仍有少数KV对处于有效状态（不可能所有的KV对都是无效的），这些有效的KV对应该怎么处理？</li>
+</ol>
+<p>InPlaceKV的架构如下：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/23a4d82edafb8a4267774cae7dac7e0.png" class="" title="InPlaceKV架构">
+
+<p>通过<strong>热度感知分组</strong>来将小块合并，针对合并后的大块进行就地更新来提升性能。</p>
+<h3 id="1-数据结构"><a href="#1-数据结构" class="headerlink" title="1. 数据结构"></a>1. 数据结构</h3><p>&#x3D;&#x3D;内存缓存层&#x3D;&#x3D;中有多种结构：</p>
+<ul>
+<li>**<code>Write_MemTable</code>**：负责缓存新插入的KV对；</li>
+<li>**<code>Update_MemTable</code>**：负责缓存已存在的KV对的更新。</li>
+</ul>
+<p>两个结构的作用类似于LSM-tree的MemTable，本质上是跳表，用于高效地存储和查询KV数据。当<code>Write_MemTable</code>或<code>Update_MemTable</code>的大小达到阈值时（默认是4MB），其中的KV对会<strong>根据热度排序</strong>，然后批量刷写（flush）到SSD。这个排序过程依赖于<code>Frequency_Table</code>。</p>
+<ul>
+<li>**<code>Frequency_Table</code>**：用来记录KV访问频率，这里一个KV对的热度&#x3D;<strong>访问次数</strong>（即在MemTable中被访问的次数），用于flush之前对KV进行热度排序，然后按照热度存储到SSD。&#x3D;&#x3D;高热度KV会被存入同一个Data Block中&#x3D;&#x3D;，以优化后续in-place更新和访问效率；</li>
+<li>**<code>B-tree</code>**：在内存中维护全局有序的KV索引，记录KV在SSD上的存储地址，用于高效查询（这里是支持范围查询的）；</li>
+<li>**<code>FreeList</code>**：记录已删除或已更新KV对的旧存储地址，以便未来回收空间。</li>
+</ul>
+<p>InPlaceKV使用KVLog来存储KV对，每个KVLog由多个数据块组成。排序后的KV块会存储在数据块中，数据块的结构为<code>(ks, k, vs, v)</code>，其中ks表示Key的大小、k表示Key、vs表示Value的大小、v表示Value。</p>
+<h3 id="2-工作流程"><a href="#2-工作流程" class="headerlink" title="2. 工作流程"></a>2. 工作流程</h3><p><strong>(1) 写流程</strong></p>
+<p>在处理写入的KV对时，InPlaceKV首先检查内存中的B-tree，如果返回NULL，则说明这是新写入的KV对，则将其缓冲到<code>Write_MemTable</code>中，并在<code>Frequency_Table</code>中进行更新。如果<code>Write_MemTable</code>已满，则会合并<code>Write_MemTable</code>中的所有KV对（去重），然后根据<code>Frequency_Table</code>中记录的热度进行排序，最后以KVLog的形式刷新到SSD中。</p>
+<p><strong>(2) 更新流程</strong></p>
+<p>依旧是先检查内存中的B-tree：</p>
+<ul>
+<li>如果<strong>key存在，但是没有地址信息</strong>，说明旧版本仍然在<code>Write_MemTable</code>（还没刷到SSD），则直接把更新的KV对缓冲在<code>Write_MemTable</code>；</li>
+<li>如果<strong>Key存在，且有地址信息</strong>，说明旧版本已经被刷到SSD中，此时将更新的KV对缓冲在<code>Update_MemTable</code>中。</li>
+</ul>
+<p>&#x3D;&#x3D;当<code>Update_MemTable</code>已满时，&#x3D;&#x3D;根据如下的算法将其中的KV对刷新到SSD：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/f49f30820300a523557c8b63fd43df5.png" class="" title="Update_MemTable刷盘算法">
+
+<p>对于上述算法：</p>
+<p>InPlaceKV先会为所有<strong>按热度（访问频率）排序</strong>的KV对创建一个迭代器，这些KV对会被划分成多个<strong>逻辑数据块（LDB）</strong>，每个LDB都是一个可以刷入SSD的独立单位。当LDB的大小达到<code>Update_Unit</code>（比如4KB）时，会触发刷盘。此时会计算<strong>哪些更新的KV对属于同一个物理数据块（PDB）</strong>，用<code>Update_Rate</code>去衡量<strong>某个PDB里更新的KV对所占比例</strong>：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Update_Rate = N(PDB-KVs) / N(KVs)</span><br></pre></td></tr></table></figure>
+
+<p>这个<code>Update_Rate</code>反映的是PDB里需要更新的KV数量：</p>
+<ol>
+<li>当<code>Update_Rate == 1</code>时：说明这个PDB所有KV对都需要更新，<strong>直接执行原地大规模更新，无需额外数据迁移</strong>；</li>
+<li>当<code>TH（设置的阈值）&lt; Update_Rate &lt; 1</code>时：说明PDB中大部分KV需要更新。<strong>未更新的KV对迁移到<code>Write_MemTable</code>、在<code>FreeList</code>中记录这些未更新的KV对位置（因为这些位置更新后是空的，是可用的）、执行原地大规模更新</strong>；</li>
+<li>当<code>Update_Rate &lt;= TH</code>时：说明大部分数据是有效的。<strong>新建一个PDB并将数据写入</strong>，这里的新PDB可以是<strong>一个无效数据超过<code>TH</code>的PDB</strong>。</li>
+</ol>
+<p>&#x3D;&#x3D;最后，修改<code>B-tree</code>来反映数据的新位置。&#x3D;&#x3D;</p>
+<p><strong>(3) 读流程</strong></p>
+<ol>
+<li>先检查内存表：检查<code>Write_MemTable</code>和<code>Update_MemTable</code>，如果找到则直接返回；</li>
+<li>检查<code>B-tree</code>：检查该KV对是否存在，以及其在存储系统中的物理地址。如果在<code>B-tree</code>中没找到该KV对，则说明该键值对不存在于存储系统中，可以直接返回查询失败；</li>
+<li>读取PDB：通过<code>B-tree</code>找到KV对的物理地址后，读取PDB并将结果返回。</li>
+</ol>
+<p><strong>(4) 扫描和删除</strong></p>
+<p>对于<strong>扫描操作</strong>来说，InPlaceKV先在<code>B-tree</code>中查找符合扫描范围的叶子节点，因为<code>B-tree</code>存储了KV对（键和值）的地址信息。如果叶子节点包含键和值的地址 → 直接从SSD读取相应的KV对；如果叶子节点没有找到相关的KV对 → 说明这些KV对可能在<code>Write_MemTable</code>或<code>Update_MemTable</code>中，InPlaceKV会在<code>Write_MemTable</code>或<code>Update_MemTable</code>中查找，并返回结果。</p>
+<p>对于<strong>删除操作</strong>来说，它的本质是逻辑删除。InPlaceKV会将KV对记录到<code>FreeList</code>中，并修改<code>B-tree</code>将该KV对标记为已删除，使其不可被查询。在后续的更新操作中，该KV对的内容所占用的空间将会被覆盖。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>InPlaceKV的洞察是一个”反常识”的事实：<strong>追加写是HDD时代的遗产</strong>。当SSD上大请求（&gt;128KB）的随机写与顺序写性能几乎持平时，为规避随机写而付出的compaction&#x2F;GC代价就成了纯负担。它用三个手段替代LSM树：</p>
+<table>
+<thead>
+<tr>
+<th>设计</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>热度感知分组</td>
+<td>高热度KV存入同一Data Block，让”要更新的数据”物理上聚集</td>
+</tr>
+<tr>
+<td>Update_Rate分级</td>
+<td>按更新比例决定原地更新&#x2F;迁移+原地&#x2F;新建PDB，处理部分有效的边界情况</td>
+</tr>
+<tr>
+<td>B-tree全局索引</td>
+<td>支持点查和范围查询，替代LSM树的层层查找</td>
+</tr>
+</tbody></table>
+<p>核心取舍在于：就地更新消除了压缩和GC，代价是引入了热度统计和逻辑&#x2F;物理数据块的管理复杂度，且依赖负载本身具有更新局部性（update-intensive）才能发挥最大效果。</p>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>SSD</tag>
+        <tag>分布式存储</tag>
+        <tag>LSM-tree</tag>
+        <tag>KV存储</tag>
       </tags>
   </entry>
   <entry>
