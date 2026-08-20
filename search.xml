@@ -124,93 +124,6 @@
       </tags>
   </entry>
   <entry>
-    <title>SSD的内部结构</title>
-    <url>/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/</url>
-    <content><![CDATA[<h1 id="SSD的内部结构"><a href="#SSD的内部结构" class="headerlink" title="SSD的内部结构"></a>SSD的内部结构</h1><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/dcbba826b52f1170afb42c3c99eb39a.jpg" class="" title="SSD结构图">
-
-<p>SSD主要由控制单元(SSD控制器、主机接口、DRAM等)和存储单元(主要是NAND FLASH闪存颗粒)构成。数据通过接口进入主控，经主控中转调配后存储到各个闪存颗粒中。</p>
-<h2 id="三大组成部分"><a href="#三大组成部分" class="headerlink" title="三大组成部分"></a>三大组成部分</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/feef6f6e8f6043f9b24b61dc895cecb8.png" class="" title="SSD三大组成部分">
-
-<p>主要有三大部分组成：与Host对接的界面(Host interface), 闪存转换层FTL以及闪存对接界面(Flash interface)。</p>
-<p><strong>Host interface</strong>采用的协议包括：</p>
-<ul>
-<li>SATA</li>
-<li>PCIe&#x2F;NVMe SSD协议</li>
-</ul>
-<p><strong>闪存转换层FTL</strong>是主控的核心部分，主要实现：</p>
-<ul>
-<li>磨损平衡（Wear-leveling）</li>
-<li>垃圾数据回收（Garbage Collection）</li>
-<li>坏块管理（Bad Block Management）</li>
-<li>数据纠错处理（ECC, Error Correction Code）</li>
-</ul>
-<p><strong>Flash interface</strong>包括了SSD主控的flash controller，用来控制主控与NAND闪存之间的数据传输。</p>
-<p>NAND闪存是数据归属地，NAND颗粒的存在，赋予了SSD储存数据的使命。为了提高存储的性能，主控会通过不同的通道（Channel）操作NAND闪存。</p>
-<h2 id="NAND-flash在分布式存储中的应用"><a href="#NAND-flash在分布式存储中的应用" class="headerlink" title="NAND flash在分布式存储中的应用"></a>NAND flash在分布式存储中的应用</h2><ul>
-<li><strong>高性能缓存</strong>：用作读写缓存</li>
-<li><strong>元数据存储</strong>：用作存储系统元数据</li>
-<li><strong>日志存储</strong>：存储事务日志、大量的日志信息</li>
-<li><strong>全闪存阵列</strong>：使用全NAND闪存的存储阵列</li>
-<li><strong>混合存储系统</strong>：使用NAND存储热数据，HDD存储冷数据</li>
-<li><strong>大数据处理</strong>：NAND闪存加速数据读写，提升数据处理效率</li>
-<li><strong>分布式文件系统</strong>：使用NAND闪存提升MDS的性能</li>
-</ul>
-<h2 id="主流研究方向"><a href="#主流研究方向" class="headerlink" title="主流研究方向"></a>主流研究方向</h2><h3 id="1-性能优化"><a href="#1-性能优化" class="headerlink" title="(1) 性能优化"></a>(1) 性能优化</h3><p>全SSD用做分布式存储系统中的存储介质，应该在系统层面怎么优化能够使SSD的性能发挥到最大？</p>
-<p><strong>系统(软件)层面的开销会影响硬件层面的开销</strong>，因此需要在系统层面针对SSD的特性进行优化，使得SSD的性能尽可能的发挥最大。</p>
-<p>主要优化方式就4种：</p>
-<ol>
-<li>将随机写改成顺序写 √</li>
-<li>增大并行任务量</li>
-<li>多个事务合并成一个事务进行处理 √</li>
-<li>冷热数据分离 √</li>
-</ol>
-<h3 id="2-故障处理"><a href="#2-故障处理" class="headerlink" title="(2) 故障处理"></a>(2) 故障处理</h3><p>使用SSD用作分布式存储的存储介质时，固态硬盘出现故障应该怎么解决？(预测or优化使故障率降低)</p>
-<p><strong>优化设备层</strong>，降低硬盘故障率。</p>
-<h2 id="NAND颗粒的内部结构"><a href="#NAND颗粒的内部结构" class="headerlink" title="NAND颗粒的内部结构"></a>NAND颗粒的内部结构</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/5744007b365f2dd103641b40530808d.png" class="" title="NAND颗粒内部结构">
-<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/ade71ef313fe861e16125198071c6bb.png" class="" title="NAND颗粒结构">
-
-<p><strong>Page</strong>是闪存存储的最小读写单元、<strong>Block</strong>是闪存存储的最小擦除单元。</p>
-<h3 id="Cell能存储数据的原理"><a href="#Cell能存储数据的原理" class="headerlink" title="Cell能存储数据的原理"></a>Cell能存储数据的原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/08cce0f065bc66b40396dc669b26db7.png" class="" title="浮栅晶体管结构">
-<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b4d43ea1609804503ff82bfc5cbe67c.png" class="" title="存储原理">
-
-<p>在存储数据时，通过施加电压，让电子穿过<strong>隧穿层</strong>达到<strong>浮栅层</strong>，根据<strong>浮栅层</strong>的电子数量来判断是’0’还是’1’。</p>
-<p>浮栅晶体管能存放多大的数据取决于对<strong>浮栅层</strong>中电子数量的粒度划分。</p>
-<p>寿命有限的原因是通过施加电压让电子反复穿过<strong>隧穿层</strong>，会破环<strong>隧穿层</strong>的结构，导致不能再有效的保持<strong>浮栅层</strong>中的电荷。</p>
-<h3 id="存储类型"><a href="#存储类型" class="headerlink" title="存储类型"></a>存储类型</h3><ul>
-<li><strong>SLC</strong>：单层单元，每个单元存储位数(1bit)，电压只有两种状态(0和1)</li>
-<li><strong>MLC</strong>：多层单元，每个单元存储位数(2bit)，电压有四种状态(00,01,10,11)</li>
-<li><strong>TLC</strong>：三层单元，每个单元存储位数(3bit)，电压有八种状态(000,001,010,011,100,101,110,111)</li>
-<li><strong>QLC</strong>：四层单元，每个单元存储位数(4bit)，电压有十六种状态(0000,0001,……,1111)</li>
-</ul>
-<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/3225ebbed6033e2a5bc71bc1cb30b57.png" class="" title="SLC&#x2F;MLC&#x2F;TLC&#x2F;QLC对比">
-
-<h2 id="写放大"><a href="#写放大" class="headerlink" title="写放大"></a>写放大</h2><p><strong>写放大</strong>：指的是在执行写入操作时，SSD硬盘发生的写入量，实际要远大于实际写入的数据量。</p>
-<p><strong>原因</strong>：NAND数据写入的方式是以页面为单位写入，但是要想删除数据却要以块为单位。</p>
-<h3 id="降低写放大的方法"><a href="#降低写放大的方法" class="headerlink" title="降低写放大的方法"></a>降低写放大的方法</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b6aaf6b4393362c87b9434bc2a0543c.png" class="" title="降低写放大的方法">
-
-<ul>
-<li>磨损均衡：将写操作均匀分布到各个块上，避免某些块过度磨损</li>
-<li>垃圾回收：及时回收无效数据，腾出空间</li>
-<li>预留空间：保留部分空间作为缓冲区</li>
-</ul>
-<h3 id="磨损均衡原理"><a href="#磨损均衡原理" class="headerlink" title="磨损均衡原理"></a>磨损均衡原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/c24b32c2668cc724120e8413202e202.png" class="" title="磨损均衡原理">
-
-<ul>
-<li><strong>动态磨损均衡</strong>：更多的使用擦除次数较少的块</li>
-<li><strong>静态磨损平衡</strong>：将冷数据迁移到磨损程度较高的块上，使磨损均匀分布。为了尽量减少块之间的磨损差异，额外的开销以迁移的形式增加。</li>
-</ul>
-<h2 id="SSD和HDD的关键区别"><a href="#SSD和HDD的关键区别" class="headerlink" title="SSD和HDD的关键区别"></a>SSD和HDD的关键区别</h2><p>除了吞吐量和延迟外，HDD会将来自主机的多个请求序列化到单个队列中，每次处理一次，而SSD可以同时处理多个请求，因为SSD将多个芯片连接到多个管道，虽然每个管道一次只能处理一个请求，但多个通道的存在允许同时访问不同的芯片。因此SSD的并发性能优势不可忽略。</p>
-]]></content>
-      <categories>
-        <category>存储</category>
-      </categories>
-      <tags>
-        <tag>SSD</tag>
-        <tag>存储系统</tag>
-        <tag>硬件</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>mTLS双向认证：从选型到落地的完整实践</title>
     <url>/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/</url>
     <content><![CDATA[<h1 id="mTLS双向认证：从选型到落地的完整实践"><a href="#mTLS双向认证：从选型到落地的完整实践" class="headerlink" title="mTLS双向认证：从选型到落地的完整实践"></a>mTLS双向认证：从选型到落地的完整实践</h1><h2 id="问题背景"><a href="#问题背景" class="headerlink" title="问题背景"></a>问题背景</h2><p>在分布式集群中，关键组件之间的通信往往没有安全认证机制——只要知道 IP 和端口，任何节点都能直接加入集群、参与通信。这在内网环境下看似问题不大，但一旦网络边界被突破，整个集群就完全暴露。</p>
@@ -392,6 +305,73 @@
         <tag>TLS</tag>
         <tag>PKI</tag>
         <tag>分布式系统</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</title>
+    <url>/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/</url>
+    <content><![CDATA[<h1 id="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能"><a href="#论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能" class="headerlink" title="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能"></a>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能</h1><blockquote>
+<p>论文：<em>Improving I&#x2F;O performance in distributed file systems for flash-based SSDs by access pattern reshaping</em></p>
+</blockquote>
+<p>这篇文章的核心思想是：<strong>通过将分布式文件系统（Lustre）中写请求的地址进行重塑，把SSD上的随机写重构为顺序写，来减少写放大效应、提高写入性能</strong>。在展开方案之前，先补充两个背景知识：F2FS文件系统和Lustre文件系统。</p>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><h3 id="F2FS文件系统（Flash-Friendly-File-System）"><a href="#F2FS文件系统（Flash-Friendly-File-System）" class="headerlink" title="F2FS文件系统（Flash Friendly File System）"></a>F2FS文件系统（Flash Friendly File System）</h3><p>F2FS可以极大程度上避免碎片产生。相对于传统日志型文件系统，F2FS在<strong>wandering tree</strong>和<strong>GC</strong>方面有一定的优化，可以复用离散的数据页写入数据，显著减少GC带来的卡顿。</p>
+<p><strong>wandering tree</strong>：在文件更新时，指向文件的Direct Pointer（直接指针）由于数据异地更新，也会随之更新；同时指向这个Direct Pointer的Indirect Pointer（间接指针）也会更新，然后保存这个Indirect Pointer的inode（存储文件元数据的结构体）、inode block map（记录块分配情况的表）等结构也需要更新，这样会导致频繁的metadata更新。</p>
+<h3 id="Lustre文件系统"><a href="#Lustre文件系统" class="headerlink" title="Lustre文件系统"></a>Lustre文件系统</h3><img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/1553ffc55c4f184bfbbf8499a14ebd8.png" class="" title="Lustre文件系统总体结构">
+
+<p>上图为Lustre文件系统的总体结构，主要由客户端、元数据服务器、元数据目标、对象存储服务器和对象存储目标组成：</p>
+<p><strong>客户端（Client）</strong>：是Lustre文件系统的用户接口，负责向元数据服务器（MDS）和对象存储服务器（OSS）发送文件系统请求。&#x3D;&#x3D;客户端能将用户的I&#x2F;O请求转发到合适的服务器，并从服务器接收数据。&#x3D;</p>
+<p><strong>元数据服务器（MDS）</strong>：负责管理文件系统的元数据，包括文件名、目录结构、文件权限、文件大小、文件所在的对象存储目标（OST）等信息。&#x3D;&#x3D;当客户端发出文件操作请求时，MDS会查询并返回相关的元数据信息，使客户端知道应该从哪个OST获取文件数据。&#x3D;</p>
+<p><strong>元数据目标（MDT）</strong>：MDT是存储在MDS上的物理存储设备，用于存储文件系统的元数据。&#x3D;&#x3D;MDT是元数据的实际存储位置，负责保存和检索文件系统的元数据内容。多个MDT可以分担元数据的存储负载，从而提高元数据访问的并行度和整体性能。&#x3D;</p>
+<p><strong>对象存储服务器（OSS）</strong>：OSS负责管理实际的文件数据存储，接收来自客户端的文件I&#x2F;O请求，并将数据存储到对应的对象存储目标（OST）上。&#x3D;&#x3D;OSS通过网络将数据分布在多个OST上，实现并行I&#x2F;O操作。&#x3D;</p>
+<p><strong>对象存储目标（OST）</strong>：OST是Lustre文件系统中存储实际文件数据的物理存储设备。&#x3D;&#x3D;OST负责实际的文件数据存储，是Lustre文件系统数据存储的基本单元，数据在OST之间分布存储。&#x3D;</p>
+<p><strong>写操作流程</strong></p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/14445f1774cd168570b56e54fd656a5.png" class="" title="Lustre写操作流程">
+
+<p>当客户端想要写入文件时，首先会向元数据服务器（MDS）发起文件打开请求。MDS处理文件打开操作，检查文件是否存在并将文件的元数据返回给客户端。元数据中包含文件的访问权限（如读写权限）和数据存放的位置（即存储服务器OSS）。客户端验证了文件的权限，并且通过元数据知道了存储该文件数据的OSS的具体位置。客户端接下来会向指定的OSS发起写请求。为了处理客户端的写请求，OSS需要为每个写请求分配一个新的bio结构体，在bio结构体中会记录客户端写请求的地址。接着，写操作请求的页（page，表示要写入的数据）也会添加到这个bio结构体中。设置好bio结构体后，OSS会将该结构体提交给底层存储系统，最终数据通过存储目标OST写入存储设备。</p>
+<h2 id="访问模式重塑方案的总体架构"><a href="#访问模式重塑方案的总体架构" class="headerlink" title="访问模式重塑方案的总体架构"></a>访问模式重塑方案的总体架构</h2><h3 id="1-地址重塑操作（Address-Reshaping-Operation）"><a href="#1-地址重塑操作（Address-Reshaping-Operation）" class="headerlink" title="1. 地址重塑操作（Address Reshaping Operation）"></a>1. 地址重塑操作（Address Reshaping Operation）</h3><p>当客户端发送请求时，根据MDS找到存储数据的OSS，然后将请求送达OSS进行处理。当OSS收到请求后，检查收到的请求是读请求还是写请求：</p>
+<ul>
+<li>如果是<strong>写请求</strong>，则将请求的逻辑块地址（LBA）转化为顺序的逻辑块地址。具体来说，它将原始逻辑块地址（oLBA）重塑为顺序的逻辑块地址（tLBA），然后通过重映射表将oLBA和tLBA的对应关系保存。当oLBA和tLBA对被插入重映射表后，写请求通过<code>submit_bio()</code>函数提交到块层（block layer）。在块层中，默认的请求合并算法会将顺序的LBA请求合并成一个大的请求。&#x3D;&#x3D;这种方案可以将随机写请求重塑为顺序写请求，而且可以通过块层将现有的请求合并以减少请求的数量。&#x3D;</li>
+</ul>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/82239abc8b882cee6f1e03baa0e2333.png" class="" title="地址重塑操作总体结构">
+
+<p>对于<strong>读和覆盖请求</strong>，则需要在重映射表（Remapping Table）中查找现有的oLBA和tLBA对：</p>
+<ul>
+<li>对于<strong>覆盖请求</strong>，首先在重映射表中查找原始逻辑块地址（oLBA）和已重塑的逻辑块地址（tLBA）对。覆盖请求意味着需要更新存储在原tLBA位置的数据。为了确保写入操作是顺序的，系统会为这个oLBA分配一个新的顺序逻辑块地址（tLBA），这个新tLBA将用于存储更新后的数据。这部分无效数据会通过后续的清理操作来处理和回收空间。</li>
+<li>对于<strong>读请求</strong>，由于oLBA已经被重塑为tLBA，所以在获取某个数据时需要根据重映射表，将对应的tLBA找到，再将数据获取。</li>
+</ul>
+<h3 id="2-管理重映射表（Managing-Remapping-Table）"><a href="#2-管理重映射表（Managing-Remapping-Table）" class="headerlink" title="2. 管理重映射表（Managing Remapping Table）"></a>2. 管理重映射表（Managing Remapping Table）</h3><p>在重映射表中记录了oLBA到tLBA的映射关系，主要的作用就是在读取和覆盖操作时为oLBA查找相应的tLBA。对于一个表来说，搜索时间和清理节点时间和表的大小成正比，因此采用多个重映射表而不是单个大的重映射表是必要的选择。多个重映射表的划分范围可以根据磁盘而定：&#x3D;&#x3D;将大型磁盘布局划分为多个小节，为每个小节创建对应的重映射表，这些映射表管理它们自己的逻辑块地址&#x3D;&#x3D;，这样可以减少重映射表中的条目，还可以在进行清理操作时隔离重映射表（一个子节中进行清理操作时，其他的子节还可以处理I&#x2F;O请求）。论文中使用红&#x2F;黑树实现重映射表，因为红&#x2F;黑树有较快的搜索时间。</p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/dfbbaa83c350c90030cd44440695d9d.png" class="" title="多个重表示意图">
+
+<p>在上图中，存在两个重映射表（T1和T2），表1负责tLBA1—tLBA90，表2负责tLBA91—tLBA180。在这个例子中，表1已经充满了之前的请求，其中通过表1管理的最后一个tLBA90和oLBA99配对。在表2中现有3个请求（91–93），最近的一个是tLBA93（和oLBA31配对），以及空闲的（tLBA94—tLBA180），这些还未被使用，因此可以处理即将到来的请求。当发出新的请求时（oLBA45和oLBA32），它们被插入到表2（tLBA94和tLBA95中），而不访问表1。</p>
+<h3 id="3-支持崩溃一致性（Supporting-Crash-Consistency）"><a href="#3-支持崩溃一致性（Supporting-Crash-Consistency）" class="headerlink" title="3. 支持崩溃一致性（Supporting Crash Consistency）"></a>3. 支持崩溃一致性（Supporting Crash Consistency）</h3><p>通过写前日志（WAL，在真正修改之前先将相关的日志记录写入稳定存储）的策略来实现崩溃一致性（这里的崩溃一致性指的是重映射表的崩溃一致性）。当请求到达OSS时，首先使用<code>submit_bio()</code>函数将数据写入存储设备OST，在写入完成之后，&#x3D;&#x3D;系统开始为重映射表的更新操作启动一个事务，通过在重映射表文件中写入”Begin Tx”来表示事务的开始。接着，系统将重映射表中需要更新的（oLBA，tLBA）对逐个写入到重映射表文件中，这些对记录了地址重塑后的逻辑块地址。当所有重映射对都写入完成后，系统在重映射表文件中写入”Commit Tx”以表示事务的提交，这一步表示事务已经完成、可以被认为是成功的。&#x3D;&#x3D;最后，系统将这些更新的重映射对插入到驻留在内存中的重映射表中，以便未来的读写请求能够正确地处理。</p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/724e3d3010af50fc17f7d6d6a73c968.png" class="" title="崩溃一致性WAL流程">
+
+<p>系统通过重映射文件来作为判断重映射表是否完整的基准。当系统发生崩溃时，可能会有如下的情况：(1)在调用<code>submit_bio()</code>函数时发生崩溃；(2)在往重映射表中写入映射信息时崩溃。针对上述的两种情况，系统无法确定数据的有效性或事务的完整性，因此无法构建重映射表。&#x3D;&#x3D;只有当重映射文件中写入了数据且”Commit Tx”记录存在时，才可以确认事务是完整的&#x3D;&#x3D;，此时可以安全地从文件中读取重映射信息，并将其重新加载到内存中的重映射表。</p>
+<h3 id="4-清理操作（Cleaning-Operation）"><a href="#4-清理操作（Cleaning-Operation）" class="headerlink" title="4. 清理操作（Cleaning Operation）"></a>4. 清理操作（Cleaning Operation）</h3><p>由于tLBA是从一个大的连续地址空间中分配的，因此连续地址空间可能会被耗尽。当有多个覆盖或者删除操作时，会产生很多无效的tLBA，因此需要回收无效的tLBA并创建一个大的连续空间，具体的解决办法如下：</p>
+<ul>
+<li><strong>寻找有效的tLBA</strong>：清理操作首先从重映射表的末尾开始，寻找关联了有效数据的tLBA，这些tLBA上的数据依然是有效的，不应该被删除。</li>
+<li><strong>寻找无效的tLBA</strong>：从重映射表的起始位置开始查找那些已经通过覆盖或删除操作无效化的tLBA。这些无效的tLBA由于其处于重映射表的中间，阻断了有效数据形成的连续地址空间，形成了不连续的”空洞”。</li>
+<li><strong>数据迁移</strong>：在找到有效和无效的tLBA后，清理操作会将关联了有效数据的tLBA上的数据移动到无效化的tLBA上，填补之前无效的tLBA形成的不连续空洞。这样，原本位于无效tLBA后的有效数据可以被迁移到重映射表的前面，逐步消除不连续的块。&#x3D;&#x3D;在进行迁移之后，重映射表会进行相应的更新，把修改后的tLBA的映射关系进行调整，确保数据一致性。&#x3D;</li>
+</ul>
+<p>&#x3D;&#x3D;这个数据迁移的过程会重复进行，直到重映射表中不再有不连续的无效tLBA空洞。清理操作最终会将所有的无效tLBA重新填充为有效数据关联的tLBA。当所有无效tLBA被填充后，清理操作在重映射表的末尾创建了一个大的连续的tLBA空间，这个连续的tLBA空间可以用于新的写请求，从而确保写操作时可以使用顺序的tLBA。&#x3D;</p>
+<p>清理操作流程示例：</p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/17077495852ce72bea3df99683c5819.png" class="" title="清理操作流程示例">
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>对于SSD存储介质，顺序存储的IOPS优于随机存储，根据此特性，将随机请求<strong>重映射</strong>为顺序请求可以提升系统的IOPS。论文通过使用重映射表来管理映射前后的逻辑地址，并解决了此项设计可能会引发的三个问题：</p>
+<ol>
+<li><strong>映射前后的逻辑地址之间怎么关联？两者之间的查找过程怎么更快速？</strong> —— 使用重映射表并采用红&#x2F;黑树结构；</li>
+<li><strong>当需要更新&#x2F;删除某个信息时，映射表是怎么工作的？如何优化写操作产生的”空间碎片”？</strong> —— 通过赋予新的tLBA，且将最新的tLBA移动到”空间碎片”中；</li>
+<li><strong>怎么保证系统故障&#x2F;崩溃后的数据一致性？</strong> —— 通过引入重映射文件以及写前日志。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>分布式存储</tag>
+        <tag>SSD</tag>
+        <tag>Lustre</tag>
+        <tag>F2FS</tag>
       </tags>
   </entry>
   <entry>
@@ -3256,70 +3236,90 @@
       </tags>
   </entry>
   <entry>
-    <title>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</title>
-    <url>/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/</url>
-    <content><![CDATA[<h1 id="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能"><a href="#论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能" class="headerlink" title="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能"></a>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能</h1><blockquote>
-<p>论文：<em>Improving I&#x2F;O performance in distributed file systems for flash-based SSDs by access pattern reshaping</em></p>
-</blockquote>
-<p>这篇文章的核心思想是：<strong>通过将分布式文件系统（Lustre）中写请求的地址进行重塑，把SSD上的随机写重构为顺序写，来减少写放大效应、提高写入性能</strong>。在展开方案之前，先补充两个背景知识：F2FS文件系统和Lustre文件系统。</p>
-<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><h3 id="F2FS文件系统（Flash-Friendly-File-System）"><a href="#F2FS文件系统（Flash-Friendly-File-System）" class="headerlink" title="F2FS文件系统（Flash Friendly File System）"></a>F2FS文件系统（Flash Friendly File System）</h3><p>F2FS可以极大程度上避免碎片产生。相对于传统日志型文件系统，F2FS在<strong>wandering tree</strong>和<strong>GC</strong>方面有一定的优化，可以复用离散的数据页写入数据，显著减少GC带来的卡顿。</p>
-<p><strong>wandering tree</strong>：在文件更新时，指向文件的Direct Pointer（直接指针）由于数据异地更新，也会随之更新；同时指向这个Direct Pointer的Indirect Pointer（间接指针）也会更新，然后保存这个Indirect Pointer的inode（存储文件元数据的结构体）、inode block map（记录块分配情况的表）等结构也需要更新，这样会导致频繁的metadata更新。</p>
-<h3 id="Lustre文件系统"><a href="#Lustre文件系统" class="headerlink" title="Lustre文件系统"></a>Lustre文件系统</h3><img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/1553ffc55c4f184bfbbf8499a14ebd8.png" class="" title="Lustre文件系统总体结构">
+    <title>SSD的内部结构</title>
+    <url>/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/</url>
+    <content><![CDATA[<h1 id="SSD的内部结构"><a href="#SSD的内部结构" class="headerlink" title="SSD的内部结构"></a>SSD的内部结构</h1><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/dcbba826b52f1170afb42c3c99eb39a.jpg" class="" title="SSD结构图">
 
-<p>上图为Lustre文件系统的总体结构，主要由客户端、元数据服务器、元数据目标、对象存储服务器和对象存储目标组成：</p>
-<p><strong>客户端（Client）</strong>：是Lustre文件系统的用户接口，负责向元数据服务器（MDS）和对象存储服务器（OSS）发送文件系统请求。&#x3D;&#x3D;客户端能将用户的I&#x2F;O请求转发到合适的服务器，并从服务器接收数据。&#x3D;</p>
-<p><strong>元数据服务器（MDS）</strong>：负责管理文件系统的元数据，包括文件名、目录结构、文件权限、文件大小、文件所在的对象存储目标（OST）等信息。&#x3D;&#x3D;当客户端发出文件操作请求时，MDS会查询并返回相关的元数据信息，使客户端知道应该从哪个OST获取文件数据。&#x3D;</p>
-<p><strong>元数据目标（MDT）</strong>：MDT是存储在MDS上的物理存储设备，用于存储文件系统的元数据。&#x3D;&#x3D;MDT是元数据的实际存储位置，负责保存和检索文件系统的元数据内容。多个MDT可以分担元数据的存储负载，从而提高元数据访问的并行度和整体性能。&#x3D;</p>
-<p><strong>对象存储服务器（OSS）</strong>：OSS负责管理实际的文件数据存储，接收来自客户端的文件I&#x2F;O请求，并将数据存储到对应的对象存储目标（OST）上。&#x3D;&#x3D;OSS通过网络将数据分布在多个OST上，实现并行I&#x2F;O操作。&#x3D;</p>
-<p><strong>对象存储目标（OST）</strong>：OST是Lustre文件系统中存储实际文件数据的物理存储设备。&#x3D;&#x3D;OST负责实际的文件数据存储，是Lustre文件系统数据存储的基本单元，数据在OST之间分布存储。&#x3D;</p>
-<p><strong>写操作流程</strong></p>
-<img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/14445f1774cd168570b56e54fd656a5.png" class="" title="Lustre写操作流程">
+<p>SSD主要由控制单元(SSD控制器、主机接口、DRAM等)和存储单元(主要是NAND FLASH闪存颗粒)构成。数据通过接口进入主控，经主控中转调配后存储到各个闪存颗粒中。</p>
+<h2 id="三大组成部分"><a href="#三大组成部分" class="headerlink" title="三大组成部分"></a>三大组成部分</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/feef6f6e8f6043f9b24b61dc895cecb8.png" class="" title="SSD三大组成部分">
 
-<p>当客户端想要写入文件时，首先会向元数据服务器（MDS）发起文件打开请求。MDS处理文件打开操作，检查文件是否存在并将文件的元数据返回给客户端。元数据中包含文件的访问权限（如读写权限）和数据存放的位置（即存储服务器OSS）。客户端验证了文件的权限，并且通过元数据知道了存储该文件数据的OSS的具体位置。客户端接下来会向指定的OSS发起写请求。为了处理客户端的写请求，OSS需要为每个写请求分配一个新的bio结构体，在bio结构体中会记录客户端写请求的地址。接着，写操作请求的页（page，表示要写入的数据）也会添加到这个bio结构体中。设置好bio结构体后，OSS会将该结构体提交给底层存储系统，最终数据通过存储目标OST写入存储设备。</p>
-<h2 id="访问模式重塑方案的总体架构"><a href="#访问模式重塑方案的总体架构" class="headerlink" title="访问模式重塑方案的总体架构"></a>访问模式重塑方案的总体架构</h2><h3 id="1-地址重塑操作（Address-Reshaping-Operation）"><a href="#1-地址重塑操作（Address-Reshaping-Operation）" class="headerlink" title="1. 地址重塑操作（Address Reshaping Operation）"></a>1. 地址重塑操作（Address Reshaping Operation）</h3><p>当客户端发送请求时，根据MDS找到存储数据的OSS，然后将请求送达OSS进行处理。当OSS收到请求后，检查收到的请求是读请求还是写请求：</p>
+<p>主要有三大部分组成：与Host对接的界面(Host interface), 闪存转换层FTL以及闪存对接界面(Flash interface)。</p>
+<p><strong>Host interface</strong>采用的协议包括：</p>
 <ul>
-<li>如果是<strong>写请求</strong>，则将请求的逻辑块地址（LBA）转化为顺序的逻辑块地址。具体来说，它将原始逻辑块地址（oLBA）重塑为顺序的逻辑块地址（tLBA），然后通过重映射表将oLBA和tLBA的对应关系保存。当oLBA和tLBA对被插入重映射表后，写请求通过<code>submit_bio()</code>函数提交到块层（block layer）。在块层中，默认的请求合并算法会将顺序的LBA请求合并成一个大的请求。&#x3D;&#x3D;这种方案可以将随机写请求重塑为顺序写请求，而且可以通过块层将现有的请求合并以减少请求的数量。&#x3D;</li>
+<li>SATA</li>
+<li>PCIe&#x2F;NVMe SSD协议</li>
 </ul>
-<img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/82239abc8b882cee6f1e03baa0e2333.png" class="" title="地址重塑操作总体结构">
-
-<p>对于<strong>读和覆盖请求</strong>，则需要在重映射表（Remapping Table）中查找现有的oLBA和tLBA对：</p>
+<p><strong>闪存转换层FTL</strong>是主控的核心部分，主要实现：</p>
 <ul>
-<li>对于<strong>覆盖请求</strong>，首先在重映射表中查找原始逻辑块地址（oLBA）和已重塑的逻辑块地址（tLBA）对。覆盖请求意味着需要更新存储在原tLBA位置的数据。为了确保写入操作是顺序的，系统会为这个oLBA分配一个新的顺序逻辑块地址（tLBA），这个新tLBA将用于存储更新后的数据。这部分无效数据会通过后续的清理操作来处理和回收空间。</li>
-<li>对于<strong>读请求</strong>，由于oLBA已经被重塑为tLBA，所以在获取某个数据时需要根据重映射表，将对应的tLBA找到，再将数据获取。</li>
+<li>磨损平衡（Wear-leveling）</li>
+<li>垃圾数据回收（Garbage Collection）</li>
+<li>坏块管理（Bad Block Management）</li>
+<li>数据纠错处理（ECC, Error Correction Code）</li>
 </ul>
-<h3 id="2-管理重映射表（Managing-Remapping-Table）"><a href="#2-管理重映射表（Managing-Remapping-Table）" class="headerlink" title="2. 管理重映射表（Managing Remapping Table）"></a>2. 管理重映射表（Managing Remapping Table）</h3><p>在重映射表中记录了oLBA到tLBA的映射关系，主要的作用就是在读取和覆盖操作时为oLBA查找相应的tLBA。对于一个表来说，搜索时间和清理节点时间和表的大小成正比，因此采用多个重映射表而不是单个大的重映射表是必要的选择。多个重映射表的划分范围可以根据磁盘而定：&#x3D;&#x3D;将大型磁盘布局划分为多个小节，为每个小节创建对应的重映射表，这些映射表管理它们自己的逻辑块地址&#x3D;&#x3D;，这样可以减少重映射表中的条目，还可以在进行清理操作时隔离重映射表（一个子节中进行清理操作时，其他的子节还可以处理I&#x2F;O请求）。论文中使用红&#x2F;黑树实现重映射表，因为红&#x2F;黑树有较快的搜索时间。</p>
-<img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/dfbbaa83c350c90030cd44440695d9d.png" class="" title="多个重表示意图">
-
-<p>在上图中，存在两个重映射表（T1和T2），表1负责tLBA1—tLBA90，表2负责tLBA91—tLBA180。在这个例子中，表1已经充满了之前的请求，其中通过表1管理的最后一个tLBA90和oLBA99配对。在表2中现有3个请求（91–93），最近的一个是tLBA93（和oLBA31配对），以及空闲的（tLBA94—tLBA180），这些还未被使用，因此可以处理即将到来的请求。当发出新的请求时（oLBA45和oLBA32），它们被插入到表2（tLBA94和tLBA95中），而不访问表1。</p>
-<h3 id="3-支持崩溃一致性（Supporting-Crash-Consistency）"><a href="#3-支持崩溃一致性（Supporting-Crash-Consistency）" class="headerlink" title="3. 支持崩溃一致性（Supporting Crash Consistency）"></a>3. 支持崩溃一致性（Supporting Crash Consistency）</h3><p>通过写前日志（WAL，在真正修改之前先将相关的日志记录写入稳定存储）的策略来实现崩溃一致性（这里的崩溃一致性指的是重映射表的崩溃一致性）。当请求到达OSS时，首先使用<code>submit_bio()</code>函数将数据写入存储设备OST，在写入完成之后，&#x3D;&#x3D;系统开始为重映射表的更新操作启动一个事务，通过在重映射表文件中写入”Begin Tx”来表示事务的开始。接着，系统将重映射表中需要更新的（oLBA，tLBA）对逐个写入到重映射表文件中，这些对记录了地址重塑后的逻辑块地址。当所有重映射对都写入完成后，系统在重映射表文件中写入”Commit Tx”以表示事务的提交，这一步表示事务已经完成、可以被认为是成功的。&#x3D;&#x3D;最后，系统将这些更新的重映射对插入到驻留在内存中的重映射表中，以便未来的读写请求能够正确地处理。</p>
-<img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/724e3d3010af50fc17f7d6d6a73c968.png" class="" title="崩溃一致性WAL流程">
-
-<p>系统通过重映射文件来作为判断重映射表是否完整的基准。当系统发生崩溃时，可能会有如下的情况：(1)在调用<code>submit_bio()</code>函数时发生崩溃；(2)在往重映射表中写入映射信息时崩溃。针对上述的两种情况，系统无法确定数据的有效性或事务的完整性，因此无法构建重映射表。&#x3D;&#x3D;只有当重映射文件中写入了数据且”Commit Tx”记录存在时，才可以确认事务是完整的&#x3D;&#x3D;，此时可以安全地从文件中读取重映射信息，并将其重新加载到内存中的重映射表。</p>
-<h3 id="4-清理操作（Cleaning-Operation）"><a href="#4-清理操作（Cleaning-Operation）" class="headerlink" title="4. 清理操作（Cleaning Operation）"></a>4. 清理操作（Cleaning Operation）</h3><p>由于tLBA是从一个大的连续地址空间中分配的，因此连续地址空间可能会被耗尽。当有多个覆盖或者删除操作时，会产生很多无效的tLBA，因此需要回收无效的tLBA并创建一个大的连续空间，具体的解决办法如下：</p>
-<ul>
-<li><strong>寻找有效的tLBA</strong>：清理操作首先从重映射表的末尾开始，寻找关联了有效数据的tLBA，这些tLBA上的数据依然是有效的，不应该被删除。</li>
-<li><strong>寻找无效的tLBA</strong>：从重映射表的起始位置开始查找那些已经通过覆盖或删除操作无效化的tLBA。这些无效的tLBA由于其处于重映射表的中间，阻断了有效数据形成的连续地址空间，形成了不连续的”空洞”。</li>
-<li><strong>数据迁移</strong>：在找到有效和无效的tLBA后，清理操作会将关联了有效数据的tLBA上的数据移动到无效化的tLBA上，填补之前无效的tLBA形成的不连续空洞。这样，原本位于无效tLBA后的有效数据可以被迁移到重映射表的前面，逐步消除不连续的块。&#x3D;&#x3D;在进行迁移之后，重映射表会进行相应的更新，把修改后的tLBA的映射关系进行调整，确保数据一致性。&#x3D;</li>
+<p><strong>Flash interface</strong>包括了SSD主控的flash controller，用来控制主控与NAND闪存之间的数据传输。</p>
+<p>NAND闪存是数据归属地，NAND颗粒的存在，赋予了SSD储存数据的使命。为了提高存储的性能，主控会通过不同的通道（Channel）操作NAND闪存。</p>
+<h2 id="NAND-flash在分布式存储中的应用"><a href="#NAND-flash在分布式存储中的应用" class="headerlink" title="NAND flash在分布式存储中的应用"></a>NAND flash在分布式存储中的应用</h2><ul>
+<li><strong>高性能缓存</strong>：用作读写缓存</li>
+<li><strong>元数据存储</strong>：用作存储系统元数据</li>
+<li><strong>日志存储</strong>：存储事务日志、大量的日志信息</li>
+<li><strong>全闪存阵列</strong>：使用全NAND闪存的存储阵列</li>
+<li><strong>混合存储系统</strong>：使用NAND存储热数据，HDD存储冷数据</li>
+<li><strong>大数据处理</strong>：NAND闪存加速数据读写，提升数据处理效率</li>
+<li><strong>分布式文件系统</strong>：使用NAND闪存提升MDS的性能</li>
 </ul>
-<p>&#x3D;&#x3D;这个数据迁移的过程会重复进行，直到重映射表中不再有不连续的无效tLBA空洞。清理操作最终会将所有的无效tLBA重新填充为有效数据关联的tLBA。当所有无效tLBA被填充后，清理操作在重映射表的末尾创建了一个大的连续的tLBA空间，这个连续的tLBA空间可以用于新的写请求，从而确保写操作时可以使用顺序的tLBA。&#x3D;</p>
-<p>清理操作流程示例：</p>
-<img src="/2026/08/20/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/17077495852ce72bea3df99683c5819.png" class="" title="清理操作流程示例">
-
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>对于SSD存储介质，顺序存储的IOPS优于随机存储，根据此特性，将随机请求<strong>重映射</strong>为顺序请求可以提升系统的IOPS。论文通过使用重映射表来管理映射前后的逻辑地址，并解决了此项设计可能会引发的三个问题：</p>
+<h2 id="主流研究方向"><a href="#主流研究方向" class="headerlink" title="主流研究方向"></a>主流研究方向</h2><h3 id="1-性能优化"><a href="#1-性能优化" class="headerlink" title="(1) 性能优化"></a>(1) 性能优化</h3><p>全SSD用做分布式存储系统中的存储介质，应该在系统层面怎么优化能够使SSD的性能发挥到最大？</p>
+<p><strong>系统(软件)层面的开销会影响硬件层面的开销</strong>，因此需要在系统层面针对SSD的特性进行优化，使得SSD的性能尽可能的发挥最大。</p>
+<p>主要优化方式就4种：</p>
 <ol>
-<li><strong>映射前后的逻辑地址之间怎么关联？两者之间的查找过程怎么更快速？</strong> —— 使用重映射表并采用红&#x2F;黑树结构；</li>
-<li><strong>当需要更新&#x2F;删除某个信息时，映射表是怎么工作的？如何优化写操作产生的”空间碎片”？</strong> —— 通过赋予新的tLBA，且将最新的tLBA移动到”空间碎片”中；</li>
-<li><strong>怎么保证系统故障&#x2F;崩溃后的数据一致性？</strong> —— 通过引入重映射文件以及写前日志。</li>
+<li>将随机写改成顺序写 √</li>
+<li>增大并行任务量</li>
+<li>多个事务合并成一个事务进行处理 √</li>
+<li>冷热数据分离 √</li>
 </ol>
+<h3 id="2-故障处理"><a href="#2-故障处理" class="headerlink" title="(2) 故障处理"></a>(2) 故障处理</h3><p>使用SSD用作分布式存储的存储介质时，固态硬盘出现故障应该怎么解决？(预测or优化使故障率降低)</p>
+<p><strong>优化设备层</strong>，降低硬盘故障率。</p>
+<h2 id="NAND颗粒的内部结构"><a href="#NAND颗粒的内部结构" class="headerlink" title="NAND颗粒的内部结构"></a>NAND颗粒的内部结构</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/5744007b365f2dd103641b40530808d.png" class="" title="NAND颗粒内部结构">
+<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/ade71ef313fe861e16125198071c6bb.png" class="" title="NAND颗粒结构">
+
+<p><strong>Page</strong>是闪存存储的最小读写单元、<strong>Block</strong>是闪存存储的最小擦除单元。</p>
+<h3 id="Cell能存储数据的原理"><a href="#Cell能存储数据的原理" class="headerlink" title="Cell能存储数据的原理"></a>Cell能存储数据的原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/08cce0f065bc66b40396dc669b26db7.png" class="" title="浮栅晶体管结构">
+<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b4d43ea1609804503ff82bfc5cbe67c.png" class="" title="存储原理">
+
+<p>在存储数据时，通过施加电压，让电子穿过<strong>隧穿层</strong>达到<strong>浮栅层</strong>，根据<strong>浮栅层</strong>的电子数量来判断是’0’还是’1’。</p>
+<p>浮栅晶体管能存放多大的数据取决于对<strong>浮栅层</strong>中电子数量的粒度划分。</p>
+<p>寿命有限的原因是通过施加电压让电子反复穿过<strong>隧穿层</strong>，会破环<strong>隧穿层</strong>的结构，导致不能再有效的保持<strong>浮栅层</strong>中的电荷。</p>
+<h3 id="存储类型"><a href="#存储类型" class="headerlink" title="存储类型"></a>存储类型</h3><ul>
+<li><strong>SLC</strong>：单层单元，每个单元存储位数(1bit)，电压只有两种状态(0和1)</li>
+<li><strong>MLC</strong>：多层单元，每个单元存储位数(2bit)，电压有四种状态(00,01,10,11)</li>
+<li><strong>TLC</strong>：三层单元，每个单元存储位数(3bit)，电压有八种状态(000,001,010,011,100,101,110,111)</li>
+<li><strong>QLC</strong>：四层单元，每个单元存储位数(4bit)，电压有十六种状态(0000,0001,……,1111)</li>
+</ul>
+<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/3225ebbed6033e2a5bc71bc1cb30b57.png" class="" title="SLC&#x2F;MLC&#x2F;TLC&#x2F;QLC对比">
+
+<h2 id="写放大"><a href="#写放大" class="headerlink" title="写放大"></a>写放大</h2><p><strong>写放大</strong>：指的是在执行写入操作时，SSD硬盘发生的写入量，实际要远大于实际写入的数据量。</p>
+<p><strong>原因</strong>：NAND数据写入的方式是以页面为单位写入，但是要想删除数据却要以块为单位。</p>
+<h3 id="降低写放大的方法"><a href="#降低写放大的方法" class="headerlink" title="降低写放大的方法"></a>降低写放大的方法</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b6aaf6b4393362c87b9434bc2a0543c.png" class="" title="降低写放大的方法">
+
+<ul>
+<li>磨损均衡：将写操作均匀分布到各个块上，避免某些块过度磨损</li>
+<li>垃圾回收：及时回收无效数据，腾出空间</li>
+<li>预留空间：保留部分空间作为缓冲区</li>
+</ul>
+<h3 id="磨损均衡原理"><a href="#磨损均衡原理" class="headerlink" title="磨损均衡原理"></a>磨损均衡原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/c24b32c2668cc724120e8413202e202.png" class="" title="磨损均衡原理">
+
+<ul>
+<li><strong>动态磨损均衡</strong>：更多的使用擦除次数较少的块</li>
+<li><strong>静态磨损平衡</strong>：将冷数据迁移到磨损程度较高的块上，使磨损均匀分布。为了尽量减少块之间的磨损差异，额外的开销以迁移的形式增加。</li>
+</ul>
+<h2 id="SSD和HDD的关键区别"><a href="#SSD和HDD的关键区别" class="headerlink" title="SSD和HDD的关键区别"></a>SSD和HDD的关键区别</h2><p>除了吞吐量和延迟外，HDD会将来自主机的多个请求序列化到单个队列中，每次处理一次，而SSD可以同时处理多个请求，因为SSD将多个芯片连接到多个管道，虽然每个管道一次只能处理一个请求，但多个通道的存在允许同时访问不同的芯片。因此SSD的并发性能优势不可忽略。</p>
 ]]></content>
       <categories>
-        <category>论文阅读</category>
+        <category>存储</category>
       </categories>
       <tags>
         <tag>SSD</tag>
-        <tag>分布式存储</tag>
-        <tag>Lustre</tag>
-        <tag>F2FS</tag>
+        <tag>存储系统</tag>
+        <tag>硬件</tag>
       </tags>
   </entry>
 </search>
