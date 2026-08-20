@@ -395,6 +395,167 @@
       </tags>
   </entry>
   <entry>
+    <title>论文阅读：理解Ceph对象存储中存储后端的写入行为</title>
+    <url>/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<h1 id="论文阅读：理解Ceph对象存储中存储后端的写入行为"><a href="#论文阅读：理解Ceph对象存储中存储后端的写入行为" class="headerlink" title="论文阅读：理解Ceph对象存储中存储后端的写入行为"></a>论文阅读：理解Ceph对象存储中存储后端的写入行为</h1><blockquote>
+<p>论文：<em>Understanding Write Behaviors of Storage Backends in Ceph Object Store</em></p>
+</blockquote>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>论文作者对Ceph提供的三种存储后端（FileStore、KStore和BlueStore）通过微基准测试与长期工作负载的综合分析进行了测试，主要聚焦于WAF（写放大系数）。</p>
+<p>核心发现：&#x3D;&#x3D;不管是哪种存储后端，WAF都大于13&#x3D;&#x3D;。其中BlueStore的综合性能最稳定，FileStore在SSD上的表现最好，BlueStore在HDD上表现不错。</p>
+<p>这三种存储后端的写放大的来源如下：</p>
+<p><strong>FileStore</strong>：需要先将数据写入独立的journal（日志设备），然后再写入主存储区。这本应是”双写（double write）”，即写流量为2倍，但实验发现实际是<strong>3倍</strong>。因为文件系统本身也有自己的日志系统，即数据流程变成：<strong>数据 → Ceph journal → 文件系统 → 文件系统 journal → 真正写入位置</strong>。&#x3D;&#x3D;结果导致：<strong>文件系统的元数据+日志流量 ≈ 原始数据量大小</strong>，写放大更严重。&#x3D;&#x3D;</p>
+<p><strong>KStore</strong>：KStore采用RocksDB存储元数据。由于RocksDB的LSM-tree结构，后台会进行大量compaction。实验发现：&#x3D;&#x3D;几乎所有写流量都来自compaction，而不是用户写入的数据。&#x3D;&#x3D;</p>
+<p><strong>BlueStore</strong>：数据直接写入裸设备，不经过文件系统，因此它<strong>避免了FileStore的journaling of journal问题</strong>。但是它的写放大依旧存在，主要来源是”Ceph仍使用RocksDB存储元数据和对象属性”，这些RocksDB写流量的大小<strong>超过真实数据写入量的3倍</strong>。简而言之：<strong>BlueStore解决了日志嵌套的问题，但RocksDB的元数据写放大仍然很严重。</strong></p>
+<h2 id="Background"><a href="#Background" class="headerlink" title="Background"></a>Background</h2><h3 id="Ceph的三种存储接口"><a href="#Ceph的三种存储接口" class="headerlink" title="Ceph的三种存储接口"></a>Ceph的三种存储接口</h3><table>
+<thead>
+<tr>
+<th>存储类型</th>
+<th>描述</th>
+<th>举例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对象存储（Object Storage）</td>
+<td>类似 Amazon S3、Swift，存储对象（Object）</td>
+<td>Ceph Object Storage（RADOS Gateway）</td>
+</tr>
+<tr>
+<td>块存储（Block Storage）</td>
+<td>给虚拟机或系统提供块设备</td>
+<td>Ceph RBD（RADOS Block Device）</td>
+</tr>
+<tr>
+<td>文件系统（File System）</td>
+<td>类似分布式文件系统</td>
+<td>CephFS</td>
+</tr>
+</tbody></table>
+<p>虽然提供三种不同形态的服务，但<strong>它们的底层都是建立在同一个统一核心：&#x3D;&#x3D;RADOS&#x3D;&#x3D;（Reliable Autonomic Distributed Object Store）之上</strong>。RADOS层运行着Ceph内部的关键组件：</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>全称</th>
+<th>是否是守护进程（Daemon）</th>
+<th>是否运行在 RADOS 层？</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>MON</strong></td>
+<td>Monitor</td>
+<td>✅ 是</td>
+<td>✅ 是</td>
+<td>保存并管理集群状态（如 OSD 列表、集群地图），负责一致性和选举</td>
+</tr>
+<tr>
+<td><strong>MDS</strong></td>
+<td>Metadata Server</td>
+<td>✅ 是</td>
+<td>✅ 是（但只用于 CephFS 文件系统）</td>
+<td>管理文件系统的目录、权限和名称等元数据</td>
+</tr>
+<tr>
+<td><strong>OSD</strong></td>
+<td>Object Storage Daemon</td>
+<td>✅ 是</td>
+<td>✅ 是</td>
+<td>存储数据对象、处理读写请求、执行数据复制和恢复</td>
+</tr>
+</tbody></table>
+<h3 id="Ceph与传统分布式存储的区别"><a href="#Ceph与传统分布式存储的区别" class="headerlink" title="Ceph与传统分布式存储的区别"></a>Ceph与传统分布式存储的区别</h3><ol>
+<li>客户端可以<strong>直接联系负责该数据的主OSD节点（primary OSD）</strong>，无需中间服务器；</li>
+<li>不需要固定的元数据服务器来告诉客户端”数据在哪里”；</li>
+<li>数据的位置是通过<strong>CRUSH算法</strong>算出来的，而不是查表得到。</li>
+</ol>
+<h3 id="BlueStore的定位"><a href="#BlueStore的定位" class="headerlink" title="BlueStore的定位"></a>BlueStore的定位</h3><p>BlueStore是Ceph的另一种存储后端，其核心理念在于高效管理对象数据，突破FileStore的局限性。FileStore存在的问题之一是外部日志记录导致的双重写入开销。BlueStore则直接将对象数据存储于原始块设备，同时使用RocksDB管理元数据。由于跳过了本地文件系统层，可规避日志记录等文件系统开销。</p>
+<p>需注意的是，由于运行RocksDB仍需文件系统支持，BlueStore内部集成了名为BlueFS的轻量级用户级文件系统。此外，Ceph通常需处理大量对象，且常需按顺序枚举所有对象以进行一致性检查和恢复，然而POSIX并未提供从多个目录高效检索对象的方法。使用RocksDB的另一优势在于，Ceph能够轻松检索并枚举系统中存储的所有对象。</p>
+<h2 id="微基准测试结果"><a href="#微基准测试结果" class="headerlink" title="微基准测试结果"></a>微基准测试结果</h2><h3 id="FileStore"><a href="#FileStore" class="headerlink" title="FileStore"></a>FileStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/d995d2090d5b758453b8043d301818f9.png" class="" title="FileStore微基准测试结果">
+
+<p>4KB写入在Ceph内部的路径为：</p>
+<p><strong>(1) 客户端定位数据应该写到哪个OSD</strong></p>
+<p>客户端通过CRUSH算法在O(1)时间内计算出负责该对象的<strong>主OSD</strong>，然后将写请求发送给主OSD。</p>
+<p><strong>(2) 写副本</strong></p>
+<p>主OSD将写请求转发给另外两个OSD（即副本#2和副本#3）。因为副本机制（replication factor &#x3D; 3），这一步本身就会<strong>产生3倍流量</strong>。</p>
+<p><strong>(3) 在每个OSD内部，数据会被打包成一个”事务”</strong></p>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对象数据（object data）</td>
+<td>你写入的 4KB 数据</td>
+</tr>
+<tr>
+<td>对象元数据（object metadata）</td>
+<td>比如对象大小、时间戳、offset 等</td>
+</tr>
+<tr>
+<td>LevelDB（或 RocksDB）键值对</td>
+<td>存储对象索引与属性，用来快速定位和管理对象</td>
+</tr>
+</tbody></table>
+<p><strong>(4) FileStore接收到这个事务后，会做两件事（双写来源）：</strong></p>
+<ol>
+<li><p><strong>先写Ceph Journal（预写日志，Write-Ahead Logging）</strong>：保护事务的原子性（可崩溃恢复），这是第一部分写放大来源；</p>
+</li>
+<li><p><strong>再把这份事务写入XFS（真实数据 + LevelDB数据 + 文件系统元数据）</strong>：</p>
+<ul>
+<li>真实文件写入 &#x3D; object data；</li>
+<li>LevelDB的写放大（LSM-tree会产生compaction）；</li>
+<li>XFS文件系统写元数据 + XFS Journaling。</li>
+</ul>
+<p>这是第二次写放大，导致”journal of journal（日志的日志）”问题。</p>
+</li>
+</ol>
+<p>所以4KB写入的WAF因子很大且有波动性，但是随着写入请求大小的增大，直至4MB时，WAF收敛至6，因为相对于请求大小，对象元数据、键值对、文件系统元数据和文件系统日志的占比会相对缩小。</p>
+<h3 id="BlueStore"><a href="#BlueStore" class="headerlink" title="BlueStore"></a>BlueStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/f9c30590713a818b6c4c260315e01a59.png" class="" title="BlueStore微基准测试结果">
+
+<p>可以发现第3次写（3rd Write）的WAF很高，论文解释原因为：BlueStore按<strong>最小分配粒度 &#x3D; 64KB Chunk</strong>来管理数据。当写入请求落在某个Chunk中间、且打破了它的连续性时，BlueStore必须做：&#x3D;&#x3D;把当前64KB Chunk中未写满的部分用<strong>零填充（zero padding）</strong>，然后整个64KB写入磁盘。&#x3D;&#x3D;</p>
+<blockquote>
+<p>笔者注：在Ceph官网实际调研后发现，现在BlueStore默认的最小分配粒度已经是4KB了，也就是说这里补0带来的WAF应该已经没有了。总体上BlueStore效果更好，因为没有了日志双写问题。</p>
+</blockquote>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这篇论文的价值在于系统性地量化了Ceph三种存储后端的写放大来源：</p>
+<table>
+<thead>
+<tr>
+<th>后端</th>
+<th>主要写放大来源</th>
+<th>关键问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FileStore</td>
+<td>Journal双写 + 文件系统日志（journal of journal）</td>
+<td>双写实际为3倍而非2倍</td>
+</tr>
+<tr>
+<td>KStore</td>
+<td>RocksDB的LSM-tree compaction</td>
+<td>写流量几乎全来自compaction</td>
+</tr>
+<tr>
+<td>BlueStore</td>
+<td>RocksDB元数据写流量（超过真实数据3倍）</td>
+<td>解决了日志嵌套但元数据放大仍在</td>
+</tr>
+</tbody></table>
+<p>结论指向一个明确的方向：<strong>分布式存储系统的后端如果想进一步降低写放大，要么换掉LSM-tree的元数据方案，要么优化元数据的落盘路径</strong>——这也与后续一系列针对RocksDB&#x2F;BlueStore的优化工作（如MatrixKV、就地更新方案等）相呼应。</p>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>分布式存储</tag>
+        <tag>Ceph</tag>
+        <tag>BlueStore</tag>
+        <tag>写放大</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>论文阅读：稳定并提升NVMe SSD上日志文件系统的I/O性能</title>
     <url>/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/</url>
     <content><![CDATA[<h1 id="论文阅读：稳定并提升NVMe-SSD上日志文件系统的I-O性能"><a href="#论文阅读：稳定并提升NVMe-SSD上日志文件系统的I-O性能" class="headerlink" title="论文阅读：稳定并提升NVMe SSD上日志文件系统的I&#x2F;O性能"></a>论文阅读：稳定并提升NVMe SSD上日志文件系统的I&#x2F;O性能</h1><blockquote>
@@ -480,284 +641,6 @@
         <tag>分布式存储</tag>
         <tag>NVMe</tag>
         <tag>日志文件系统</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</title>
-    <url>/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/</url>
-    <content><![CDATA[<h1 id="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能"><a href="#论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能" class="headerlink" title="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能"></a>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能</h1><blockquote>
-<p>论文：<em>Improving I&#x2F;O performance in distributed file systems for flash-based SSDs by access pattern reshaping</em></p>
-</blockquote>
-<p>这篇文章的核心思想是：<strong>通过将分布式文件系统（Lustre）中写请求的地址进行重塑，把SSD上的随机写重构为顺序写，来减少写放大效应、提高写入性能</strong>。在展开方案之前，先补充两个背景知识：F2FS文件系统和Lustre文件系统。</p>
-<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><h3 id="F2FS文件系统（Flash-Friendly-File-System）"><a href="#F2FS文件系统（Flash-Friendly-File-System）" class="headerlink" title="F2FS文件系统（Flash Friendly File System）"></a>F2FS文件系统（Flash Friendly File System）</h3><p>F2FS可以极大程度上避免碎片产生。相对于传统日志型文件系统，F2FS在<strong>wandering tree</strong>和<strong>GC</strong>方面有一定的优化，可以复用离散的数据页写入数据，显著减少GC带来的卡顿。</p>
-<p><strong>wandering tree</strong>：在文件更新时，指向文件的Direct Pointer（直接指针）由于数据异地更新，也会随之更新；同时指向这个Direct Pointer的Indirect Pointer（间接指针）也会更新，然后保存这个Indirect Pointer的inode（存储文件元数据的结构体）、inode block map（记录块分配情况的表）等结构也需要更新，这样会导致频繁的metadata更新。</p>
-<h3 id="Lustre文件系统"><a href="#Lustre文件系统" class="headerlink" title="Lustre文件系统"></a>Lustre文件系统</h3><img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/1553ffc55c4f184bfbbf8499a14ebd8.png" class="" title="Lustre文件系统总体结构">
-
-<p>上图为Lustre文件系统的总体结构，主要由客户端、元数据服务器、元数据目标、对象存储服务器和对象存储目标组成：</p>
-<p><strong>客户端（Client）</strong>：是Lustre文件系统的用户接口，负责向元数据服务器（MDS）和对象存储服务器（OSS）发送文件系统请求。&#x3D;&#x3D;客户端能将用户的I&#x2F;O请求转发到合适的服务器，并从服务器接收数据。&#x3D;</p>
-<p><strong>元数据服务器（MDS）</strong>：负责管理文件系统的元数据，包括文件名、目录结构、文件权限、文件大小、文件所在的对象存储目标（OST）等信息。&#x3D;&#x3D;当客户端发出文件操作请求时，MDS会查询并返回相关的元数据信息，使客户端知道应该从哪个OST获取文件数据。&#x3D;</p>
-<p><strong>元数据目标（MDT）</strong>：MDT是存储在MDS上的物理存储设备，用于存储文件系统的元数据。&#x3D;&#x3D;MDT是元数据的实际存储位置，负责保存和检索文件系统的元数据内容。多个MDT可以分担元数据的存储负载，从而提高元数据访问的并行度和整体性能。&#x3D;</p>
-<p><strong>对象存储服务器（OSS）</strong>：OSS负责管理实际的文件数据存储，接收来自客户端的文件I&#x2F;O请求，并将数据存储到对应的对象存储目标（OST）上。&#x3D;&#x3D;OSS通过网络将数据分布在多个OST上，实现并行I&#x2F;O操作。&#x3D;</p>
-<p><strong>对象存储目标（OST）</strong>：OST是Lustre文件系统中存储实际文件数据的物理存储设备。&#x3D;&#x3D;OST负责实际的文件数据存储，是Lustre文件系统数据存储的基本单元，数据在OST之间分布存储。&#x3D;</p>
-<p><strong>写操作流程</strong></p>
-<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/14445f1774cd168570b56e54fd656a5.png" class="" title="Lustre写操作流程">
-
-<p>当客户端想要写入文件时，首先会向元数据服务器（MDS）发起文件打开请求。MDS处理文件打开操作，检查文件是否存在并将文件的元数据返回给客户端。元数据中包含文件的访问权限（如读写权限）和数据存放的位置（即存储服务器OSS）。客户端验证了文件的权限，并且通过元数据知道了存储该文件数据的OSS的具体位置。客户端接下来会向指定的OSS发起写请求。为了处理客户端的写请求，OSS需要为每个写请求分配一个新的bio结构体，在bio结构体中会记录客户端写请求的地址。接着，写操作请求的页（page，表示要写入的数据）也会添加到这个bio结构体中。设置好bio结构体后，OSS会将该结构体提交给底层存储系统，最终数据通过存储目标OST写入存储设备。</p>
-<h2 id="访问模式重塑方案的总体架构"><a href="#访问模式重塑方案的总体架构" class="headerlink" title="访问模式重塑方案的总体架构"></a>访问模式重塑方案的总体架构</h2><h3 id="1-地址重塑操作（Address-Reshaping-Operation）"><a href="#1-地址重塑操作（Address-Reshaping-Operation）" class="headerlink" title="1. 地址重塑操作（Address Reshaping Operation）"></a>1. 地址重塑操作（Address Reshaping Operation）</h3><p>当客户端发送请求时，根据MDS找到存储数据的OSS，然后将请求送达OSS进行处理。当OSS收到请求后，检查收到的请求是读请求还是写请求：</p>
-<ul>
-<li>如果是<strong>写请求</strong>，则将请求的逻辑块地址（LBA）转化为顺序的逻辑块地址。具体来说，它将原始逻辑块地址（oLBA）重塑为顺序的逻辑块地址（tLBA），然后通过重映射表将oLBA和tLBA的对应关系保存。当oLBA和tLBA对被插入重映射表后，写请求通过<code>submit_bio()</code>函数提交到块层（block layer）。在块层中，默认的请求合并算法会将顺序的LBA请求合并成一个大的请求。&#x3D;&#x3D;这种方案可以将随机写请求重塑为顺序写请求，而且可以通过块层将现有的请求合并以减少请求的数量。&#x3D;</li>
-</ul>
-<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/82239abc8b882cee6f1e03baa0e2333.png" class="" title="地址重塑操作总体结构">
-
-<p>对于<strong>读和覆盖请求</strong>，则需要在重映射表（Remapping Table）中查找现有的oLBA和tLBA对：</p>
-<ul>
-<li>对于<strong>覆盖请求</strong>，首先在重映射表中查找原始逻辑块地址（oLBA）和已重塑的逻辑块地址（tLBA）对。覆盖请求意味着需要更新存储在原tLBA位置的数据。为了确保写入操作是顺序的，系统会为这个oLBA分配一个新的顺序逻辑块地址（tLBA），这个新tLBA将用于存储更新后的数据。这部分无效数据会通过后续的清理操作来处理和回收空间。</li>
-<li>对于<strong>读请求</strong>，由于oLBA已经被重塑为tLBA，所以在获取某个数据时需要根据重映射表，将对应的tLBA找到，再将数据获取。</li>
-</ul>
-<h3 id="2-管理重映射表（Managing-Remapping-Table）"><a href="#2-管理重映射表（Managing-Remapping-Table）" class="headerlink" title="2. 管理重映射表（Managing Remapping Table）"></a>2. 管理重映射表（Managing Remapping Table）</h3><p>在重映射表中记录了oLBA到tLBA的映射关系，主要的作用就是在读取和覆盖操作时为oLBA查找相应的tLBA。对于一个表来说，搜索时间和清理节点时间和表的大小成正比，因此采用多个重映射表而不是单个大的重映射表是必要的选择。多个重映射表的划分范围可以根据磁盘而定：&#x3D;&#x3D;将大型磁盘布局划分为多个小节，为每个小节创建对应的重映射表，这些映射表管理它们自己的逻辑块地址&#x3D;&#x3D;，这样可以减少重映射表中的条目，还可以在进行清理操作时隔离重映射表（一个子节中进行清理操作时，其他的子节还可以处理I&#x2F;O请求）。论文中使用红&#x2F;黑树实现重映射表，因为红&#x2F;黑树有较快的搜索时间。</p>
-<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/dfbbaa83c350c90030cd44440695d9d.png" class="" title="多个重表示意图">
-
-<p>在上图中，存在两个重映射表（T1和T2），表1负责tLBA1—tLBA90，表2负责tLBA91—tLBA180。在这个例子中，表1已经充满了之前的请求，其中通过表1管理的最后一个tLBA90和oLBA99配对。在表2中现有3个请求（91–93），最近的一个是tLBA93（和oLBA31配对），以及空闲的（tLBA94—tLBA180），这些还未被使用，因此可以处理即将到来的请求。当发出新的请求时（oLBA45和oLBA32），它们被插入到表2（tLBA94和tLBA95中），而不访问表1。</p>
-<h3 id="3-支持崩溃一致性（Supporting-Crash-Consistency）"><a href="#3-支持崩溃一致性（Supporting-Crash-Consistency）" class="headerlink" title="3. 支持崩溃一致性（Supporting Crash Consistency）"></a>3. 支持崩溃一致性（Supporting Crash Consistency）</h3><p>通过写前日志（WAL，在真正修改之前先将相关的日志记录写入稳定存储）的策略来实现崩溃一致性（这里的崩溃一致性指的是重映射表的崩溃一致性）。当请求到达OSS时，首先使用<code>submit_bio()</code>函数将数据写入存储设备OST，在写入完成之后，&#x3D;&#x3D;系统开始为重映射表的更新操作启动一个事务，通过在重映射表文件中写入”Begin Tx”来表示事务的开始。接着，系统将重映射表中需要更新的（oLBA，tLBA）对逐个写入到重映射表文件中，这些对记录了地址重塑后的逻辑块地址。当所有重映射对都写入完成后，系统在重映射表文件中写入”Commit Tx”以表示事务的提交，这一步表示事务已经完成、可以被认为是成功的。&#x3D;&#x3D;最后，系统将这些更新的重映射对插入到驻留在内存中的重映射表中，以便未来的读写请求能够正确地处理。</p>
-<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/724e3d3010af50fc17f7d6d6a73c968.png" class="" title="崩溃一致性WAL流程">
-
-<p>系统通过重映射文件来作为判断重映射表是否完整的基准。当系统发生崩溃时，可能会有如下的情况：(1)在调用<code>submit_bio()</code>函数时发生崩溃；(2)在往重映射表中写入映射信息时崩溃。针对上述的两种情况，系统无法确定数据的有效性或事务的完整性，因此无法构建重映射表。&#x3D;&#x3D;只有当重映射文件中写入了数据且”Commit Tx”记录存在时，才可以确认事务是完整的&#x3D;&#x3D;，此时可以安全地从文件中读取重映射信息，并将其重新加载到内存中的重映射表。</p>
-<h3 id="4-清理操作（Cleaning-Operation）"><a href="#4-清理操作（Cleaning-Operation）" class="headerlink" title="4. 清理操作（Cleaning Operation）"></a>4. 清理操作（Cleaning Operation）</h3><p>由于tLBA是从一个大的连续地址空间中分配的，因此连续地址空间可能会被耗尽。当有多个覆盖或者删除操作时，会产生很多无效的tLBA，因此需要回收无效的tLBA并创建一个大的连续空间，具体的解决办法如下：</p>
-<ul>
-<li><strong>寻找有效的tLBA</strong>：清理操作首先从重映射表的末尾开始，寻找关联了有效数据的tLBA，这些tLBA上的数据依然是有效的，不应该被删除。</li>
-<li><strong>寻找无效的tLBA</strong>：从重映射表的起始位置开始查找那些已经通过覆盖或删除操作无效化的tLBA。这些无效的tLBA由于其处于重映射表的中间，阻断了有效数据形成的连续地址空间，形成了不连续的”空洞”。</li>
-<li><strong>数据迁移</strong>：在找到有效和无效的tLBA后，清理操作会将关联了有效数据的tLBA上的数据移动到无效化的tLBA上，填补之前无效的tLBA形成的不连续空洞。这样，原本位于无效tLBA后的有效数据可以被迁移到重映射表的前面，逐步消除不连续的块。&#x3D;&#x3D;在进行迁移之后，重映射表会进行相应的更新，把修改后的tLBA的映射关系进行调整，确保数据一致性。&#x3D;</li>
-</ul>
-<p>&#x3D;&#x3D;这个数据迁移的过程会重复进行，直到重映射表中不再有不连续的无效tLBA空洞。清理操作最终会将所有的无效tLBA重新填充为有效数据关联的tLBA。当所有无效tLBA被填充后，清理操作在重映射表的末尾创建了一个大的连续的tLBA空间，这个连续的tLBA空间可以用于新的写请求，从而确保写操作时可以使用顺序的tLBA。&#x3D;</p>
-<p>清理操作流程示例：</p>
-<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/17077495852ce72bea3df99683c5819.png" class="" title="清理操作流程示例">
-
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>对于SSD存储介质，顺序存储的IOPS优于随机存储，根据此特性，将随机请求<strong>重映射</strong>为顺序请求可以提升系统的IOPS。论文通过使用重映射表来管理映射前后的逻辑地址，并解决了此项设计可能会引发的三个问题：</p>
-<ol>
-<li><strong>映射前后的逻辑地址之间怎么关联？两者之间的查找过程怎么更快速？</strong> —— 使用重映射表并采用红&#x2F;黑树结构；</li>
-<li><strong>当需要更新&#x2F;删除某个信息时，映射表是怎么工作的？如何优化写操作产生的”空间碎片”？</strong> —— 通过赋予新的tLBA，且将最新的tLBA移动到”空间碎片”中；</li>
-<li><strong>怎么保证系统故障&#x2F;崩溃后的数据一致性？</strong> —— 通过引入重映射文件以及写前日志。</li>
-</ol>
-]]></content>
-      <categories>
-        <category>论文阅读</category>
-      </categories>
-      <tags>
-        <tag>SSD</tag>
-        <tag>分布式存储</tag>
-        <tag>Lustre</tag>
-        <tag>F2FS</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>论文阅读：重构分布式块存储系统以提升随机写性能</title>
-    <url>/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/</url>
-    <content><![CDATA[<h1 id="论文阅读：重构分布式块存储系统以提升随机写性能"><a href="#论文阅读：重构分布式块存储系统以提升随机写性能" class="headerlink" title="论文阅读：重构分布式块存储系统以提升随机写性能"></a>论文阅读：重构分布式块存储系统以提升随机写性能</h1><blockquote>
-<p>论文：<em>Re-architecting Distributed Block Storage System for Improving Random Write Performance</em></p>
-</blockquote>
-<h2 id="背景：什么是块存储"><a href="#背景：什么是块存储" class="headerlink" title="背景：什么是块存储"></a>背景：什么是块存储</h2><p>块存储是一种数据存储方式，通常用于云存储和传统存储系统中。它将数据分成固定大小的”块”（block），并独立地存储和管理每个块，而不是像文件系统那样处理整个文件或数据流。</p>
-<p><strong>块存储的特点：</strong></p>
-<ol>
-<li><strong>固定大小的块</strong>：数据以固定大小的块进行存储，通常每个块的大小在512字节到几KB不等，这些块可以独立寻址和访问；</li>
-<li><strong>直接访问</strong>：块存储可以提供高效的随机读写操作，每个块有一个唯一的地址，可以直接进行读写，而无需遍历整个文件；</li>
-<li><strong>灵活性高</strong>：块存储通常用作虚拟机、数据库或应用程序的底层存储，它不依赖于特定的文件系统，可以在不同操作系统和文件系统上创建和使用；</li>
-<li><strong>持久存储</strong>：块存储通常被用作持久存储，特别是在网络附加存储（NAS）或存储区域网络（SAN）中；</li>
-<li><strong>独立性强</strong>：每个块都独立存储，修改或删除一个块不会影响到其他块，适合高性能、低延迟的应用；</li>
-<li>&#x3D;&#x3D;<strong>强一致性</strong>&#x3D;&#x3D;：主要体现在<strong>每个写操作在写入成功后，任何后续的读操作都会返回最新的数据版本</strong>。</li>
-</ol>
-<p>强一致性的具体保障：</p>
-<ul>
-<li><strong>写操作的原子性</strong>：块存储的写操作是原子性的，即写操作要么全部成功，要么全部失败，不会出现部分写入的情况。这保证了在系统发生崩溃或故障时，不会出现不完整或错误的数据；</li>
-<li><strong>同步写入机制</strong>：块存储通常采用同步写入机制，确保数据在写入操作完成后被同步写入到存储设备，客户端可以在写操作成功后立即读取到最新的数据；</li>
-<li><strong>分布式存储中的一致性保障</strong>：在分布式块存储系统中，数据的一致性通常通过数据复制和分布式一致性协议来实现。每个写操作在多个副本节点上都需要保持一致，常见的协议如Paxos或Raft会确保在数据写入时，不同节点之间的数据保持同步和一致。</li>
-</ul>
-<h2 id="Abstract：Ceph在NVMe上的CPU瓶颈"><a href="#Abstract：Ceph在NVMe上的CPU瓶颈" class="headerlink" title="Abstract：Ceph在NVMe上的CPU瓶颈"></a>Abstract：Ceph在NVMe上的CPU瓶颈</h2><p>论文使用基于**”屋顶线”**的方法测试了Ceph在基于NVMe存储介质的情况下处理随机写入工作负载时的CPU瓶颈问题，主要原因是：</p>
-<p><strong>1. 紧耦合的I&#x2F;O处理</strong></p>
-<p>Ceph的I&#x2F;O处理是紧密耦合的，难以在优化CPU效率的同时不影响客户端体验。在<strong>强一致性分布式系统</strong>中，数据在返回给客户端之前，必须完成<strong>复制</strong>和<strong>持久化</strong>（确保数据安全）。但在Ceph的I&#x2F;O路径中，处理<strong>延迟敏感的任务</strong>（如响应客户端请求）和<strong>批处理任务</strong>（如数据持久化）没有解耦，意味着两个不同的优化策略——<strong>降低延迟</strong>和<strong>提高CPU效率</strong>难以同时进行：为减少延迟，系统可能会消耗更多的CPU资源；而增加CPU效率可能会牺牲响应速度。</p>
-<p><strong>2. 线程架构效率低下</strong></p>
-<p>Ceph的线程架构导致<strong>频繁的上下文切换</strong>。上下文切换是操作系统在多个线程或进程之间切换时的管理工作，通常需要保存和恢复不同的线程状态。对于<strong>快速设备</strong>（如NVMe SSD）来说，随着设备速度的提升，这种上下文切换的开销变得不可忽视。</p>
-<p><strong>3. 本地后端数据存储占用大量CPU资源</strong></p>
-<p>Ceph等分布式存储系统常用的<strong>后端数据存储</strong>（如键值存储）会消耗大量的CPU资源。特别是这些存储系统通常会执行<strong>数据压缩</strong>和<strong>刷新</strong>操作，这些过程需要显著的CPU计算能力，进一步加重了CPU瓶颈问题。</p>
-<blockquote>
-<p>&#x3D;&#x3D;什么是屋顶线模型？&#x3D;&#x3D;<br>屋顶线模型（Roofline Model）是一种用于分析计算系统性能的方法，特别适用于揭示计算密集型任务中的瓶颈。<br>核心点：(1) 峰值计算能力：表示系统的最大计算性能，即当计算完全不受内存访问限制时，理论上可以达到的最高性能；(2) 内存带宽：表示内存子系统的峰值数据传输速率。</p>
-</blockquote>
-<p><strong>针对上面的瓶颈问题，论文的工作是”重新构建一个分布式块存储系统，来提高随机写入的性能”。主要的关键要素有三个：</strong></p>
-<p><strong>(1) &#x3D;&#x3D;使用非易失性存储器进行解耦操作处理&#x3D;&#x3D;</strong></p>
-<p>将I&#x2F;O操作分成两段（上半部分和下半部分）。上半部分将更新操作复制并持久保存到NVM中的用户级日志中（&#x3D;NVM速度非常快，而且具备持久化特性，所以这部分操作可以非常迅速地完成，从而降低客户端的等待时间&#x3D;），而下半部分则将日志更新异步提交到磁盘。通过这种方法将I&#x2F;O操作解耦，并针对下半部分进行优化。</p>
-<p><strong>(2) &#x3D;&#x3D;优先级线程控制&#x3D;&#x3D;</strong></p>
-<p>针对不同的任务使用不同的线程模型：<strong>针对延迟关键型作业使用事件驱动线程模型</strong>、<strong>针对尽力批处理作业使用传统线程池模型</strong>。然后系统会将这两种任务分配到不同的CPU池中，来避免&#x3D;&#x3D;优先级反转问题（低优先级任务占用了CPU资源，导致高优先级任务无法及时执行）&#x3D;&#x3D;。</p>
-<ul>
-<li><strong>事件驱动线程模型</strong>：适用于对<strong>响应时间</strong>要求很高的操作。这种模型通过事件触发来调度线程，而不是固定的时间片轮转，因此可以快速响应I&#x2F;O请求，减少延迟；</li>
-<li><strong>传统线程池模型</strong>：更适合那些<strong>非实时</strong>的、可以稍微延迟的<strong>批处理任务</strong>，如后台的数据处理、文件写入等操作。</li>
-</ul>
-<p><strong>(3) &#x3D;&#x3D;CPU效率高的后端数据存储&#x3D;&#x3D;</strong></p>
-<p>设计了一个基于就地更新的对象存储，以最大限度地减少主机端的WAF（写放大系数）和CPU开销。</p>
-<h2 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h2><h3 id="屋顶线性能分析"><a href="#屋顶线性能分析" class="headerlink" title="屋顶线性能分析"></a>屋顶线性能分析</h3><img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/e9703d07b88667acc4b5e48f9499263.png" class="" title="屋顶线性能分析结果">
-
-<p>上图是使用类似屋顶线模型针对Ceph和3个修改版的性能进行测试的结果，其中：</p>
-<ul>
-<li><strong>MP</strong>：处理客户端发送的请求消息，即负责解析和响应消息；</li>
-<li><strong>RP</strong>：处理数据复制的过程，即数据复制到多个节点的过程；</li>
-<li><strong>TP</strong>：事务处理，即确保数据一致性和原子性；</li>
-<li><strong>OS</strong>：对象存储处理，即用于存储和检索数据；</li>
-<li><strong>MT</strong>：维护任务，即对象存储系统的后台维护操作（垃圾回收等）；</li>
-<li><strong>NP</strong>：网络处理CPU时间中涉及MP和RP的部分；</li>
-<li><strong>SP</strong>：存储处理CPU时间中涉及TP和OS的部分；</li>
-<li><strong>RTC</strong>：Run-to-Completion模型——是一种工作线程模型，在这个模型中，一个单独的线程完成整个客户端请求的处理工作，直到任务结束，&#x3D;&#x3D;这意味着处理过程中没有任务拆分或者线程间切换&#x3D;&#x3D;。</li>
-</ul>
-<p>各版本说明：</p>
-<ol>
-<li>RTC-v1实现了完整的&#x3D;&#x3D;运行到完成（RTC）模型&#x3D;&#x3D;，包括MP、RP、TP、OS和MT五个阶段；</li>
-<li>RTC-v2&#x3D;&#x3D;去掉了与对象存储相关的开销&#x3D;&#x3D;，来显示RTC模型在<strong>没有对象存储负担</strong>的情况下的性能（写入请求会立即返回成功，而无需等待数据被真正写入到对象存储中），它包括MP、RP和TP三个阶段；</li>
-<li>RTC-v3&#x3D;&#x3D;去掉了事务处理和对象存储相关的开销&#x3D;&#x3D;，只包括MP和RP两个阶段。</li>
-</ol>
-<p>实验配置为：(1) 两个信使进程：使用两条线程专门来处理网络通信的任务；(2) 两个PG线程：使用两条线程来处理具体的数据存储、检索和复制工作；(3) CPU亲和性设置：将整个Ceph进程的CPU亲和性设置为仅在四个CPU核心上运行；(4) 每节点4个线程：每个Ceph节点上使用的线程总数是4个，包括两个信使线程和两个PG线程。</p>
-<p><strong>结论：&#x3D;&#x3D;在Original模式下，CPU使用率为346%，其中SP的操作对CPU的使用率占比最高，大概为150%，而集群的总IOPS为29K。这个数值整体是偏低的——对于NVMe SSD来说，在FOB状态下可以提供高达330K IOPS，对于目前如此低的IOPS来说，CPU的占用率太高了。&#x3D;&#x3D;</strong></p>
-<h3 id="紧耦合的I-O处理"><a href="#紧耦合的I-O处理" class="headerlink" title="紧耦合的I&#x2F;O处理"></a>紧耦合的I&#x2F;O处理</h3><img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/1727575452572.png" class="" title="紧耦合的I&#x2F;O过程">
-
-<p>上图显示了NVMe SSD上分布式块存储系统的主要问题：&#x3D;&#x3D;紧耦合的I&#x2F;O过程&#x3D;&#x3D;。对于单个写入请求，要经过6个步骤：</p>
-<ol>
-<li>主服务器接收来自客户端的请求；</li>
-<li>主服务器在存储中持久化数据；</li>
-<li>主服务器向副本发送复制请求；</li>
-<li>副本收到复制请求后将数据保存在存储中；</li>
-<li>主节点等待副本的I&#x2F;O完成确认；</li>
-<li>主服务器将结果发送给客户端。</li>
-</ol>
-<p>在RTC-v3的结果中可以看到，即使没有额外的后台开销，系统在处理这些I&#x2F;O请求时仍然消耗了大量的CPU资源且具有0.8毫秒的平均延迟（对于CPU使用率为200%时的NVMe SSD来说，4KB随机写延迟只有0.4ms）。这说明除了网络处理或延迟复制处理之外，提交写操作的额外写过程会导致高延迟，并且I&#x2F;O路径已经使用了相当多的CPU。</p>
-<p><strong>针对这种情况，论文想要通过设计新的I&#x2F;O路径来实现低延迟和低CPU消耗。但是由于在I&#x2F;O操作中，延迟关键作业和尽力批处理作业紧耦合，所以想针对I&#x2F;O处理进行优化需要&#x3D;&#x3D;将两个作业进行解耦&#x3D;&#x3D;。</strong></p>
-<h3 id="低效线程架构"><a href="#低效线程架构" class="headerlink" title="低效线程架构"></a>低效线程架构</h3><p>在Ceph中，采用了线程池模型来处理不同的任务，如两个主要的线程池：<strong>Messenger线程池</strong>（用于处理网络通信，例如接收和发送客户端请求）和<strong>PG线程池</strong>（用于处理存储任务，比如数据的读取和写入）。</p>
-<p>当一个I&#x2F;O请求发出后，它需要经过一个较长的处理路径，该路径上会多次涉及网络通信（由Messenger线程池处理）和存储操作（由PG线程池处理）。由于同一请求需要在多个线程间传递处理，导致频繁的上下文切换。&#x3D;&#x3D;这会导致额外的开销，这种开销在使用SSD作为存储时是不可忽略的。&#x3D;&#x3D;</p>
-<p>在现有的研究中，通过将&#x3D;&#x3D;RTC模型（RTC模型的核心思想是，每个任务或请求在处理时，从开始到结束都由同一个线程完成，直到任务完全处理完毕，才会处理下一个任务）&#x3D;&#x3D;应用到解决方案，来解决频繁的上下文切换问题。虽然RTC模型在减少CPU开销和延迟方面有优势，但要实现这些好处，必须仔细考虑设计问题。如在Ceph中：假如将线程池模型替换为RTC模型，将每个RTC线程绑定到一个专用的CPU核心，同时为了避免来自同一客户端的请求乱序，Ceph中的每个客户端请求都必须由同一个信使线程处理。这就意味着，在正在处理的I&#x2F;O操作完成之前，RTC线程模型都不能处理其他的I&#x2F;O请求，这就会<strong>延迟等待时间</strong>，进而可能会导致整体的延迟增加。</p>
-<p>Original和RTC-v1的性能对比就说明了这一点：与Original相比，简单RTC模型（RTC-v1）通过减少上下文切换开销，在CPU占用率较低的情况下性能略有提高；没有对象存储和维护任务的简单RTC模型（RTC-v2）也实现了高性能，不过其延迟（1.45毫秒）仍比NVMe设备慢。&#x3D;&#x3D;因此，需要一个有效的线程控制方案来防止出现较长的临界段。&#x3D;&#x3D;</p>
-<h3 id="本地后端对象存储导致CPU占用率过高"><a href="#本地后端对象存储导致CPU占用率过高" class="headerlink" title="本地后端对象存储导致CPU占用率过高"></a>本地后端对象存储导致CPU占用率过高</h3><p>Ceph默认的后端存储为BlueStore，不使用本地文件系统直接管理存储设备，但是在&#x3D;&#x3D;使用NVMe SSD时，BlueStore在随机I&#x2F;O工作负载下会出现CPU绑定问题&#x3D;&#x3D;，主要有以下两点原因：</p>
-<p><strong>(1) 主机端写入放大</strong></p>
-<p>BlueStore使用<strong>LSM树结构的键值存储来处理元数据和小数据写入</strong>。尽管LSM树及其他日志结构的存储系统通过将所有I&#x2F;O模式变为顺序写入来提高随机写性能，但这种设计需要昂贵的压缩（或垃圾回收）过程来清理无效数据。这种压缩或垃圾回收会导致严重的<strong>主机侧写放大</strong>：为了删除无效数据，系统需要写入额外的数据，从而产生额外的写入开销。由下图可知：<strong>仅后端数据存储引起的写放大约为3倍</strong>。而且这些清理操作虽然在后台进行，但它会干扰前台的I&#x2F;O操作，并且需要消耗大量CPU资源来完成这些任务（如图中MT部分）。</p>
-<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/e7feba5848636992c98d1ff42f31abd.png" class="" title="BlueStore的写放大">
-
-<p><strong>(2) 单一数据域</strong></p>
-<p>现代后端数据存储使用的<strong>一致性机制</strong>，尤其是事务处理中的同步原语&#x3D;&#x3D;（锁征用、事务处理串行化）&#x3D;&#x3D;，可能会成为系统可扩展性的性能瓶颈。例如，BlueStore需要在单个分区中使用同步原语进行事务处理，这种方式限制了并行处理能力。由于本地文件系统不向应用程序公开这种分区信息，分布式存储系统难以实现基于局部性的处理优化，从而限制了系统性能的进一步提升。</p>
-<h2 id="Design-and-Implementation"><a href="#Design-and-Implementation" class="headerlink" title="Design and Implementation"></a>Design and Implementation</h2><p>总体结构图：</p>
-<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/bbfa089244544827988abf64c9ccdfc.png" class="" title="系统总体结构">
-
-<h3 id="一、使用NVM进行解耦操作处理"><a href="#一、使用NVM进行解耦操作处理" class="headerlink" title="一、使用NVM进行解耦操作处理"></a>一、使用NVM进行解耦操作处理</h3><p>将延迟敏感部分与I&#x2F;O路径的其他部分进行了解耦，其中：</p>
-<ul>
-<li><strong>延迟敏感部分</strong>：包括<strong>消息处理（MP）</strong>和<strong>复制处理（RP）</strong>，即处理客户端请求和将数据同步到其他节点的过程，这两个部分对I&#x2F;O性能和延迟的影响较大；</li>
-<li><strong>I&#x2F;O路径的其他部分</strong>：包括事务处理、对象存储等。这些部分可以在后续异步处理，因此不需要立即完成。</li>
-</ul>
-<p>&#x3D;&#x3D;即使对不同的I&#x2F;O请求采取不同的处理方式，这种设计依然能够保证系统的<strong>强一致性</strong>承诺。设计中有两个关键点：&#x3D;</p>
-<ul>
-<li><strong>延迟敏感任务的快速响应</strong>：使用<strong>操作日志</strong>来处理这些任务，从而使副本能够快速响应请求。这种方法可以通过日志的快速写入和副本的快速同步来缩短延迟；</li>
-<li><strong>尽力而为任务的批处理</strong>：对于不太紧急的任务，系统通过底层的对象存储以批处理的方式来处理。这种批处理方式可以更有效地利用系统资源，减少对实时响应性能的影响。</li>
-</ul>
-<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/574482d86329ef1ee4495c5e539e359.png" class="" title="解耦后的I&#x2F;O行为">
-
-<p>上图显示了解耦操作处理后的I&#x2F;O行为变化。和传统的复制处理相比，提交写操作所需的步骤更少，从而降低了延迟。具体步骤是：</p>
-<ol>
-<li>主服务器收到客户端的请求，当服务器在NVM中记录下操作日志后，立即将复制请求发送给其他副本节点；</li>
-<li>当传入操作被记录到NVM中时，主服务器会立即向副本发送复制请求。通过引用NVM中的日志，可以在不违反强一致性的情况下提供读请求；</li>
-<li>数据存储到内存空间后，辅助设备会向主服务器发送写入完成确认；</li>
-<li>在从副本收到所有的ACK后，主副本会回复客户端。一旦分期数据量达到阈值，分期操作就会异步刷新到后端对象存储空间。</li>
-</ol>
-<p>&#x3D;&#x3D;需要注意，只有在异步刷新的情况下，NVM日志才能有效地提高性能。且要考虑NVM满载时需要将数据刷新至磁盘中，此时I&#x2F;O操作是处理不了的，因此需权衡刷新时间。&#x3D;</p>
-<p>还需要考虑另一个问题：&#x3D;&#x3D;在使用NVM日志记录数据时，可能会破坏系统的强一致性保证——即读取可能返回过时的数据，因为最近的一些数据可能没有提交到磁盘。&#x3D;&#x3D;为了解决这个问题，论文提出的解决方案是：</p>
-<p>在系统中引入两个关键的数据结构来保证一致性：<strong>操作日志（operation log）</strong>和<strong>索引缓存（index cache）</strong>。这两个数据结构在逻辑组（logical group）基础上进行管理，确保对写操作的跟踪和缓存。其中：</p>
-<ul>
-<li><strong>操作日志</strong>：存储的是系统接收到的写操作，以日志结构化（log-structured）的方式顺序存储。它记录了每个操作，以保证它们不会丢失并可以在需要时进行恢复；</li>
-<li><strong>索引缓存</strong>：记录每个对象ID的最近写入操作的缓存信息，即跟踪最近的更新。这有助于提高查找最新数据的效率，并确保读取操作能获得最新的数据。</li>
-</ul>
-<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/2e9f764a04d6910cf9bec34945370c2.png" class="" title="基于操作日志和索引缓存的I&#x2F;O过程">
-
-<p>上图详细介绍了<strong>基于操作日志和索引缓存</strong>这两种数据结构的I&#x2F;O过程。</p>
-<p><strong>&#x3D;&#x3D;写过程：&#x3D;&#x3D;</strong></p>
-<ul>
-<li><strong>W1</strong>：当收到客户端的写入请求时，OSD中的一个<strong>优先线程</strong>（专门用来处理对延迟敏感任务的线程）会负责处理该请求。优先线程会<strong>根据对象的ID来计算出它属于哪个逻辑组</strong>（决定它们的日志条目应该写入哪个操作日志），然后将相关的<strong>日志条目信息（包括逻辑组ID、版本号、序列号、偏移量、数据和操作类型等）</strong>追加到相应的操作日志中。&#x3D;&#x3D;这个步骤需要<strong>获取逻辑组锁</strong>，因为其他非优先线程可能会同时访问该操作日志。&#x3D;&#x3D;</li>
-<li><strong>W2</strong>：在操作日志条目写入完成后，<strong>不释放锁</strong>的情况下，优先线程会向<strong>索引缓存</strong>中插入一个索引条目（包含对象ID、版本号、序列号、偏移量、长度、操作类型、操作日志中的位置、对象状态等信息），这样做的目的是为了<strong>快速检索对象信息</strong>，尤其是那些尚未持久化到后端存储的数据。&#x3D;&#x3D;需要注意的是，即使同一对象ID已经存在索引缓存中，系统<strong>不会覆盖原有的条目</strong>，因为不同的写入操作可能具有不同的版本号和序列号，如果直接覆盖旧的条目，系统将丢失历史信息，无法准确回溯对象的所有写入操作。&#x3D;&#x3D;</li>
-<li><strong>W3</strong>：如果有一个读请求与当前写请求的对象ID相同，优先线程会唤醒<strong>非优先线程</strong>，以便它<strong>强制刷新</strong>操作日志中的相关操作（将数据写入后端存储）来保持一致性。</li>
-</ul>
-<p><strong>&#x3D;&#x3D;读过程：&#x3D;&#x3D;</strong></p>
-<p>当OSD守护进程收到来自客户端的读请求时，优先线程会首先在<strong>索引缓存</strong>中搜索与该请求对象ID相对应的条目。这个步骤是为了确认是否有<strong>最近的写入操作</strong>，且该数据尚未写入到后端存储中。</p>
-<ul>
-<li><strong>R1</strong>：如果索引缓存中对应的对象ID指向的是<strong>操作日志</strong>，且该操作日志中的数据<strong>长度</strong>大于或等于读请求所需的数据长度，那么直接从操作日志中读取数据并返回给客户端；</li>
-<li><strong>R2</strong>：如果索引缓存中没有找到与该对象ID匹配的条目，优先线程会将该读请求添加到<strong>操作日志</strong>中，随后交由<strong>非优先线程</strong>来处理这个请求。非优先线程的任务是从<strong>后端存储</strong>（如对象存储）中读取该对象的最新数据，完成读取操作，并将该数据<strong>覆盖</strong>操作日志中的条目，确保日志中也保存了最新的数据；</li>
-<li><strong>R3</strong>：如果在操作日志中找到了数据，但该数据不足以满足读请求（比如读请求要求更长的数据），那么优先线程会唤醒非优先线程，从后端存储中读取完整的数据，并将其更新到操作日志中，保证下一次可以从操作日志中快速获取完整的数据。</li>
-</ul>
-<p>即：&#x3D;&#x3D;<strong>R1</strong>是最快速的路径，直接从操作日志中读取数据返回；<strong>R2</strong>是处理没有在操作日志中找到数据的情况，通过非优先线程从后端读取；<strong>R3</strong>是处理操作日志中的数据不满足请求的情况，需要从后端存储补全数据。&#x3D;&#x3D;</p>
-<p>为什么长度可以作为判断的基准？&#x3D;&#x3D;<strong>操作日志</strong>中记录的每个写入操作（写请求）可能是针对对象的某一部分，而不是整个对象。因此，当客户端发出<strong>读请求</strong>时，所请求的数据长度可能与日志中该对象的写入条目长度不同。&#x3D;&#x3D;举个例子：一个对象的写入操作可能只涉及该对象的<strong>部分数据</strong>（比如一个文件的某个块），而读请求可能要求返回该对象的整个数据。如果操作日志中的条目只记录了部分数据，就需要从后端存储中补齐其他部分的数据。</p>
-<p><strong>&#x3D;&#x3D;刷新过程：&#x3D;&#x3D;</strong></p>
-<p>当操作日志中的操作次数大于<strong>预定的阈值</strong>时，就会发生刷新。此外，除了操作数量的限制外，系统还会在<strong>操作完成</strong>或者<strong>超时</strong>时检查是否需要进行Flush。当满足Flush条件时，操作日志中记录的日志条目会被<strong>刷新</strong>到后端的对象存储中。Flush完成后，所有与这些操作相关的数据都会从<strong>操作日志</strong>和<strong>索引缓存</strong>中删除。</p>
-<p><strong>&#x3D;&#x3D;恢复过程：&#x3D;&#x3D;</strong></p>
-<p>操作日志中的写入请求是按顺序追加的，这意味着写入是按照请求接收的顺序被持久化的。然而，如果系统崩溃，可能会发生一致性问题，因为尚未持久化到磁盘的操作日志和索引缓存数据会丢失。设计中引入了恢复过程，确保在系统崩溃的情况下，仍然可以保证数据的一致性：</p>
-<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/b8370166d5e8e3e8686df5cc1b630f3.png" class="" title="恢复过程">
-
-<h3 id="二、优先线程控制"><a href="#二、优先线程控制" class="headerlink" title="二、优先线程控制"></a>二、优先线程控制</h3><img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/00bc67bdbfc26c1c23f4664da9fded8.png" class="" title="优先线程控制的线程架构">
-
-<p>优先线程控制的目的是避免<strong>延迟关键作业</strong>和<strong>尽力而为作业</strong>之间的I&#x2F;O优先级倒置。为此，为不同类型的线程维护独立的CPU池，其中&#x3D;&#x3D;优先线程负责延迟关键任务，非优先线程负责其他任务&#x3D;&#x3D;。</p>
-<p><strong>&#x3D;&#x3D;优先线程：&#x3D;&#x3D;<strong>有两个主要职责，分别是</strong>处理网络I&#x2F;O</strong>（通过管理发送&#x2F;接收队列来处理消息）和<strong>操作日志的记录</strong>。优先线程负责处理客户端的写请求并将其记录到操作日志中。当操作日志中的条目数超过预定阈值时，或者当需要从后端对象存储中读取数据时，优先线程会<strong>唤醒非优先线程</strong>来完成这些操作。非优先线程在完成存储处理后，会将结果挂起到优先级线程的发送队列中，然后优先线程负责向客户端发送确认消息（ACK）。</p>
-<p>**&#x3D;&#x3D;非优先线程：&#x3D;&#x3D;**有两个主要职责：</p>
-<ul>
-<li><strong>触发刷写操作（Flush）</strong>：非优先线程负责将操作日志中的数据批量刷写到后端存储中。当日志中累积了足够多的操作（超过预定阈值）或系统发出唤醒信号时，非优先线程会执行批处理操作；</li>
-<li><strong>完成I&#x2F;O操作</strong>：非优先线程还负责向后端存储系统发起I&#x2F;O请求，并在I&#x2F;O完成后处理结果。</li>
-</ul>
-<p>非优先线程会不断处理操作日志中的请求，直到所有挂起的请求都完成。当操作日志中没有剩余请求时，非优先线程进入休眠状态，等待下一次被唤醒。</p>
-<p><strong>&#x3D;&#x3D;线程调度：&#x3D;&#x3D;<strong>当OSD守护进程启动时，系统会为每个优先线程分配一个专用核心。当优先线程需要唤醒一个非优先线程时，首先会检查是否有</strong>空闲的非优先核心</strong>可以运行该任务。如果找到这样的核心，优先线程就会将该非优先线程调度到这个空闲的核心上执行任务；如果没有可用的非优先核心，优先线程就将调度任务交给操作系统的调度器处理，操作系统调度器可以将非优先线程分配到一个<strong>优先核心</strong>上执行任务。</p>
-<h3 id="三、CPU高效对象存储"><a href="#三、CPU高效对象存储" class="headerlink" title="三、CPU高效对象存储"></a>三、CPU高效对象存储</h3><img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/83b7ae5dedd55b2064a846a706ce903.png" class="" title="CPU高效对象存储体系结构">
-
-<p>CPU高效对象存储旨在最大限度地减少执行客户端发出的操作所需的I&#x2F;O次数，并最大限度地提高存储处理过程中的并行性。它的实现主要有以下关键点：</p>
-<ol>
-<li>使用类似日志文件系统的布局，允许覆盖写操作，避免了写放大问题，同时无需像传统系统那样进行清理和压缩；</li>
-<li>通过预分配技术（系统提前为对象分配好其在存储中的物理空间，并记录这些对象的位置信息），避免频繁更新元数据（如块位图和inode表），从而减少I&#x2F;O开销；</li>
-<li>为了提高性能，系统使用非易失性存储器（NVM）作为元数据缓存；</li>
-<li>整个磁盘被划分为多个分区，每个分区由一个非优先级线程处理，实现无锁的并行I&#x2F;O操作。</li>
-</ol>
-<p><strong>&#x3D;&#x3D;基本操作流程：&#x3D;&#x3D;</strong></p>
-<ol>
-<li><strong>查找操作</strong>：使用<strong>Radix树</strong>来进行对象查找，其中对象ID是查找的键值。对象ID的高位表示逻辑组ID，左边的几位用于确定对象所在的<strong>分片分区</strong>，而其余的位用于在该分区内查找具体对象。通过这种方式，系统能够快速定位目标对象所在的分区并在分区内进一步查找；</li>
-<li><strong>I&#x2F;O分配</strong>：对象根据其逻辑组ID分布到不同的分片分区，每个分片分区负责处理一个逻辑组ID。使用简单的<strong>模哈希</strong>方法（分片数对非优先线程数取模），将每个分片分区分配给一个非优先级线程。这样，系统能够并行处理I&#x2F;O操作，且每个线程独立处理属于自己分区的对象，避免锁竞争；</li>
-<li><strong>写操作</strong>：在收到写请求后，数据会被直接覆盖写入分配的数据块（就地更新），避免数据重排或清理。然后，更新与该对象相关的元数据（即onode，其中记录了键值、数据存储位置及空闲列表信息，代表对象的元数据条目）。当写操作完成后，系统会在内存中更新元数据，并删除相应的操作日志条目；</li>
-<li><strong>读操作</strong>：在处理读请求时，首先需要获取该对象的元数据位置（onode），可以通过Radix树查找或直接从缓存中获取。找到onode后，系统会根据onode中的块映射信息，从数据块中读取目标对象；</li>
-<li><strong>删除操作</strong>：删除对象时，系统使用<strong>延迟回收</strong>技术，即在收到删除请求后，仅将onode标记为已删除，而不是立即回收存储空间。这种方法可以优化存储操作，减少即时删除带来的系统开销；</li>
-<li><strong>崩溃一致性</strong>：存储系统在非易失性存储器（NVM）中维护一个<strong>操作日志</strong>，其工作方式类似于<strong>写前日志</strong>。如果在写操作期间发生崩溃，系统可以通过回放操作日志来恢复最新状态。即便使用了预分配技术，也可以通过回放日志（REDO）恢复一致性。这些保证在存储系统的更高层（例如OSD Core层）提供，确保操作的隔离性和顺序性；</li>
-<li><strong>元数据管理</strong>：元数据中包含需要随着对象更新而修改的信息，例如对象版本号和修改时间等。由于更新元数据通常会触发额外的磁盘写操作，为此论文设计了一个NVM上的元数据缓存层，避免频繁的元数据写入。由于分布式存储系统中的典型对象大小较大（如4MB），因此缓存可以覆盖大量的对象。只有在NVM缓存空间不足时，才需要更新磁盘上的元数据区域。</li>
-</ol>
-<p>针对逻辑组的一致性，论文采用了这种设计：&#x3D;&#x3D;将逻辑组的ID号后新增后缀来区别不同的版本，然后将这些具有版本号信息的条目始终存放在操作日志中，当需要进行相关的操作时，直接在操作日志中去获取信息，然后进行回滚。&#x3D;&#x3D;</p>
-<p><strong>&#x3D;&#x3D;磁盘布局设计：&#x3D;&#x3D;</strong></p>
-<p>在当前的设计中，磁盘空间是静态分区的，每个非优先线程只能负责一个分区，无法访问其他分区。也就是说，分区与线程之间是严格绑定的，这样有助于减少线程之间的竞争和锁的开销。当部署存储集群时，每个分区都需要根据配置进行分配，特别是配置指定了分区的大小。每个分区都有类似于XFS文件系统的结构，包括空闲块树信息、onode树信息以及数据块区域。主要结构：</p>
-<ul>
-<li><strong>超级块</strong>：存储<strong>分区级别的信息</strong>（每个分区区域的起始指针，即分区各个部分的开始位置、分区中总共的onode的数量和每个分区的大小），类似于在本地文件系统中的角色；</li>
-<li><strong>空闲块树信息区域</strong>：该区域存储了<strong>空闲数据块树的根节点信息</strong>，即记录当前分区中哪些数据块是空闲的，还维护了<strong>每个分区内空闲数据块的数量</strong>，以便快速找到可用的存储空间。使用<strong>B+树</strong>来跟踪所有空闲的数据块，方便高效地查找和管理空闲空间；</li>
-<li><strong>Onode树信息区域</strong>：存储<strong>根onode的信息</strong>，即可以从这里追踪到其他分配在数据块区域中的onode。每个onode包含了<strong>Radix树节点</strong>（例如兄弟节点、子节点）的信息，这意味着系统可以使用这些树节点信息来搜索onode。onode还包含一个<strong>基于范围树（extent tree）的块映射</strong>和<strong>扩展属性映射（key-value对的B+树结构）</strong>，用于存储元数据。块映射和扩展属性映射的长度是可变的，onode只包含一个指针，指向实际数据块的位置；</li>
-<li><strong>数据块区</strong>：用于<strong>存储对象数据</strong>，由固定大小的块组成。当数据写入磁盘时，数据会被分配到这些块中。</li>
-</ul>
-<h2 id="实验分析"><a href="#实验分析" class="headerlink" title="实验分析"></a>实验分析</h2><p>针对三个系统的性能进行对比，分别是<strong>Original</strong>、<strong>Proposed</strong>和<strong>Ideal</strong>，&#x3D;&#x3D;重点关注<strong>CPU使用率</strong>、<strong>IOPS</strong>和<strong>延迟</strong>等性能指标&#x3D;&#x3D;。其中：</p>
-<ol>
-<li><strong>Original</strong>：使用<strong>默认Ceph</strong>和<strong>BlueStore</strong>的性能结果，即没有修改之前的原始Ceph系统；</li>
-<li><strong>Proposed</strong>：根据论文提出的解决方案（对Ceph的优化和修改）实现后的性能结果。为了进行公平比较，Proposed版本中每个分区只使用了较小的内存空间，且当每个分区的操作日志中有<strong>16条记录</strong>时，系统会进行数据刷写（flush）；</li>
-<li><strong>Ideal</strong>：Ceph系统的<strong>理想性能</strong>，即假设没有存储处理开销的情况下能达到的性能（类似于RTC-v3的测试）。</li>
-</ol>
-<p>&#x3D;&#x3D;随机写性能比较：&#x3D;&#x3D;其中NP表示网络处理、SP表示存储处理、PT表示优先线程、NPT表示非优先线程、MT表示压缩和同步线程。</p>
-<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/12b2db4206d1a60c64798d982b1acd2.png" class="" title="随机写性能比较">
-
-<p>可以得到以下结果：</p>
-<p>在针对块设备进行I&#x2F;O操作时，Proposed的IOPS可以达到820K，延迟为1.11毫秒，而Original的IOPS只有181K。且Original的CPU使用率为3700%，其中存储处理（SP）消耗了大量的CPU资源。对于Original来说，尽管每个存储节点上配置了足够多的存储线程（每个节点有<strong>80个线程</strong>），这些线程并没有被<strong>高效利用</strong>，总的CPU使用率只有<strong>1500%<strong>（这意味着多个核心没有被充分使用）。</strong>主要原因是RocksDB的压缩线程</strong>：在BlueStore的存储后端中，RocksDB使用了压缩线程来管理数据，这些压缩线程会占用大量的CPU资源，**MT的CPU使用率达到800%**，这占用了系统总CPU使用率的很大一部分。对于Proposed来说，在处理写入操作时，可能由于获取逻辑组锁的延迟（优先线程与非优先线程之间共享的锁）而推迟了对请求的处理，相比理想状态仍然存在性能差距。</p>
-<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/1728437920813.png" class="" title="实验分析结果">
-
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>论文通过屋顶线模型定位了Ceph在NVMe SSD上随机写的CPU瓶颈：紧耦合的I&#x2F;O路径、低效的线程架构和基于LSM树的后端存储开销。针对这三个问题分别给出的解法是：</p>
-<ol>
-<li><strong>NVM解耦I&#x2F;O路径</strong>——用操作日志+索引缓存把延迟敏感的复制确认和可以批处理的数据落盘拆开，在不破坏强一致性的前提下缩短关键路径；</li>
-<li><strong>优先级线程控制</strong>——优先线程处理网络I&#x2F;O和日志记录，非优先线程处理刷写和后端I&#x2F;O，分别绑定独立CPU池，避免优先级反转；</li>
-<li><strong>CPU高效对象存储</strong>——就地更新+预分配+分区无锁并行，避免LSM树压缩带来的写放大和CPU消耗。</li>
-</ol>
-<p>最终随机写IOPS从181K提升到820K，接近理想状态。</p>
-]]></content>
-      <categories>
-        <category>论文阅读</category>
-      </categories>
-      <tags>
-        <tag>分布式存储</tag>
-        <tag>NVMe</tag>
-        <tag>Ceph</tag>
-        <tag>块存储</tag>
       </tags>
   </entry>
   <entry>
@@ -3619,6 +3502,284 @@
       </categories>
       <tags>
         <tag>C++</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</title>
+    <url>/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/</url>
+    <content><![CDATA[<h1 id="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能"><a href="#论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I-O性能" class="headerlink" title="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能"></a>论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I&#x2F;O性能</h1><blockquote>
+<p>论文：<em>Improving I&#x2F;O performance in distributed file systems for flash-based SSDs by access pattern reshaping</em></p>
+</blockquote>
+<p>这篇文章的核心思想是：<strong>通过将分布式文件系统（Lustre）中写请求的地址进行重塑，把SSD上的随机写重构为顺序写，来减少写放大效应、提高写入性能</strong>。在展开方案之前，先补充两个背景知识：F2FS文件系统和Lustre文件系统。</p>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><h3 id="F2FS文件系统（Flash-Friendly-File-System）"><a href="#F2FS文件系统（Flash-Friendly-File-System）" class="headerlink" title="F2FS文件系统（Flash Friendly File System）"></a>F2FS文件系统（Flash Friendly File System）</h3><p>F2FS可以极大程度上避免碎片产生。相对于传统日志型文件系统，F2FS在<strong>wandering tree</strong>和<strong>GC</strong>方面有一定的优化，可以复用离散的数据页写入数据，显著减少GC带来的卡顿。</p>
+<p><strong>wandering tree</strong>：在文件更新时，指向文件的Direct Pointer（直接指针）由于数据异地更新，也会随之更新；同时指向这个Direct Pointer的Indirect Pointer（间接指针）也会更新，然后保存这个Indirect Pointer的inode（存储文件元数据的结构体）、inode block map（记录块分配情况的表）等结构也需要更新，这样会导致频繁的metadata更新。</p>
+<h3 id="Lustre文件系统"><a href="#Lustre文件系统" class="headerlink" title="Lustre文件系统"></a>Lustre文件系统</h3><img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/1553ffc55c4f184bfbbf8499a14ebd8.png" class="" title="Lustre文件系统总体结构">
+
+<p>上图为Lustre文件系统的总体结构，主要由客户端、元数据服务器、元数据目标、对象存储服务器和对象存储目标组成：</p>
+<p><strong>客户端（Client）</strong>：是Lustre文件系统的用户接口，负责向元数据服务器（MDS）和对象存储服务器（OSS）发送文件系统请求。&#x3D;&#x3D;客户端能将用户的I&#x2F;O请求转发到合适的服务器，并从服务器接收数据。&#x3D;</p>
+<p><strong>元数据服务器（MDS）</strong>：负责管理文件系统的元数据，包括文件名、目录结构、文件权限、文件大小、文件所在的对象存储目标（OST）等信息。&#x3D;&#x3D;当客户端发出文件操作请求时，MDS会查询并返回相关的元数据信息，使客户端知道应该从哪个OST获取文件数据。&#x3D;</p>
+<p><strong>元数据目标（MDT）</strong>：MDT是存储在MDS上的物理存储设备，用于存储文件系统的元数据。&#x3D;&#x3D;MDT是元数据的实际存储位置，负责保存和检索文件系统的元数据内容。多个MDT可以分担元数据的存储负载，从而提高元数据访问的并行度和整体性能。&#x3D;</p>
+<p><strong>对象存储服务器（OSS）</strong>：OSS负责管理实际的文件数据存储，接收来自客户端的文件I&#x2F;O请求，并将数据存储到对应的对象存储目标（OST）上。&#x3D;&#x3D;OSS通过网络将数据分布在多个OST上，实现并行I&#x2F;O操作。&#x3D;</p>
+<p><strong>对象存储目标（OST）</strong>：OST是Lustre文件系统中存储实际文件数据的物理存储设备。&#x3D;&#x3D;OST负责实际的文件数据存储，是Lustre文件系统数据存储的基本单元，数据在OST之间分布存储。&#x3D;</p>
+<p><strong>写操作流程</strong></p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/14445f1774cd168570b56e54fd656a5.png" class="" title="Lustre写操作流程">
+
+<p>当客户端想要写入文件时，首先会向元数据服务器（MDS）发起文件打开请求。MDS处理文件打开操作，检查文件是否存在并将文件的元数据返回给客户端。元数据中包含文件的访问权限（如读写权限）和数据存放的位置（即存储服务器OSS）。客户端验证了文件的权限，并且通过元数据知道了存储该文件数据的OSS的具体位置。客户端接下来会向指定的OSS发起写请求。为了处理客户端的写请求，OSS需要为每个写请求分配一个新的bio结构体，在bio结构体中会记录客户端写请求的地址。接着，写操作请求的页（page，表示要写入的数据）也会添加到这个bio结构体中。设置好bio结构体后，OSS会将该结构体提交给底层存储系统，最终数据通过存储目标OST写入存储设备。</p>
+<h2 id="访问模式重塑方案的总体架构"><a href="#访问模式重塑方案的总体架构" class="headerlink" title="访问模式重塑方案的总体架构"></a>访问模式重塑方案的总体架构</h2><h3 id="1-地址重塑操作（Address-Reshaping-Operation）"><a href="#1-地址重塑操作（Address-Reshaping-Operation）" class="headerlink" title="1. 地址重塑操作（Address Reshaping Operation）"></a>1. 地址重塑操作（Address Reshaping Operation）</h3><p>当客户端发送请求时，根据MDS找到存储数据的OSS，然后将请求送达OSS进行处理。当OSS收到请求后，检查收到的请求是读请求还是写请求：</p>
+<ul>
+<li>如果是<strong>写请求</strong>，则将请求的逻辑块地址（LBA）转化为顺序的逻辑块地址。具体来说，它将原始逻辑块地址（oLBA）重塑为顺序的逻辑块地址（tLBA），然后通过重映射表将oLBA和tLBA的对应关系保存。当oLBA和tLBA对被插入重映射表后，写请求通过<code>submit_bio()</code>函数提交到块层（block layer）。在块层中，默认的请求合并算法会将顺序的LBA请求合并成一个大的请求。&#x3D;&#x3D;这种方案可以将随机写请求重塑为顺序写请求，而且可以通过块层将现有的请求合并以减少请求的数量。&#x3D;</li>
+</ul>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/82239abc8b882cee6f1e03baa0e2333.png" class="" title="地址重塑操作总体结构">
+
+<p>对于<strong>读和覆盖请求</strong>，则需要在重映射表（Remapping Table）中查找现有的oLBA和tLBA对：</p>
+<ul>
+<li>对于<strong>覆盖请求</strong>，首先在重映射表中查找原始逻辑块地址（oLBA）和已重塑的逻辑块地址（tLBA）对。覆盖请求意味着需要更新存储在原tLBA位置的数据。为了确保写入操作是顺序的，系统会为这个oLBA分配一个新的顺序逻辑块地址（tLBA），这个新tLBA将用于存储更新后的数据。这部分无效数据会通过后续的清理操作来处理和回收空间。</li>
+<li>对于<strong>读请求</strong>，由于oLBA已经被重塑为tLBA，所以在获取某个数据时需要根据重映射表，将对应的tLBA找到，再将数据获取。</li>
+</ul>
+<h3 id="2-管理重映射表（Managing-Remapping-Table）"><a href="#2-管理重映射表（Managing-Remapping-Table）" class="headerlink" title="2. 管理重映射表（Managing Remapping Table）"></a>2. 管理重映射表（Managing Remapping Table）</h3><p>在重映射表中记录了oLBA到tLBA的映射关系，主要的作用就是在读取和覆盖操作时为oLBA查找相应的tLBA。对于一个表来说，搜索时间和清理节点时间和表的大小成正比，因此采用多个重映射表而不是单个大的重映射表是必要的选择。多个重映射表的划分范围可以根据磁盘而定：&#x3D;&#x3D;将大型磁盘布局划分为多个小节，为每个小节创建对应的重映射表，这些映射表管理它们自己的逻辑块地址&#x3D;&#x3D;，这样可以减少重映射表中的条目，还可以在进行清理操作时隔离重映射表（一个子节中进行清理操作时，其他的子节还可以处理I&#x2F;O请求）。论文中使用红&#x2F;黑树实现重映射表，因为红&#x2F;黑树有较快的搜索时间。</p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/dfbbaa83c350c90030cd44440695d9d.png" class="" title="多个重表示意图">
+
+<p>在上图中，存在两个重映射表（T1和T2），表1负责tLBA1—tLBA90，表2负责tLBA91—tLBA180。在这个例子中，表1已经充满了之前的请求，其中通过表1管理的最后一个tLBA90和oLBA99配对。在表2中现有3个请求（91–93），最近的一个是tLBA93（和oLBA31配对），以及空闲的（tLBA94—tLBA180），这些还未被使用，因此可以处理即将到来的请求。当发出新的请求时（oLBA45和oLBA32），它们被插入到表2（tLBA94和tLBA95中），而不访问表1。</p>
+<h3 id="3-支持崩溃一致性（Supporting-Crash-Consistency）"><a href="#3-支持崩溃一致性（Supporting-Crash-Consistency）" class="headerlink" title="3. 支持崩溃一致性（Supporting Crash Consistency）"></a>3. 支持崩溃一致性（Supporting Crash Consistency）</h3><p>通过写前日志（WAL，在真正修改之前先将相关的日志记录写入稳定存储）的策略来实现崩溃一致性（这里的崩溃一致性指的是重映射表的崩溃一致性）。当请求到达OSS时，首先使用<code>submit_bio()</code>函数将数据写入存储设备OST，在写入完成之后，&#x3D;&#x3D;系统开始为重映射表的更新操作启动一个事务，通过在重映射表文件中写入”Begin Tx”来表示事务的开始。接着，系统将重映射表中需要更新的（oLBA，tLBA）对逐个写入到重映射表文件中，这些对记录了地址重塑后的逻辑块地址。当所有重映射对都写入完成后，系统在重映射表文件中写入”Commit Tx”以表示事务的提交，这一步表示事务已经完成、可以被认为是成功的。&#x3D;&#x3D;最后，系统将这些更新的重映射对插入到驻留在内存中的重映射表中，以便未来的读写请求能够正确地处理。</p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/724e3d3010af50fc17f7d6d6a73c968.png" class="" title="崩溃一致性WAL流程">
+
+<p>系统通过重映射文件来作为判断重映射表是否完整的基准。当系统发生崩溃时，可能会有如下的情况：(1)在调用<code>submit_bio()</code>函数时发生崩溃；(2)在往重映射表中写入映射信息时崩溃。针对上述的两种情况，系统无法确定数据的有效性或事务的完整性，因此无法构建重映射表。&#x3D;&#x3D;只有当重映射文件中写入了数据且”Commit Tx”记录存在时，才可以确认事务是完整的&#x3D;&#x3D;，此时可以安全地从文件中读取重映射信息，并将其重新加载到内存中的重映射表。</p>
+<h3 id="4-清理操作（Cleaning-Operation）"><a href="#4-清理操作（Cleaning-Operation）" class="headerlink" title="4. 清理操作（Cleaning Operation）"></a>4. 清理操作（Cleaning Operation）</h3><p>由于tLBA是从一个大的连续地址空间中分配的，因此连续地址空间可能会被耗尽。当有多个覆盖或者删除操作时，会产生很多无效的tLBA，因此需要回收无效的tLBA并创建一个大的连续空间，具体的解决办法如下：</p>
+<ul>
+<li><strong>寻找有效的tLBA</strong>：清理操作首先从重映射表的末尾开始，寻找关联了有效数据的tLBA，这些tLBA上的数据依然是有效的，不应该被删除。</li>
+<li><strong>寻找无效的tLBA</strong>：从重映射表的起始位置开始查找那些已经通过覆盖或删除操作无效化的tLBA。这些无效的tLBA由于其处于重映射表的中间，阻断了有效数据形成的连续地址空间，形成了不连续的”空洞”。</li>
+<li><strong>数据迁移</strong>：在找到有效和无效的tLBA后，清理操作会将关联了有效数据的tLBA上的数据移动到无效化的tLBA上，填补之前无效的tLBA形成的不连续空洞。这样，原本位于无效tLBA后的有效数据可以被迁移到重映射表的前面，逐步消除不连续的块。&#x3D;&#x3D;在进行迁移之后，重映射表会进行相应的更新，把修改后的tLBA的映射关系进行调整，确保数据一致性。&#x3D;</li>
+</ul>
+<p>&#x3D;&#x3D;这个数据迁移的过程会重复进行，直到重映射表中不再有不连续的无效tLBA空洞。清理操作最终会将所有的无效tLBA重新填充为有效数据关联的tLBA。当所有无效tLBA被填充后，清理操作在重映射表的末尾创建了一个大的连续的tLBA空间，这个连续的tLBA空间可以用于新的写请求，从而确保写操作时可以使用顺序的tLBA。&#x3D;</p>
+<p>清理操作流程示例：</p>
+<img src="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/17077495852ce72bea3df99683c5819.png" class="" title="清理操作流程示例">
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>对于SSD存储介质，顺序存储的IOPS优于随机存储，根据此特性，将随机请求<strong>重映射</strong>为顺序请求可以提升系统的IOPS。论文通过使用重映射表来管理映射前后的逻辑地址，并解决了此项设计可能会引发的三个问题：</p>
+<ol>
+<li><strong>映射前后的逻辑地址之间怎么关联？两者之间的查找过程怎么更快速？</strong> —— 使用重映射表并采用红&#x2F;黑树结构；</li>
+<li><strong>当需要更新&#x2F;删除某个信息时，映射表是怎么工作的？如何优化写操作产生的”空间碎片”？</strong> —— 通过赋予新的tLBA，且将最新的tLBA移动到”空间碎片”中；</li>
+<li><strong>怎么保证系统故障&#x2F;崩溃后的数据一致性？</strong> —— 通过引入重映射文件以及写前日志。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>SSD</tag>
+        <tag>分布式存储</tag>
+        <tag>Lustre</tag>
+        <tag>F2FS</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>论文阅读：重构分布式块存储系统以提升随机写性能</title>
+    <url>/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/</url>
+    <content><![CDATA[<h1 id="论文阅读：重构分布式块存储系统以提升随机写性能"><a href="#论文阅读：重构分布式块存储系统以提升随机写性能" class="headerlink" title="论文阅读：重构分布式块存储系统以提升随机写性能"></a>论文阅读：重构分布式块存储系统以提升随机写性能</h1><blockquote>
+<p>论文：<em>Re-architecting Distributed Block Storage System for Improving Random Write Performance</em></p>
+</blockquote>
+<h2 id="背景：什么是块存储"><a href="#背景：什么是块存储" class="headerlink" title="背景：什么是块存储"></a>背景：什么是块存储</h2><p>块存储是一种数据存储方式，通常用于云存储和传统存储系统中。它将数据分成固定大小的”块”（block），并独立地存储和管理每个块，而不是像文件系统那样处理整个文件或数据流。</p>
+<p><strong>块存储的特点：</strong></p>
+<ol>
+<li><strong>固定大小的块</strong>：数据以固定大小的块进行存储，通常每个块的大小在512字节到几KB不等，这些块可以独立寻址和访问；</li>
+<li><strong>直接访问</strong>：块存储可以提供高效的随机读写操作，每个块有一个唯一的地址，可以直接进行读写，而无需遍历整个文件；</li>
+<li><strong>灵活性高</strong>：块存储通常用作虚拟机、数据库或应用程序的底层存储，它不依赖于特定的文件系统，可以在不同操作系统和文件系统上创建和使用；</li>
+<li><strong>持久存储</strong>：块存储通常被用作持久存储，特别是在网络附加存储（NAS）或存储区域网络（SAN）中；</li>
+<li><strong>独立性强</strong>：每个块都独立存储，修改或删除一个块不会影响到其他块，适合高性能、低延迟的应用；</li>
+<li>&#x3D;&#x3D;<strong>强一致性</strong>&#x3D;&#x3D;：主要体现在<strong>每个写操作在写入成功后，任何后续的读操作都会返回最新的数据版本</strong>。</li>
+</ol>
+<p>强一致性的具体保障：</p>
+<ul>
+<li><strong>写操作的原子性</strong>：块存储的写操作是原子性的，即写操作要么全部成功，要么全部失败，不会出现部分写入的情况。这保证了在系统发生崩溃或故障时，不会出现不完整或错误的数据；</li>
+<li><strong>同步写入机制</strong>：块存储通常采用同步写入机制，确保数据在写入操作完成后被同步写入到存储设备，客户端可以在写操作成功后立即读取到最新的数据；</li>
+<li><strong>分布式存储中的一致性保障</strong>：在分布式块存储系统中，数据的一致性通常通过数据复制和分布式一致性协议来实现。每个写操作在多个副本节点上都需要保持一致，常见的协议如Paxos或Raft会确保在数据写入时，不同节点之间的数据保持同步和一致。</li>
+</ul>
+<h2 id="Abstract：Ceph在NVMe上的CPU瓶颈"><a href="#Abstract：Ceph在NVMe上的CPU瓶颈" class="headerlink" title="Abstract：Ceph在NVMe上的CPU瓶颈"></a>Abstract：Ceph在NVMe上的CPU瓶颈</h2><p>论文使用基于**”屋顶线”**的方法测试了Ceph在基于NVMe存储介质的情况下处理随机写入工作负载时的CPU瓶颈问题，主要原因是：</p>
+<p><strong>1. 紧耦合的I&#x2F;O处理</strong></p>
+<p>Ceph的I&#x2F;O处理是紧密耦合的，难以在优化CPU效率的同时不影响客户端体验。在<strong>强一致性分布式系统</strong>中，数据在返回给客户端之前，必须完成<strong>复制</strong>和<strong>持久化</strong>（确保数据安全）。但在Ceph的I&#x2F;O路径中，处理<strong>延迟敏感的任务</strong>（如响应客户端请求）和<strong>批处理任务</strong>（如数据持久化）没有解耦，意味着两个不同的优化策略——<strong>降低延迟</strong>和<strong>提高CPU效率</strong>难以同时进行：为减少延迟，系统可能会消耗更多的CPU资源；而增加CPU效率可能会牺牲响应速度。</p>
+<p><strong>2. 线程架构效率低下</strong></p>
+<p>Ceph的线程架构导致<strong>频繁的上下文切换</strong>。上下文切换是操作系统在多个线程或进程之间切换时的管理工作，通常需要保存和恢复不同的线程状态。对于<strong>快速设备</strong>（如NVMe SSD）来说，随着设备速度的提升，这种上下文切换的开销变得不可忽视。</p>
+<p><strong>3. 本地后端数据存储占用大量CPU资源</strong></p>
+<p>Ceph等分布式存储系统常用的<strong>后端数据存储</strong>（如键值存储）会消耗大量的CPU资源。特别是这些存储系统通常会执行<strong>数据压缩</strong>和<strong>刷新</strong>操作，这些过程需要显著的CPU计算能力，进一步加重了CPU瓶颈问题。</p>
+<blockquote>
+<p>&#x3D;&#x3D;什么是屋顶线模型？&#x3D;&#x3D;<br>屋顶线模型（Roofline Model）是一种用于分析计算系统性能的方法，特别适用于揭示计算密集型任务中的瓶颈。<br>核心点：(1) 峰值计算能力：表示系统的最大计算性能，即当计算完全不受内存访问限制时，理论上可以达到的最高性能；(2) 内存带宽：表示内存子系统的峰值数据传输速率。</p>
+</blockquote>
+<p><strong>针对上面的瓶颈问题，论文的工作是”重新构建一个分布式块存储系统，来提高随机写入的性能”。主要的关键要素有三个：</strong></p>
+<p><strong>(1) &#x3D;&#x3D;使用非易失性存储器进行解耦操作处理&#x3D;&#x3D;</strong></p>
+<p>将I&#x2F;O操作分成两段（上半部分和下半部分）。上半部分将更新操作复制并持久保存到NVM中的用户级日志中（&#x3D;NVM速度非常快，而且具备持久化特性，所以这部分操作可以非常迅速地完成，从而降低客户端的等待时间&#x3D;），而下半部分则将日志更新异步提交到磁盘。通过这种方法将I&#x2F;O操作解耦，并针对下半部分进行优化。</p>
+<p><strong>(2) &#x3D;&#x3D;优先级线程控制&#x3D;&#x3D;</strong></p>
+<p>针对不同的任务使用不同的线程模型：<strong>针对延迟关键型作业使用事件驱动线程模型</strong>、<strong>针对尽力批处理作业使用传统线程池模型</strong>。然后系统会将这两种任务分配到不同的CPU池中，来避免&#x3D;&#x3D;优先级反转问题（低优先级任务占用了CPU资源，导致高优先级任务无法及时执行）&#x3D;&#x3D;。</p>
+<ul>
+<li><strong>事件驱动线程模型</strong>：适用于对<strong>响应时间</strong>要求很高的操作。这种模型通过事件触发来调度线程，而不是固定的时间片轮转，因此可以快速响应I&#x2F;O请求，减少延迟；</li>
+<li><strong>传统线程池模型</strong>：更适合那些<strong>非实时</strong>的、可以稍微延迟的<strong>批处理任务</strong>，如后台的数据处理、文件写入等操作。</li>
+</ul>
+<p><strong>(3) &#x3D;&#x3D;CPU效率高的后端数据存储&#x3D;&#x3D;</strong></p>
+<p>设计了一个基于就地更新的对象存储，以最大限度地减少主机端的WAF（写放大系数）和CPU开销。</p>
+<h2 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h2><h3 id="屋顶线性能分析"><a href="#屋顶线性能分析" class="headerlink" title="屋顶线性能分析"></a>屋顶线性能分析</h3><img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/e9703d07b88667acc4b5e48f9499263.png" class="" title="屋顶线性能分析结果">
+
+<p>上图是使用类似屋顶线模型针对Ceph和3个修改版的性能进行测试的结果，其中：</p>
+<ul>
+<li><strong>MP</strong>：处理客户端发送的请求消息，即负责解析和响应消息；</li>
+<li><strong>RP</strong>：处理数据复制的过程，即数据复制到多个节点的过程；</li>
+<li><strong>TP</strong>：事务处理，即确保数据一致性和原子性；</li>
+<li><strong>OS</strong>：对象存储处理，即用于存储和检索数据；</li>
+<li><strong>MT</strong>：维护任务，即对象存储系统的后台维护操作（垃圾回收等）；</li>
+<li><strong>NP</strong>：网络处理CPU时间中涉及MP和RP的部分；</li>
+<li><strong>SP</strong>：存储处理CPU时间中涉及TP和OS的部分；</li>
+<li><strong>RTC</strong>：Run-to-Completion模型——是一种工作线程模型，在这个模型中，一个单独的线程完成整个客户端请求的处理工作，直到任务结束，&#x3D;&#x3D;这意味着处理过程中没有任务拆分或者线程间切换&#x3D;&#x3D;。</li>
+</ul>
+<p>各版本说明：</p>
+<ol>
+<li>RTC-v1实现了完整的&#x3D;&#x3D;运行到完成（RTC）模型&#x3D;&#x3D;，包括MP、RP、TP、OS和MT五个阶段；</li>
+<li>RTC-v2&#x3D;&#x3D;去掉了与对象存储相关的开销&#x3D;&#x3D;，来显示RTC模型在<strong>没有对象存储负担</strong>的情况下的性能（写入请求会立即返回成功，而无需等待数据被真正写入到对象存储中），它包括MP、RP和TP三个阶段；</li>
+<li>RTC-v3&#x3D;&#x3D;去掉了事务处理和对象存储相关的开销&#x3D;&#x3D;，只包括MP和RP两个阶段。</li>
+</ol>
+<p>实验配置为：(1) 两个信使进程：使用两条线程专门来处理网络通信的任务；(2) 两个PG线程：使用两条线程来处理具体的数据存储、检索和复制工作；(3) CPU亲和性设置：将整个Ceph进程的CPU亲和性设置为仅在四个CPU核心上运行；(4) 每节点4个线程：每个Ceph节点上使用的线程总数是4个，包括两个信使线程和两个PG线程。</p>
+<p><strong>结论：&#x3D;&#x3D;在Original模式下，CPU使用率为346%，其中SP的操作对CPU的使用率占比最高，大概为150%，而集群的总IOPS为29K。这个数值整体是偏低的——对于NVMe SSD来说，在FOB状态下可以提供高达330K IOPS，对于目前如此低的IOPS来说，CPU的占用率太高了。&#x3D;&#x3D;</strong></p>
+<h3 id="紧耦合的I-O处理"><a href="#紧耦合的I-O处理" class="headerlink" title="紧耦合的I&#x2F;O处理"></a>紧耦合的I&#x2F;O处理</h3><img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/1727575452572.png" class="" title="紧耦合的I&#x2F;O过程">
+
+<p>上图显示了NVMe SSD上分布式块存储系统的主要问题：&#x3D;&#x3D;紧耦合的I&#x2F;O过程&#x3D;&#x3D;。对于单个写入请求，要经过6个步骤：</p>
+<ol>
+<li>主服务器接收来自客户端的请求；</li>
+<li>主服务器在存储中持久化数据；</li>
+<li>主服务器向副本发送复制请求；</li>
+<li>副本收到复制请求后将数据保存在存储中；</li>
+<li>主节点等待副本的I&#x2F;O完成确认；</li>
+<li>主服务器将结果发送给客户端。</li>
+</ol>
+<p>在RTC-v3的结果中可以看到，即使没有额外的后台开销，系统在处理这些I&#x2F;O请求时仍然消耗了大量的CPU资源且具有0.8毫秒的平均延迟（对于CPU使用率为200%时的NVMe SSD来说，4KB随机写延迟只有0.4ms）。这说明除了网络处理或延迟复制处理之外，提交写操作的额外写过程会导致高延迟，并且I&#x2F;O路径已经使用了相当多的CPU。</p>
+<p><strong>针对这种情况，论文想要通过设计新的I&#x2F;O路径来实现低延迟和低CPU消耗。但是由于在I&#x2F;O操作中，延迟关键作业和尽力批处理作业紧耦合，所以想针对I&#x2F;O处理进行优化需要&#x3D;&#x3D;将两个作业进行解耦&#x3D;&#x3D;。</strong></p>
+<h3 id="低效线程架构"><a href="#低效线程架构" class="headerlink" title="低效线程架构"></a>低效线程架构</h3><p>在Ceph中，采用了线程池模型来处理不同的任务，如两个主要的线程池：<strong>Messenger线程池</strong>（用于处理网络通信，例如接收和发送客户端请求）和<strong>PG线程池</strong>（用于处理存储任务，比如数据的读取和写入）。</p>
+<p>当一个I&#x2F;O请求发出后，它需要经过一个较长的处理路径，该路径上会多次涉及网络通信（由Messenger线程池处理）和存储操作（由PG线程池处理）。由于同一请求需要在多个线程间传递处理，导致频繁的上下文切换。&#x3D;&#x3D;这会导致额外的开销，这种开销在使用SSD作为存储时是不可忽略的。&#x3D;&#x3D;</p>
+<p>在现有的研究中，通过将&#x3D;&#x3D;RTC模型（RTC模型的核心思想是，每个任务或请求在处理时，从开始到结束都由同一个线程完成，直到任务完全处理完毕，才会处理下一个任务）&#x3D;&#x3D;应用到解决方案，来解决频繁的上下文切换问题。虽然RTC模型在减少CPU开销和延迟方面有优势，但要实现这些好处，必须仔细考虑设计问题。如在Ceph中：假如将线程池模型替换为RTC模型，将每个RTC线程绑定到一个专用的CPU核心，同时为了避免来自同一客户端的请求乱序，Ceph中的每个客户端请求都必须由同一个信使线程处理。这就意味着，在正在处理的I&#x2F;O操作完成之前，RTC线程模型都不能处理其他的I&#x2F;O请求，这就会<strong>延迟等待时间</strong>，进而可能会导致整体的延迟增加。</p>
+<p>Original和RTC-v1的性能对比就说明了这一点：与Original相比，简单RTC模型（RTC-v1）通过减少上下文切换开销，在CPU占用率较低的情况下性能略有提高；没有对象存储和维护任务的简单RTC模型（RTC-v2）也实现了高性能，不过其延迟（1.45毫秒）仍比NVMe设备慢。&#x3D;&#x3D;因此，需要一个有效的线程控制方案来防止出现较长的临界段。&#x3D;&#x3D;</p>
+<h3 id="本地后端对象存储导致CPU占用率过高"><a href="#本地后端对象存储导致CPU占用率过高" class="headerlink" title="本地后端对象存储导致CPU占用率过高"></a>本地后端对象存储导致CPU占用率过高</h3><p>Ceph默认的后端存储为BlueStore，不使用本地文件系统直接管理存储设备，但是在&#x3D;&#x3D;使用NVMe SSD时，BlueStore在随机I&#x2F;O工作负载下会出现CPU绑定问题&#x3D;&#x3D;，主要有以下两点原因：</p>
+<p><strong>(1) 主机端写入放大</strong></p>
+<p>BlueStore使用<strong>LSM树结构的键值存储来处理元数据和小数据写入</strong>。尽管LSM树及其他日志结构的存储系统通过将所有I&#x2F;O模式变为顺序写入来提高随机写性能，但这种设计需要昂贵的压缩（或垃圾回收）过程来清理无效数据。这种压缩或垃圾回收会导致严重的<strong>主机侧写放大</strong>：为了删除无效数据，系统需要写入额外的数据，从而产生额外的写入开销。由下图可知：<strong>仅后端数据存储引起的写放大约为3倍</strong>。而且这些清理操作虽然在后台进行，但它会干扰前台的I&#x2F;O操作，并且需要消耗大量CPU资源来完成这些任务（如图中MT部分）。</p>
+<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/e7feba5848636992c98d1ff42f31abd.png" class="" title="BlueStore的写放大">
+
+<p><strong>(2) 单一数据域</strong></p>
+<p>现代后端数据存储使用的<strong>一致性机制</strong>，尤其是事务处理中的同步原语&#x3D;&#x3D;（锁征用、事务处理串行化）&#x3D;&#x3D;，可能会成为系统可扩展性的性能瓶颈。例如，BlueStore需要在单个分区中使用同步原语进行事务处理，这种方式限制了并行处理能力。由于本地文件系统不向应用程序公开这种分区信息，分布式存储系统难以实现基于局部性的处理优化，从而限制了系统性能的进一步提升。</p>
+<h2 id="Design-and-Implementation"><a href="#Design-and-Implementation" class="headerlink" title="Design and Implementation"></a>Design and Implementation</h2><p>总体结构图：</p>
+<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/bbfa089244544827988abf64c9ccdfc.png" class="" title="系统总体结构">
+
+<h3 id="一、使用NVM进行解耦操作处理"><a href="#一、使用NVM进行解耦操作处理" class="headerlink" title="一、使用NVM进行解耦操作处理"></a>一、使用NVM进行解耦操作处理</h3><p>将延迟敏感部分与I&#x2F;O路径的其他部分进行了解耦，其中：</p>
+<ul>
+<li><strong>延迟敏感部分</strong>：包括<strong>消息处理（MP）</strong>和<strong>复制处理（RP）</strong>，即处理客户端请求和将数据同步到其他节点的过程，这两个部分对I&#x2F;O性能和延迟的影响较大；</li>
+<li><strong>I&#x2F;O路径的其他部分</strong>：包括事务处理、对象存储等。这些部分可以在后续异步处理，因此不需要立即完成。</li>
+</ul>
+<p>&#x3D;&#x3D;即使对不同的I&#x2F;O请求采取不同的处理方式，这种设计依然能够保证系统的<strong>强一致性</strong>承诺。设计中有两个关键点：&#x3D;</p>
+<ul>
+<li><strong>延迟敏感任务的快速响应</strong>：使用<strong>操作日志</strong>来处理这些任务，从而使副本能够快速响应请求。这种方法可以通过日志的快速写入和副本的快速同步来缩短延迟；</li>
+<li><strong>尽力而为任务的批处理</strong>：对于不太紧急的任务，系统通过底层的对象存储以批处理的方式来处理。这种批处理方式可以更有效地利用系统资源，减少对实时响应性能的影响。</li>
+</ul>
+<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/574482d86329ef1ee4495c5e539e359.png" class="" title="解耦后的I&#x2F;O行为">
+
+<p>上图显示了解耦操作处理后的I&#x2F;O行为变化。和传统的复制处理相比，提交写操作所需的步骤更少，从而降低了延迟。具体步骤是：</p>
+<ol>
+<li>主服务器收到客户端的请求，当服务器在NVM中记录下操作日志后，立即将复制请求发送给其他副本节点；</li>
+<li>当传入操作被记录到NVM中时，主服务器会立即向副本发送复制请求。通过引用NVM中的日志，可以在不违反强一致性的情况下提供读请求；</li>
+<li>数据存储到内存空间后，辅助设备会向主服务器发送写入完成确认；</li>
+<li>在从副本收到所有的ACK后，主副本会回复客户端。一旦分期数据量达到阈值，分期操作就会异步刷新到后端对象存储空间。</li>
+</ol>
+<p>&#x3D;&#x3D;需要注意，只有在异步刷新的情况下，NVM日志才能有效地提高性能。且要考虑NVM满载时需要将数据刷新至磁盘中，此时I&#x2F;O操作是处理不了的，因此需权衡刷新时间。&#x3D;</p>
+<p>还需要考虑另一个问题：&#x3D;&#x3D;在使用NVM日志记录数据时，可能会破坏系统的强一致性保证——即读取可能返回过时的数据，因为最近的一些数据可能没有提交到磁盘。&#x3D;&#x3D;为了解决这个问题，论文提出的解决方案是：</p>
+<p>在系统中引入两个关键的数据结构来保证一致性：<strong>操作日志（operation log）</strong>和<strong>索引缓存（index cache）</strong>。这两个数据结构在逻辑组（logical group）基础上进行管理，确保对写操作的跟踪和缓存。其中：</p>
+<ul>
+<li><strong>操作日志</strong>：存储的是系统接收到的写操作，以日志结构化（log-structured）的方式顺序存储。它记录了每个操作，以保证它们不会丢失并可以在需要时进行恢复；</li>
+<li><strong>索引缓存</strong>：记录每个对象ID的最近写入操作的缓存信息，即跟踪最近的更新。这有助于提高查找最新数据的效率，并确保读取操作能获得最新的数据。</li>
+</ul>
+<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/2e9f764a04d6910cf9bec34945370c2.png" class="" title="基于操作日志和索引缓存的I&#x2F;O过程">
+
+<p>上图详细介绍了<strong>基于操作日志和索引缓存</strong>这两种数据结构的I&#x2F;O过程。</p>
+<p><strong>&#x3D;&#x3D;写过程：&#x3D;&#x3D;</strong></p>
+<ul>
+<li><strong>W1</strong>：当收到客户端的写入请求时，OSD中的一个<strong>优先线程</strong>（专门用来处理对延迟敏感任务的线程）会负责处理该请求。优先线程会<strong>根据对象的ID来计算出它属于哪个逻辑组</strong>（决定它们的日志条目应该写入哪个操作日志），然后将相关的<strong>日志条目信息（包括逻辑组ID、版本号、序列号、偏移量、数据和操作类型等）</strong>追加到相应的操作日志中。&#x3D;&#x3D;这个步骤需要<strong>获取逻辑组锁</strong>，因为其他非优先线程可能会同时访问该操作日志。&#x3D;&#x3D;</li>
+<li><strong>W2</strong>：在操作日志条目写入完成后，<strong>不释放锁</strong>的情况下，优先线程会向<strong>索引缓存</strong>中插入一个索引条目（包含对象ID、版本号、序列号、偏移量、长度、操作类型、操作日志中的位置、对象状态等信息），这样做的目的是为了<strong>快速检索对象信息</strong>，尤其是那些尚未持久化到后端存储的数据。&#x3D;&#x3D;需要注意的是，即使同一对象ID已经存在索引缓存中，系统<strong>不会覆盖原有的条目</strong>，因为不同的写入操作可能具有不同的版本号和序列号，如果直接覆盖旧的条目，系统将丢失历史信息，无法准确回溯对象的所有写入操作。&#x3D;&#x3D;</li>
+<li><strong>W3</strong>：如果有一个读请求与当前写请求的对象ID相同，优先线程会唤醒<strong>非优先线程</strong>，以便它<strong>强制刷新</strong>操作日志中的相关操作（将数据写入后端存储）来保持一致性。</li>
+</ul>
+<p><strong>&#x3D;&#x3D;读过程：&#x3D;&#x3D;</strong></p>
+<p>当OSD守护进程收到来自客户端的读请求时，优先线程会首先在<strong>索引缓存</strong>中搜索与该请求对象ID相对应的条目。这个步骤是为了确认是否有<strong>最近的写入操作</strong>，且该数据尚未写入到后端存储中。</p>
+<ul>
+<li><strong>R1</strong>：如果索引缓存中对应的对象ID指向的是<strong>操作日志</strong>，且该操作日志中的数据<strong>长度</strong>大于或等于读请求所需的数据长度，那么直接从操作日志中读取数据并返回给客户端；</li>
+<li><strong>R2</strong>：如果索引缓存中没有找到与该对象ID匹配的条目，优先线程会将该读请求添加到<strong>操作日志</strong>中，随后交由<strong>非优先线程</strong>来处理这个请求。非优先线程的任务是从<strong>后端存储</strong>（如对象存储）中读取该对象的最新数据，完成读取操作，并将该数据<strong>覆盖</strong>操作日志中的条目，确保日志中也保存了最新的数据；</li>
+<li><strong>R3</strong>：如果在操作日志中找到了数据，但该数据不足以满足读请求（比如读请求要求更长的数据），那么优先线程会唤醒非优先线程，从后端存储中读取完整的数据，并将其更新到操作日志中，保证下一次可以从操作日志中快速获取完整的数据。</li>
+</ul>
+<p>即：&#x3D;&#x3D;<strong>R1</strong>是最快速的路径，直接从操作日志中读取数据返回；<strong>R2</strong>是处理没有在操作日志中找到数据的情况，通过非优先线程从后端读取；<strong>R3</strong>是处理操作日志中的数据不满足请求的情况，需要从后端存储补全数据。&#x3D;&#x3D;</p>
+<p>为什么长度可以作为判断的基准？&#x3D;&#x3D;<strong>操作日志</strong>中记录的每个写入操作（写请求）可能是针对对象的某一部分，而不是整个对象。因此，当客户端发出<strong>读请求</strong>时，所请求的数据长度可能与日志中该对象的写入条目长度不同。&#x3D;&#x3D;举个例子：一个对象的写入操作可能只涉及该对象的<strong>部分数据</strong>（比如一个文件的某个块），而读请求可能要求返回该对象的整个数据。如果操作日志中的条目只记录了部分数据，就需要从后端存储中补齐其他部分的数据。</p>
+<p><strong>&#x3D;&#x3D;刷新过程：&#x3D;&#x3D;</strong></p>
+<p>当操作日志中的操作次数大于<strong>预定的阈值</strong>时，就会发生刷新。此外，除了操作数量的限制外，系统还会在<strong>操作完成</strong>或者<strong>超时</strong>时检查是否需要进行Flush。当满足Flush条件时，操作日志中记录的日志条目会被<strong>刷新</strong>到后端的对象存储中。Flush完成后，所有与这些操作相关的数据都会从<strong>操作日志</strong>和<strong>索引缓存</strong>中删除。</p>
+<p><strong>&#x3D;&#x3D;恢复过程：&#x3D;&#x3D;</strong></p>
+<p>操作日志中的写入请求是按顺序追加的，这意味着写入是按照请求接收的顺序被持久化的。然而，如果系统崩溃，可能会发生一致性问题，因为尚未持久化到磁盘的操作日志和索引缓存数据会丢失。设计中引入了恢复过程，确保在系统崩溃的情况下，仍然可以保证数据的一致性：</p>
+<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/b8370166d5e8e3e8686df5cc1b630f3.png" class="" title="恢复过程">
+
+<h3 id="二、优先线程控制"><a href="#二、优先线程控制" class="headerlink" title="二、优先线程控制"></a>二、优先线程控制</h3><img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/00bc67bdbfc26c1c23f4664da9fded8.png" class="" title="优先线程控制的线程架构">
+
+<p>优先线程控制的目的是避免<strong>延迟关键作业</strong>和<strong>尽力而为作业</strong>之间的I&#x2F;O优先级倒置。为此，为不同类型的线程维护独立的CPU池，其中&#x3D;&#x3D;优先线程负责延迟关键任务，非优先线程负责其他任务&#x3D;&#x3D;。</p>
+<p><strong>&#x3D;&#x3D;优先线程：&#x3D;&#x3D;<strong>有两个主要职责，分别是</strong>处理网络I&#x2F;O</strong>（通过管理发送&#x2F;接收队列来处理消息）和<strong>操作日志的记录</strong>。优先线程负责处理客户端的写请求并将其记录到操作日志中。当操作日志中的条目数超过预定阈值时，或者当需要从后端对象存储中读取数据时，优先线程会<strong>唤醒非优先线程</strong>来完成这些操作。非优先线程在完成存储处理后，会将结果挂起到优先级线程的发送队列中，然后优先线程负责向客户端发送确认消息（ACK）。</p>
+<p>**&#x3D;&#x3D;非优先线程：&#x3D;&#x3D;**有两个主要职责：</p>
+<ul>
+<li><strong>触发刷写操作（Flush）</strong>：非优先线程负责将操作日志中的数据批量刷写到后端存储中。当日志中累积了足够多的操作（超过预定阈值）或系统发出唤醒信号时，非优先线程会执行批处理操作；</li>
+<li><strong>完成I&#x2F;O操作</strong>：非优先线程还负责向后端存储系统发起I&#x2F;O请求，并在I&#x2F;O完成后处理结果。</li>
+</ul>
+<p>非优先线程会不断处理操作日志中的请求，直到所有挂起的请求都完成。当操作日志中没有剩余请求时，非优先线程进入休眠状态，等待下一次被唤醒。</p>
+<p><strong>&#x3D;&#x3D;线程调度：&#x3D;&#x3D;<strong>当OSD守护进程启动时，系统会为每个优先线程分配一个专用核心。当优先线程需要唤醒一个非优先线程时，首先会检查是否有</strong>空闲的非优先核心</strong>可以运行该任务。如果找到这样的核心，优先线程就会将该非优先线程调度到这个空闲的核心上执行任务；如果没有可用的非优先核心，优先线程就将调度任务交给操作系统的调度器处理，操作系统调度器可以将非优先线程分配到一个<strong>优先核心</strong>上执行任务。</p>
+<h3 id="三、CPU高效对象存储"><a href="#三、CPU高效对象存储" class="headerlink" title="三、CPU高效对象存储"></a>三、CPU高效对象存储</h3><img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/83b7ae5dedd55b2064a846a706ce903.png" class="" title="CPU高效对象存储体系结构">
+
+<p>CPU高效对象存储旨在最大限度地减少执行客户端发出的操作所需的I&#x2F;O次数，并最大限度地提高存储处理过程中的并行性。它的实现主要有以下关键点：</p>
+<ol>
+<li>使用类似日志文件系统的布局，允许覆盖写操作，避免了写放大问题，同时无需像传统系统那样进行清理和压缩；</li>
+<li>通过预分配技术（系统提前为对象分配好其在存储中的物理空间，并记录这些对象的位置信息），避免频繁更新元数据（如块位图和inode表），从而减少I&#x2F;O开销；</li>
+<li>为了提高性能，系统使用非易失性存储器（NVM）作为元数据缓存；</li>
+<li>整个磁盘被划分为多个分区，每个分区由一个非优先级线程处理，实现无锁的并行I&#x2F;O操作。</li>
+</ol>
+<p><strong>&#x3D;&#x3D;基本操作流程：&#x3D;&#x3D;</strong></p>
+<ol>
+<li><strong>查找操作</strong>：使用<strong>Radix树</strong>来进行对象查找，其中对象ID是查找的键值。对象ID的高位表示逻辑组ID，左边的几位用于确定对象所在的<strong>分片分区</strong>，而其余的位用于在该分区内查找具体对象。通过这种方式，系统能够快速定位目标对象所在的分区并在分区内进一步查找；</li>
+<li><strong>I&#x2F;O分配</strong>：对象根据其逻辑组ID分布到不同的分片分区，每个分片分区负责处理一个逻辑组ID。使用简单的<strong>模哈希</strong>方法（分片数对非优先线程数取模），将每个分片分区分配给一个非优先级线程。这样，系统能够并行处理I&#x2F;O操作，且每个线程独立处理属于自己分区的对象，避免锁竞争；</li>
+<li><strong>写操作</strong>：在收到写请求后，数据会被直接覆盖写入分配的数据块（就地更新），避免数据重排或清理。然后，更新与该对象相关的元数据（即onode，其中记录了键值、数据存储位置及空闲列表信息，代表对象的元数据条目）。当写操作完成后，系统会在内存中更新元数据，并删除相应的操作日志条目；</li>
+<li><strong>读操作</strong>：在处理读请求时，首先需要获取该对象的元数据位置（onode），可以通过Radix树查找或直接从缓存中获取。找到onode后，系统会根据onode中的块映射信息，从数据块中读取目标对象；</li>
+<li><strong>删除操作</strong>：删除对象时，系统使用<strong>延迟回收</strong>技术，即在收到删除请求后，仅将onode标记为已删除，而不是立即回收存储空间。这种方法可以优化存储操作，减少即时删除带来的系统开销；</li>
+<li><strong>崩溃一致性</strong>：存储系统在非易失性存储器（NVM）中维护一个<strong>操作日志</strong>，其工作方式类似于<strong>写前日志</strong>。如果在写操作期间发生崩溃，系统可以通过回放操作日志来恢复最新状态。即便使用了预分配技术，也可以通过回放日志（REDO）恢复一致性。这些保证在存储系统的更高层（例如OSD Core层）提供，确保操作的隔离性和顺序性；</li>
+<li><strong>元数据管理</strong>：元数据中包含需要随着对象更新而修改的信息，例如对象版本号和修改时间等。由于更新元数据通常会触发额外的磁盘写操作，为此论文设计了一个NVM上的元数据缓存层，避免频繁的元数据写入。由于分布式存储系统中的典型对象大小较大（如4MB），因此缓存可以覆盖大量的对象。只有在NVM缓存空间不足时，才需要更新磁盘上的元数据区域。</li>
+</ol>
+<p>针对逻辑组的一致性，论文采用了这种设计：&#x3D;&#x3D;将逻辑组的ID号后新增后缀来区别不同的版本，然后将这些具有版本号信息的条目始终存放在操作日志中，当需要进行相关的操作时，直接在操作日志中去获取信息，然后进行回滚。&#x3D;&#x3D;</p>
+<p><strong>&#x3D;&#x3D;磁盘布局设计：&#x3D;&#x3D;</strong></p>
+<p>在当前的设计中，磁盘空间是静态分区的，每个非优先线程只能负责一个分区，无法访问其他分区。也就是说，分区与线程之间是严格绑定的，这样有助于减少线程之间的竞争和锁的开销。当部署存储集群时，每个分区都需要根据配置进行分配，特别是配置指定了分区的大小。每个分区都有类似于XFS文件系统的结构，包括空闲块树信息、onode树信息以及数据块区域。主要结构：</p>
+<ul>
+<li><strong>超级块</strong>：存储<strong>分区级别的信息</strong>（每个分区区域的起始指针，即分区各个部分的开始位置、分区中总共的onode的数量和每个分区的大小），类似于在本地文件系统中的角色；</li>
+<li><strong>空闲块树信息区域</strong>：该区域存储了<strong>空闲数据块树的根节点信息</strong>，即记录当前分区中哪些数据块是空闲的，还维护了<strong>每个分区内空闲数据块的数量</strong>，以便快速找到可用的存储空间。使用<strong>B+树</strong>来跟踪所有空闲的数据块，方便高效地查找和管理空闲空间；</li>
+<li><strong>Onode树信息区域</strong>：存储<strong>根onode的信息</strong>，即可以从这里追踪到其他分配在数据块区域中的onode。每个onode包含了<strong>Radix树节点</strong>（例如兄弟节点、子节点）的信息，这意味着系统可以使用这些树节点信息来搜索onode。onode还包含一个<strong>基于范围树（extent tree）的块映射</strong>和<strong>扩展属性映射（key-value对的B+树结构）</strong>，用于存储元数据。块映射和扩展属性映射的长度是可变的，onode只包含一个指针，指向实际数据块的位置；</li>
+<li><strong>数据块区</strong>：用于<strong>存储对象数据</strong>，由固定大小的块组成。当数据写入磁盘时，数据会被分配到这些块中。</li>
+</ul>
+<h2 id="实验分析"><a href="#实验分析" class="headerlink" title="实验分析"></a>实验分析</h2><p>针对三个系统的性能进行对比，分别是<strong>Original</strong>、<strong>Proposed</strong>和<strong>Ideal</strong>，&#x3D;&#x3D;重点关注<strong>CPU使用率</strong>、<strong>IOPS</strong>和<strong>延迟</strong>等性能指标&#x3D;&#x3D;。其中：</p>
+<ol>
+<li><strong>Original</strong>：使用<strong>默认Ceph</strong>和<strong>BlueStore</strong>的性能结果，即没有修改之前的原始Ceph系统；</li>
+<li><strong>Proposed</strong>：根据论文提出的解决方案（对Ceph的优化和修改）实现后的性能结果。为了进行公平比较，Proposed版本中每个分区只使用了较小的内存空间，且当每个分区的操作日志中有<strong>16条记录</strong>时，系统会进行数据刷写（flush）；</li>
+<li><strong>Ideal</strong>：Ceph系统的<strong>理想性能</strong>，即假设没有存储处理开销的情况下能达到的性能（类似于RTC-v3的测试）。</li>
+</ol>
+<p>&#x3D;&#x3D;随机写性能比较：&#x3D;&#x3D;其中NP表示网络处理、SP表示存储处理、PT表示优先线程、NPT表示非优先线程、MT表示压缩和同步线程。</p>
+<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/12b2db4206d1a60c64798d982b1acd2.png" class="" title="随机写性能比较">
+
+<p>可以得到以下结果：</p>
+<p>在针对块设备进行I&#x2F;O操作时，Proposed的IOPS可以达到820K，延迟为1.11毫秒，而Original的IOPS只有181K。且Original的CPU使用率为3700%，其中存储处理（SP）消耗了大量的CPU资源。对于Original来说，尽管每个存储节点上配置了足够多的存储线程（每个节点有<strong>80个线程</strong>），这些线程并没有被<strong>高效利用</strong>，总的CPU使用率只有<strong>1500%<strong>（这意味着多个核心没有被充分使用）。</strong>主要原因是RocksDB的压缩线程</strong>：在BlueStore的存储后端中，RocksDB使用了压缩线程来管理数据，这些压缩线程会占用大量的CPU资源，**MT的CPU使用率达到800%**，这占用了系统总CPU使用率的很大一部分。对于Proposed来说，在处理写入操作时，可能由于获取逻辑组锁的延迟（优先线程与非优先线程之间共享的锁）而推迟了对请求的处理，相比理想状态仍然存在性能差距。</p>
+<img src="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/1728437920813.png" class="" title="实验分析结果">
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>论文通过屋顶线模型定位了Ceph在NVMe SSD上随机写的CPU瓶颈：紧耦合的I&#x2F;O路径、低效的线程架构和基于LSM树的后端存储开销。针对这三个问题分别给出的解法是：</p>
+<ol>
+<li><strong>NVM解耦I&#x2F;O路径</strong>——用操作日志+索引缓存把延迟敏感的复制确认和可以批处理的数据落盘拆开，在不破坏强一致性的前提下缩短关键路径；</li>
+<li><strong>优先级线程控制</strong>——优先线程处理网络I&#x2F;O和日志记录，非优先线程处理刷写和后端I&#x2F;O，分别绑定独立CPU池，避免优先级反转；</li>
+<li><strong>CPU高效对象存储</strong>——就地更新+预分配+分区无锁并行，避免LSM树压缩带来的写放大和CPU消耗。</li>
+</ol>
+<p>最终随机写IOPS从181K提升到820K，接近理想状态。</p>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>分布式存储</tag>
+        <tag>Ceph</tag>
+        <tag>NVMe</tag>
+        <tag>块存储</tag>
       </tags>
   </entry>
 </search>

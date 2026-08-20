@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-siteapp">
     <title>
         
-            Hexo
+            论文阅读：理解Ceph对象存储中存储后端的写入行为
         
     </title>
     <link rel="shortcut icon" href="#"/>
@@ -33,266 +33,290 @@
 </head>
 <body>
     <a id="cover"></a>
-    <link type="text/css" rel="stylesheet" href="/css/index.css">
-<div id="count"></div>
-<div id="header" >
+    <link type="text/css" rel="stylesheet" href="/css/post.css">
+<div id="header" class="header">
     <div class="vertical">
         <div class="inner">
             
-                <h1 class="header-title">振兴东北</h1>
-                <h2 class="header-description" id="hitokoto"></h2>
-                <h3 class="header-info" id="hitokotoAuthor"></h3>
+                <h1 class="header-subtitle">论文阅读：理解Ceph对象存储中存储后端的写入行为</h1>
+                <div class="header-subinfo">
+                    <p class="article-info-text">
+                        <span>
+                            <i class="iconfont icon-time"></i> 发表时间：2024-06-27
+                        </span>
+                        
+                            
+                                <span id="/2024/06/27/论文阅读-Ceph对象存储后端的写入行为分析/" class="leancloud_visitors" data-flag-title="论文阅读：理解Ceph对象存储中存储后端的写入行为">
+                                    <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
+                                </span>
+                            
+                            
+                                <span>
+                                    <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2024/06/27/论文阅读-Ceph对象存储后端的写入行为分析/"></span>
+                                </span>
+                              
+                        
+                    </p>
+                    
+                        
+                            <span class="category-color">论文阅读</span>
+                        
+                    
+                    
+                        
+                            <span class="tag-color">分布式存储</span>
+                        
+                            <span class="tag-color">Ceph</span>
+                        
+                            <span class="tag-color">BlueStore</span>
+                        
+                            <span class="tag-color">写放大</span>
+                        
+                    
+                </div>
             
         </div>
     </div>
     
-        <a class="scroll-down" href="javascript:;" target="_self" data-offset="-45">
-            <i class="scroll-down-icon iconfont icon-return"></i>
-        </a>
-    
 </div>
 <div id="container">
     
-        
-            <!-- 首页 -->
-            <div class="articles">
+        <!-- 文章页面 -->
+        <div id="article">
+            <div class="toc"></div>
+            <div class="article-body">
+                <h1 id="论文阅读：理解Ceph对象存储中存储后端的写入行为"><a href="#论文阅读：理解Ceph对象存储中存储后端的写入行为" class="headerlink" title="论文阅读：理解Ceph对象存储中存储后端的写入行为"></a>论文阅读：理解Ceph对象存储中存储后端的写入行为</h1><blockquote>
+<p>论文：<em>Understanding Write Behaviors of Storage Backends in Ceph Object Store</em></p>
+</blockquote>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>论文作者对Ceph提供的三种存储后端（FileStore、KStore和BlueStore）通过微基准测试与长期工作负载的综合分析进行了测试，主要聚焦于WAF（写放大系数）。</p>
+<p>核心发现：&#x3D;&#x3D;不管是哪种存储后端，WAF都大于13&#x3D;&#x3D;。其中BlueStore的综合性能最稳定，FileStore在SSD上的表现最好，BlueStore在HDD上表现不错。</p>
+<p>这三种存储后端的写放大的来源如下：</p>
+<p><strong>FileStore</strong>：需要先将数据写入独立的journal（日志设备），然后再写入主存储区。这本应是”双写（double write）”，即写流量为2倍，但实验发现实际是<strong>3倍</strong>。因为文件系统本身也有自己的日志系统，即数据流程变成：<strong>数据 → Ceph journal → 文件系统 → 文件系统 journal → 真正写入位置</strong>。&#x3D;&#x3D;结果导致：<strong>文件系统的元数据+日志流量 ≈ 原始数据量大小</strong>，写放大更严重。&#x3D;&#x3D;</p>
+<p><strong>KStore</strong>：KStore采用RocksDB存储元数据。由于RocksDB的LSM-tree结构，后台会进行大量compaction。实验发现：&#x3D;&#x3D;几乎所有写流量都来自compaction，而不是用户写入的数据。&#x3D;&#x3D;</p>
+<p><strong>BlueStore</strong>：数据直接写入裸设备，不经过文件系统，因此它<strong>避免了FileStore的journaling of journal问题</strong>。但是它的写放大依旧存在，主要来源是”Ceph仍使用RocksDB存储元数据和对象属性”，这些RocksDB写流量的大小<strong>超过真实数据写入量的3倍</strong>。简而言之：<strong>BlueStore解决了日志嵌套的问题，但RocksDB的元数据写放大仍然很严重。</strong></p>
+<h2 id="Background"><a href="#Background" class="headerlink" title="Background"></a>Background</h2><h3 id="Ceph的三种存储接口"><a href="#Ceph的三种存储接口" class="headerlink" title="Ceph的三种存储接口"></a>Ceph的三种存储接口</h3><table>
+<thead>
+<tr>
+<th>存储类型</th>
+<th>描述</th>
+<th>举例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对象存储（Object Storage）</td>
+<td>类似 Amazon S3、Swift，存储对象（Object）</td>
+<td>Ceph Object Storage（RADOS Gateway）</td>
+</tr>
+<tr>
+<td>块存储（Block Storage）</td>
+<td>给虚拟机或系统提供块设备</td>
+<td>Ceph RBD（RADOS Block Device）</td>
+</tr>
+<tr>
+<td>文件系统（File System）</td>
+<td>类似分布式文件系统</td>
+<td>CephFS</td>
+</tr>
+</tbody></table>
+<p>虽然提供三种不同形态的服务，但<strong>它们的底层都是建立在同一个统一核心：&#x3D;&#x3D;RADOS&#x3D;&#x3D;（Reliable Autonomic Distributed Object Store）之上</strong>。RADOS层运行着Ceph内部的关键组件：</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>全称</th>
+<th>是否是守护进程（Daemon）</th>
+<th>是否运行在 RADOS 层？</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>MON</strong></td>
+<td>Monitor</td>
+<td>✅ 是</td>
+<td>✅ 是</td>
+<td>保存并管理集群状态（如 OSD 列表、集群地图），负责一致性和选举</td>
+</tr>
+<tr>
+<td><strong>MDS</strong></td>
+<td>Metadata Server</td>
+<td>✅ 是</td>
+<td>✅ 是（但只用于 CephFS 文件系统）</td>
+<td>管理文件系统的目录、权限和名称等元数据</td>
+</tr>
+<tr>
+<td><strong>OSD</strong></td>
+<td>Object Storage Daemon</td>
+<td>✅ 是</td>
+<td>✅ 是</td>
+<td>存储数据对象、处理读写请求、执行数据复制和恢复</td>
+</tr>
+</tbody></table>
+<h3 id="Ceph与传统分布式存储的区别"><a href="#Ceph与传统分布式存储的区别" class="headerlink" title="Ceph与传统分布式存储的区别"></a>Ceph与传统分布式存储的区别</h3><ol>
+<li>客户端可以<strong>直接联系负责该数据的主OSD节点（primary OSD）</strong>，无需中间服务器；</li>
+<li>不需要固定的元数据服务器来告诉客户端”数据在哪里”；</li>
+<li>数据的位置是通过<strong>CRUSH算法</strong>算出来的，而不是查表得到。</li>
+</ol>
+<h3 id="BlueStore的定位"><a href="#BlueStore的定位" class="headerlink" title="BlueStore的定位"></a>BlueStore的定位</h3><p>BlueStore是Ceph的另一种存储后端，其核心理念在于高效管理对象数据，突破FileStore的局限性。FileStore存在的问题之一是外部日志记录导致的双重写入开销。BlueStore则直接将对象数据存储于原始块设备，同时使用RocksDB管理元数据。由于跳过了本地文件系统层，可规避日志记录等文件系统开销。</p>
+<p>需注意的是，由于运行RocksDB仍需文件系统支持，BlueStore内部集成了名为BlueFS的轻量级用户级文件系统。此外，Ceph通常需处理大量对象，且常需按顺序枚举所有对象以进行一致性检查和恢复，然而POSIX并未提供从多个目录高效检索对象的方法。使用RocksDB的另一优势在于，Ceph能够轻松检索并枚举系统中存储的所有对象。</p>
+<h2 id="微基准测试结果"><a href="#微基准测试结果" class="headerlink" title="微基准测试结果"></a>微基准测试结果</h2><h3 id="FileStore"><a href="#FileStore" class="headerlink" title="FileStore"></a>FileStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/d995d2090d5b758453b8043d301818f9.png" class="" title="FileStore微基准测试结果">
+
+<p>4KB写入在Ceph内部的路径为：</p>
+<p><strong>(1) 客户端定位数据应该写到哪个OSD</strong></p>
+<p>客户端通过CRUSH算法在O(1)时间内计算出负责该对象的<strong>主OSD</strong>，然后将写请求发送给主OSD。</p>
+<p><strong>(2) 写副本</strong></p>
+<p>主OSD将写请求转发给另外两个OSD（即副本#2和副本#3）。因为副本机制（replication factor &#x3D; 3），这一步本身就会<strong>产生3倍流量</strong>。</p>
+<p><strong>(3) 在每个OSD内部，数据会被打包成一个”事务”</strong></p>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对象数据（object data）</td>
+<td>你写入的 4KB 数据</td>
+</tr>
+<tr>
+<td>对象元数据（object metadata）</td>
+<td>比如对象大小、时间戳、offset 等</td>
+</tr>
+<tr>
+<td>LevelDB（或 RocksDB）键值对</td>
+<td>存储对象索引与属性，用来快速定位和管理对象</td>
+</tr>
+</tbody></table>
+<p><strong>(4) FileStore接收到这个事务后，会做两件事（双写来源）：</strong></p>
+<ol>
+<li><p><strong>先写Ceph Journal（预写日志，Write-Ahead Logging）</strong>：保护事务的原子性（可崩溃恢复），这是第一部分写放大来源；</p>
+</li>
+<li><p><strong>再把这份事务写入XFS（真实数据 + LevelDB数据 + 文件系统元数据）</strong>：</p>
+<ul>
+<li>真实文件写入 &#x3D; object data；</li>
+<li>LevelDB的写放大（LSM-tree会产生compaction）；</li>
+<li>XFS文件系统写元数据 + XFS Journaling。</li>
+</ul>
+<p>这是第二次写放大，导致”journal of journal（日志的日志）”问题。</p>
+</li>
+</ol>
+<p>所以4KB写入的WAF因子很大且有波动性，但是随着写入请求大小的增大，直至4MB时，WAF收敛至6，因为相对于请求大小，对象元数据、键值对、文件系统元数据和文件系统日志的占比会相对缩小。</p>
+<h3 id="BlueStore"><a href="#BlueStore" class="headerlink" title="BlueStore"></a>BlueStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/f9c30590713a818b6c4c260315e01a59.png" class="" title="BlueStore微基准测试结果">
+
+<p>可以发现第3次写（3rd Write）的WAF很高，论文解释原因为：BlueStore按<strong>最小分配粒度 &#x3D; 64KB Chunk</strong>来管理数据。当写入请求落在某个Chunk中间、且打破了它的连续性时，BlueStore必须做：&#x3D;&#x3D;把当前64KB Chunk中未写满的部分用<strong>零填充（zero padding）</strong>，然后整个64KB写入磁盘。&#x3D;&#x3D;</p>
+<blockquote>
+<p>笔者注：在Ceph官网实际调研后发现，现在BlueStore默认的最小分配粒度已经是4KB了，也就是说这里补0带来的WAF应该已经没有了。总体上BlueStore效果更好，因为没有了日志双写问题。</p>
+</blockquote>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这篇论文的价值在于系统性地量化了Ceph三种存储后端的写放大来源：</p>
+<table>
+<thead>
+<tr>
+<th>后端</th>
+<th>主要写放大来源</th>
+<th>关键问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FileStore</td>
+<td>Journal双写 + 文件系统日志（journal of journal）</td>
+<td>双写实际为3倍而非2倍</td>
+</tr>
+<tr>
+<td>KStore</td>
+<td>RocksDB的LSM-tree compaction</td>
+<td>写流量几乎全来自compaction</td>
+</tr>
+<tr>
+<td>BlueStore</td>
+<td>RocksDB元数据写流量（超过真实数据3倍）</td>
+<td>解决了日志嵌套但元数据放大仍在</td>
+</tr>
+</tbody></table>
+<p>结论指向一个明确的方向：<strong>分布式存储系统的后端如果想进一步降低写放大，要么换掉LSM-tree的元数据方案，要么优化元数据的落盘路径</strong>——这也与后续一系列针对RocksDB&#x2F;BlueStore的优化工作（如MatrixKV、就地更新方案等）相呼应。</p>
+
                 
-                    <div class="article">
-                        <div class="article-title">
-                            <a href="/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/">mTLS双向认证：从选型到落地的完整实践</a>
-                            
-                        </div>
-                        <div class="article-abstract">
-                            
-                        </div>
-                        <div class="clear"></div>
-                        <div class="article-info">
-                            <span>
-                                <i class="iconfont icon-time"></i> 发表时间：2026-07-14
-                            </span>
-                            
-                                
-                                    <span id="/2026/07/14/mTLS双向认证/" class="leancloud_visitors" data-flag-title="mTLS双向认证：从选型到落地的完整实践">
-                                        <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
-                                    </span>
-                                
-                                
-                                    <span>
-                                        <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2026/07/14/mTLS双向认证/"></span>
-                                    </span>
-                                
-                            
-                        </div>
-                        <div class="clear"></div>     
+                <p class="end">__END__</p>
+            </div>
+            <div class="article-footer">
+                <div class="suffix-box">
+    <div class="suffix-box-left">
+        <img src="/image/sidebar/avatar.jpg" alt="振兴东北">
+    </div>
+    <div class="suffix-box-right">
+        <span class="suffix-box-title">文章作者：</span>拳击手胖虎
+        <br>
+        <span class="suffix-box-title">文章出处：</span><a href="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/" target="_blank">论文阅读：理解Ceph对象存储中存储后端的写入行为</a>
+        <br>
+        <span class="suffix-box-title">作者签名：</span>不成木讷树，便做自由风
+        <br>
+        <span class="suffix-box-title">关于主题：</span><a href="https://github.com/first19326/Hexo-LiveForCode" target="_blank">Hexo - Live For Code</a>
+        <br>
+        <span class="suffix-box-title">版权声明：</span>文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" title="BY-NC-SA" target="_blank">BY-NC-SA</a> 许可协议，转载请注明出处
+        <br>
+    </div>
+    <div style="clear: both;"></div>
+</div>
+                
+                    <div class="category">
+                        分类：
+                        
+                            <a href="/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/">论文阅读</a>
+                        
                     </div>
                 
-                    <div class="article">
-                        <div class="article-title">
-                            <a href="/2026/06/15/Raft%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0/">Raft共识算法原理与实现</a>
-                            
-                        </div>
-                        <div class="article-abstract">
-                            
-                        </div>
-                        <div class="clear"></div>
-                        <div class="article-info">
-                            <span>
-                                <i class="iconfont icon-time"></i> 发表时间：2026-06-15
-                            </span>
-                            
-                                
-                                    <span id="/2026/06/15/Raft共识算法原理与实现/" class="leancloud_visitors" data-flag-title="Raft共识算法原理与实现">
-                                        <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
-                                    </span>
-                                
-                                
-                                    <span>
-                                        <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2026/06/15/Raft共识算法原理与实现/"></span>
-                                    </span>
-                                
-                            
-                        </div>
-                        <div class="clear"></div>     
+                
+                    <div class="tag">
+                        标签：
+                        
+                            <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8/">分布式存储</a>
+                        
+                            <a href="/tags/Ceph/">Ceph</a>
+                        
+                            <a href="/tags/BlueStore/">BlueStore</a>
+                        
+                            <a href="/tags/%E5%86%99%E6%94%BE%E5%A4%A7/">写放大</a>
+                        
                     </div>
                 
-                    <div class="article">
-                        <div class="article-title">
-                            <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/">C++笔记</a>
-                            
-                        </div>
-                        <div class="article-abstract">
-                            
-                        </div>
-                        <div class="clear"></div>
-                        <div class="article-info">
-                            <span>
-                                <i class="iconfont icon-time"></i> 发表时间：2025-11-12
-                            </span>
-                            
-                                
-                                    <span id="/2025/11/12/C-笔记/" class="leancloud_visitors" data-flag-title="C++笔记">
-                                        <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
-                                    </span>
-                                
-                                
-                                    <span>
-                                        <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2025/11/12/C-笔记/"></span>
-                                    </span>
-                                
-                            
-                        </div>
-                        <div class="clear"></div>     
-                    </div>
-                
-                    <div class="article">
-                        <div class="article-title">
-                            <a href="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/">论文阅读：理解Ceph对象存储中存储后端的写入行为</a>
-                            
-                        </div>
-                        <div class="article-abstract">
-                            
-                        </div>
-                        <div class="clear"></div>
-                        <div class="article-info">
-                            <span>
-                                <i class="iconfont icon-time"></i> 发表时间：2024-06-27
-                            </span>
-                            
-                                
-                                    <span id="/2024/06/27/论文阅读-Ceph对象存储后端的写入行为分析/" class="leancloud_visitors" data-flag-title="论文阅读：理解Ceph对象存储中存储后端的写入行为">
-                                        <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
-                                    </span>
-                                
-                                
-                                    <span>
-                                        <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2024/06/27/论文阅读-Ceph对象存储后端的写入行为分析/"></span>
-                                    </span>
-                                
-                            
-                        </div>
-                        <div class="clear"></div>     
-                    </div>
-                
-                    <div class="article">
-                        <div class="article-title">
-                            <a href="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/">论文阅读：重构分布式块存储系统以提升随机写性能</a>
-                            
-                        </div>
-                        <div class="article-abstract">
-                            
-                        </div>
-                        <div class="clear"></div>
-                        <div class="article-info">
-                            <span>
-                                <i class="iconfont icon-time"></i> 发表时间：2024-06-14
-                            </span>
-                            
-                                
-                                    <span id="/2024/06/14/论文阅读-重构分布式块存储系统提升随机写性能/" class="leancloud_visitors" data-flag-title="论文阅读：重构分布式块存储系统以提升随机写性能">
-                                        <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
-                                    </span>
-                                
-                                
-                                    <span>
-                                        <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2024/06/14/论文阅读-重构分布式块存储系统提升随机写性能/"></span>
-                                    </span>
-                                
-                            
-                        </div>
-                        <div class="clear"></div>     
-                    </div>
-                
-                    <div class="article">
-                        <div class="article-title">
-                            <a href="/2024/05/23/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E7%A8%B3%E5%AE%9A%E5%B9%B6%E6%8F%90%E5%8D%87NVMe-SSD%E4%B8%8A%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84IO%E6%80%A7%E8%83%BD/">论文阅读：稳定并提升NVMe SSD上日志文件系统的I/O性能</a>
-                            
-                        </div>
-                        <div class="article-abstract">
-                            
-                        </div>
-                        <div class="clear"></div>
-                        <div class="article-info">
-                            <span>
-                                <i class="iconfont icon-time"></i> 发表时间：2024-05-23
-                            </span>
-                            
-                                
-                                    <span id="/2024/05/23/论文阅读-稳定并提升NVMe-SSD上日志文件系统的IO性能/" class="leancloud_visitors" data-flag-title="论文阅读：稳定并提升NVMe SSD上日志文件系统的I/O性能">
-                                        <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
-                                    </span>
-                                
-                                
-                                    <span>
-                                        <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2024/05/23/论文阅读-稳定并提升NVMe-SSD上日志文件系统的IO性能/"></span>
-                                    </span>
-                                
-                            
-                        </div>
-                        <div class="clear"></div>     
-                    </div>
-                
-                    <div class="article">
-                        <div class="article-title">
-                            <a href="/2024/05/11/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E8%AE%BF%E9%97%AE%E6%A8%A1%E5%BC%8F%E9%87%8D%E5%A1%91%E6%8F%90%E5%8D%87SSD%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9FIO%E6%80%A7%E8%83%BD/">论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能</a>
-                            
-                        </div>
-                        <div class="article-abstract">
-                            
-                        </div>
-                        <div class="clear"></div>
-                        <div class="article-info">
-                            <span>
-                                <i class="iconfont icon-time"></i> 发表时间：2024-05-11
-                            </span>
-                            
-                                
-                                    <span id="/2024/05/11/论文阅读-访问模式重塑提升SSD分布式文件系统IO性能/" class="leancloud_visitors" data-flag-title="论文阅读：通过访问模式重塑提升基于闪存SSD的分布式文件系统I/O性能">
-                                        <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
-                                    </span>
-                                
-                                
-                                    <span>
-                                        <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2024/05/11/论文阅读-访问模式重塑提升SSD分布式文件系统IO性能/"></span>
-                                    </span>
-                                
-                            
-                        </div>
-                        <div class="clear"></div>     
-                    </div>
-                
-                    <div class="article">
-                        <div class="article-title">
-                            <a href="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/">SSD的内部结构</a>
-                            
-                        </div>
-                        <div class="article-abstract">
-                            
-                        </div>
-                        <div class="clear"></div>
-                        <div class="article-info">
-                            <span>
-                                <i class="iconfont icon-time"></i> 发表时间：2024-04-11
-                            </span>
-                            
-                                
-                                    <span id="/2024/04/11/SSD的内部结构/" class="leancloud_visitors" data-flag-title="SSD的内部结构">
-                                        <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
-                                    </span>
-                                
-                                
-                                    <span>
-                                        <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2024/04/11/SSD的内部结构/"></span>
-                                    </span>
-                                
-                            
-                        </div>
-                        <div class="clear"></div>     
-                    </div>
-                
+                <div class="article-prev-next">
+                    
+                        <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/" class="prev-prefix">« </a> 上一篇：    <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/" title="发布于 2025-11-12 10:06">C++笔记</a>
+                        <br>
+                    
+                    
+                        <a href="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/" class="next-prefix">» </a> 下一篇：    <a href="/2024/06/14/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E9%87%8D%E6%9E%84%E5%88%86%E5%B8%83%E5%BC%8F%E5%9D%97%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9F%E6%8F%90%E5%8D%87%E9%9A%8F%E6%9C%BA%E5%86%99%E6%80%A7%E8%83%BD/" title="发布于 2024-06-14 09:00">论文阅读：重构分布式块存储系统以提升随机写性能</a>
+                    
+                </div>
             </div>
             
-            
+    <div class="article-comments">
         
+            <div class="comments-title">
+                评论列表
+            </div>
+        
+        <div class="comments-content">
+            
+                <script src="https://giscus.app/client.js"
+                    data-repo="zblzbl9040/zblzbl9040.github.io"
+                    data-repo-id="R_kgDONJvMDQ"
+                    data-category="Announcements"
+                    data-category-id="DIC_kwDONJvMDc4C-Nmz"
+                    data-mapping="pathname"
+                    data-strict="0"
+                    data-reactions-enabled="1"
+                    data-emit-metadata="0"
+                    data-input-position="bottom"
+                    data-theme="preferred_color_scheme"
+                    data-lang="zh-CN"
+                    crossorigin="anonymous"
+                    async>
+                </script>
+            
+        </div>
+    </div>
+    
+ 
+        </div>
     
 </div>
     <div id="footer">
@@ -324,7 +348,7 @@
             <div class="menu-list">
                 <ul>
                     
-                        <li class=" active "><a href="/" class="" target="_self"><span class="iconfont icon-home-fill"></span>首页</a></li>
+                        <li class=""><a href="/" class="" target="_self"><span class="iconfont icon-home-fill"></span>首页</a></li>
                     
                         <li class=""><a href="/categories" class="" target="_self"><span class="iconfont icon-folder-fill"></span>分类</a></li>
                     
