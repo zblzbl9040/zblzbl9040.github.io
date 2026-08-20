@@ -1,93 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>SSD的内部结构</title>
-    <url>/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/</url>
-    <content><![CDATA[<h1 id="SSD的内部结构"><a href="#SSD的内部结构" class="headerlink" title="SSD的内部结构"></a>SSD的内部结构</h1><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/dcbba826b52f1170afb42c3c99eb39a.jpg" class="" title="SSD结构图">
-
-<p>SSD主要由控制单元(SSD控制器、主机接口、DRAM等)和存储单元(主要是NAND FLASH闪存颗粒)构成。数据通过接口进入主控，经主控中转调配后存储到各个闪存颗粒中。</p>
-<h2 id="三大组成部分"><a href="#三大组成部分" class="headerlink" title="三大组成部分"></a>三大组成部分</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/feef6f6e8f6043f9b24b61dc895cecb8.png" class="" title="SSD三大组成部分">
-
-<p>主要有三大部分组成：与Host对接的界面(Host interface), 闪存转换层FTL以及闪存对接界面(Flash interface)。</p>
-<p><strong>Host interface</strong>采用的协议包括：</p>
-<ul>
-<li>SATA</li>
-<li>PCIe&#x2F;NVMe SSD协议</li>
-</ul>
-<p><strong>闪存转换层FTL</strong>是主控的核心部分，主要实现：</p>
-<ul>
-<li>磨损平衡（Wear-leveling）</li>
-<li>垃圾数据回收（Garbage Collection）</li>
-<li>坏块管理（Bad Block Management）</li>
-<li>数据纠错处理（ECC, Error Correction Code）</li>
-</ul>
-<p><strong>Flash interface</strong>包括了SSD主控的flash controller，用来控制主控与NAND闪存之间的数据传输。</p>
-<p>NAND闪存是数据归属地，NAND颗粒的存在，赋予了SSD储存数据的使命。为了提高存储的性能，主控会通过不同的通道（Channel）操作NAND闪存。</p>
-<h2 id="NAND-flash在分布式存储中的应用"><a href="#NAND-flash在分布式存储中的应用" class="headerlink" title="NAND flash在分布式存储中的应用"></a>NAND flash在分布式存储中的应用</h2><ul>
-<li><strong>高性能缓存</strong>：用作读写缓存</li>
-<li><strong>元数据存储</strong>：用作存储系统元数据</li>
-<li><strong>日志存储</strong>：存储事务日志、大量的日志信息</li>
-<li><strong>全闪存阵列</strong>：使用全NAND闪存的存储阵列</li>
-<li><strong>混合存储系统</strong>：使用NAND存储热数据，HDD存储冷数据</li>
-<li><strong>大数据处理</strong>：NAND闪存加速数据读写，提升数据处理效率</li>
-<li><strong>分布式文件系统</strong>：使用NAND闪存提升MDS的性能</li>
-</ul>
-<h2 id="主流研究方向"><a href="#主流研究方向" class="headerlink" title="主流研究方向"></a>主流研究方向</h2><h3 id="1-性能优化"><a href="#1-性能优化" class="headerlink" title="(1) 性能优化"></a>(1) 性能优化</h3><p>全SSD用做分布式存储系统中的存储介质，应该在系统层面怎么优化能够使SSD的性能发挥到最大？</p>
-<p><strong>系统(软件)层面的开销会影响硬件层面的开销</strong>，因此需要在系统层面针对SSD的特性进行优化，使得SSD的性能尽可能的发挥最大。</p>
-<p>主要优化方式就4种：</p>
-<ol>
-<li>将随机写改成顺序写 √</li>
-<li>增大并行任务量</li>
-<li>多个事务合并成一个事务进行处理 √</li>
-<li>冷热数据分离 √</li>
-</ol>
-<h3 id="2-故障处理"><a href="#2-故障处理" class="headerlink" title="(2) 故障处理"></a>(2) 故障处理</h3><p>使用SSD用作分布式存储的存储介质时，固态硬盘出现故障应该怎么解决？(预测or优化使故障率降低)</p>
-<p><strong>优化设备层</strong>，降低硬盘故障率。</p>
-<h2 id="NAND颗粒的内部结构"><a href="#NAND颗粒的内部结构" class="headerlink" title="NAND颗粒的内部结构"></a>NAND颗粒的内部结构</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/5744007b365f2dd103641b40530808d.png" class="" title="NAND颗粒内部结构">
-<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/ade71ef313fe861e16125198071c6bb.png" class="" title="NAND颗粒结构">
-
-<p><strong>Page</strong>是闪存存储的最小读写单元、<strong>Block</strong>是闪存存储的最小擦除单元。</p>
-<h3 id="Cell能存储数据的原理"><a href="#Cell能存储数据的原理" class="headerlink" title="Cell能存储数据的原理"></a>Cell能存储数据的原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/08cce0f065bc66b40396dc669b26db7.png" class="" title="浮栅晶体管结构">
-<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b4d43ea1609804503ff82bfc5cbe67c.png" class="" title="存储原理">
-
-<p>在存储数据时，通过施加电压，让电子穿过<strong>隧穿层</strong>达到<strong>浮栅层</strong>，根据<strong>浮栅层</strong>的电子数量来判断是’0’还是’1’。</p>
-<p>浮栅晶体管能存放多大的数据取决于对<strong>浮栅层</strong>中电子数量的粒度划分。</p>
-<p>寿命有限的原因是通过施加电压让电子反复穿过<strong>隧穿层</strong>，会破环<strong>隧穿层</strong>的结构，导致不能再有效的保持<strong>浮栅层</strong>中的电荷。</p>
-<h3 id="存储类型"><a href="#存储类型" class="headerlink" title="存储类型"></a>存储类型</h3><ul>
-<li><strong>SLC</strong>：单层单元，每个单元存储位数(1bit)，电压只有两种状态(0和1)</li>
-<li><strong>MLC</strong>：多层单元，每个单元存储位数(2bit)，电压有四种状态(00,01,10,11)</li>
-<li><strong>TLC</strong>：三层单元，每个单元存储位数(3bit)，电压有八种状态(000,001,010,011,100,101,110,111)</li>
-<li><strong>QLC</strong>：四层单元，每个单元存储位数(4bit)，电压有十六种状态(0000,0001,……,1111)</li>
-</ul>
-<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/3225ebbed6033e2a5bc71bc1cb30b57.png" class="" title="SLC&#x2F;MLC&#x2F;TLC&#x2F;QLC对比">
-
-<h2 id="写放大"><a href="#写放大" class="headerlink" title="写放大"></a>写放大</h2><p><strong>写放大</strong>：指的是在执行写入操作时，SSD硬盘发生的写入量，实际要远大于实际写入的数据量。</p>
-<p><strong>原因</strong>：NAND数据写入的方式是以页面为单位写入，但是要想删除数据却要以块为单位。</p>
-<h3 id="降低写放大的方法"><a href="#降低写放大的方法" class="headerlink" title="降低写放大的方法"></a>降低写放大的方法</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b6aaf6b4393362c87b9434bc2a0543c.png" class="" title="降低写放大的方法">
-
-<ul>
-<li>磨损均衡：将写操作均匀分布到各个块上，避免某些块过度磨损</li>
-<li>垃圾回收：及时回收无效数据，腾出空间</li>
-<li>预留空间：保留部分空间作为缓冲区</li>
-</ul>
-<h3 id="磨损均衡原理"><a href="#磨损均衡原理" class="headerlink" title="磨损均衡原理"></a>磨损均衡原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/c24b32c2668cc724120e8413202e202.png" class="" title="磨损均衡原理">
-
-<ul>
-<li><strong>动态磨损均衡</strong>：更多的使用擦除次数较少的块</li>
-<li><strong>静态磨损平衡</strong>：将冷数据迁移到磨损程度较高的块上，使磨损均匀分布。为了尽量减少块之间的磨损差异，额外的开销以迁移的形式增加。</li>
-</ul>
-<h2 id="SSD和HDD的关键区别"><a href="#SSD和HDD的关键区别" class="headerlink" title="SSD和HDD的关键区别"></a>SSD和HDD的关键区别</h2><p>除了吞吐量和延迟外，HDD会将来自主机的多个请求序列化到单个队列中，每次处理一次，而SSD可以同时处理多个请求，因为SSD将多个芯片连接到多个管道，虽然每个管道一次只能处理一个请求，但多个通道的存在允许同时访问不同的芯片。因此SSD的并发性能优势不可忽略。</p>
-]]></content>
-      <categories>
-        <category>存储</category>
-      </categories>
-      <tags>
-        <tag>SSD</tag>
-        <tag>存储系统</tag>
-        <tag>硬件</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Raft共识算法原理与实现</title>
     <url>/2026/06/15/Raft%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95%E5%8E%9F%E7%90%86%E4%B8%8E%E5%AE%9E%E7%8E%B0/</url>
     <content><![CDATA[<h1 id="Raft共识算法原理与实现"><a href="#Raft共识算法原理与实现" class="headerlink" title="Raft共识算法原理与实现"></a>Raft共识算法原理与实现</h1><p>最近在做分布式存储项目某个模块的功能开发时，涉及到了Raft集群选举的相关知识，忽然发现自己对Raft共识算法的理解只停留在书面的八股文阶段，同时网上的大部分资料也只是讨论了Raft的设计思维，因此特意拜读了一下Raft的原文《In Search of an Understandable Consensus Algorithm》。</p>
@@ -208,6 +121,93 @@
         <tag>Raft</tag>
         <tag>分布式一致性</tag>
         <tag>共识算法</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SSD的内部结构</title>
+    <url>/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/</url>
+    <content><![CDATA[<h1 id="SSD的内部结构"><a href="#SSD的内部结构" class="headerlink" title="SSD的内部结构"></a>SSD的内部结构</h1><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/dcbba826b52f1170afb42c3c99eb39a.jpg" class="" title="SSD结构图">
+
+<p>SSD主要由控制单元(SSD控制器、主机接口、DRAM等)和存储单元(主要是NAND FLASH闪存颗粒)构成。数据通过接口进入主控，经主控中转调配后存储到各个闪存颗粒中。</p>
+<h2 id="三大组成部分"><a href="#三大组成部分" class="headerlink" title="三大组成部分"></a>三大组成部分</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/feef6f6e8f6043f9b24b61dc895cecb8.png" class="" title="SSD三大组成部分">
+
+<p>主要有三大部分组成：与Host对接的界面(Host interface), 闪存转换层FTL以及闪存对接界面(Flash interface)。</p>
+<p><strong>Host interface</strong>采用的协议包括：</p>
+<ul>
+<li>SATA</li>
+<li>PCIe&#x2F;NVMe SSD协议</li>
+</ul>
+<p><strong>闪存转换层FTL</strong>是主控的核心部分，主要实现：</p>
+<ul>
+<li>磨损平衡（Wear-leveling）</li>
+<li>垃圾数据回收（Garbage Collection）</li>
+<li>坏块管理（Bad Block Management）</li>
+<li>数据纠错处理（ECC, Error Correction Code）</li>
+</ul>
+<p><strong>Flash interface</strong>包括了SSD主控的flash controller，用来控制主控与NAND闪存之间的数据传输。</p>
+<p>NAND闪存是数据归属地，NAND颗粒的存在，赋予了SSD储存数据的使命。为了提高存储的性能，主控会通过不同的通道（Channel）操作NAND闪存。</p>
+<h2 id="NAND-flash在分布式存储中的应用"><a href="#NAND-flash在分布式存储中的应用" class="headerlink" title="NAND flash在分布式存储中的应用"></a>NAND flash在分布式存储中的应用</h2><ul>
+<li><strong>高性能缓存</strong>：用作读写缓存</li>
+<li><strong>元数据存储</strong>：用作存储系统元数据</li>
+<li><strong>日志存储</strong>：存储事务日志、大量的日志信息</li>
+<li><strong>全闪存阵列</strong>：使用全NAND闪存的存储阵列</li>
+<li><strong>混合存储系统</strong>：使用NAND存储热数据，HDD存储冷数据</li>
+<li><strong>大数据处理</strong>：NAND闪存加速数据读写，提升数据处理效率</li>
+<li><strong>分布式文件系统</strong>：使用NAND闪存提升MDS的性能</li>
+</ul>
+<h2 id="主流研究方向"><a href="#主流研究方向" class="headerlink" title="主流研究方向"></a>主流研究方向</h2><h3 id="1-性能优化"><a href="#1-性能优化" class="headerlink" title="(1) 性能优化"></a>(1) 性能优化</h3><p>全SSD用做分布式存储系统中的存储介质，应该在系统层面怎么优化能够使SSD的性能发挥到最大？</p>
+<p><strong>系统(软件)层面的开销会影响硬件层面的开销</strong>，因此需要在系统层面针对SSD的特性进行优化，使得SSD的性能尽可能的发挥最大。</p>
+<p>主要优化方式就4种：</p>
+<ol>
+<li>将随机写改成顺序写 √</li>
+<li>增大并行任务量</li>
+<li>多个事务合并成一个事务进行处理 √</li>
+<li>冷热数据分离 √</li>
+</ol>
+<h3 id="2-故障处理"><a href="#2-故障处理" class="headerlink" title="(2) 故障处理"></a>(2) 故障处理</h3><p>使用SSD用作分布式存储的存储介质时，固态硬盘出现故障应该怎么解决？(预测or优化使故障率降低)</p>
+<p><strong>优化设备层</strong>，降低硬盘故障率。</p>
+<h2 id="NAND颗粒的内部结构"><a href="#NAND颗粒的内部结构" class="headerlink" title="NAND颗粒的内部结构"></a>NAND颗粒的内部结构</h2><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/5744007b365f2dd103641b40530808d.png" class="" title="NAND颗粒内部结构">
+<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/ade71ef313fe861e16125198071c6bb.png" class="" title="NAND颗粒结构">
+
+<p><strong>Page</strong>是闪存存储的最小读写单元、<strong>Block</strong>是闪存存储的最小擦除单元。</p>
+<h3 id="Cell能存储数据的原理"><a href="#Cell能存储数据的原理" class="headerlink" title="Cell能存储数据的原理"></a>Cell能存储数据的原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/08cce0f065bc66b40396dc669b26db7.png" class="" title="浮栅晶体管结构">
+<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b4d43ea1609804503ff82bfc5cbe67c.png" class="" title="存储原理">
+
+<p>在存储数据时，通过施加电压，让电子穿过<strong>隧穿层</strong>达到<strong>浮栅层</strong>，根据<strong>浮栅层</strong>的电子数量来判断是’0’还是’1’。</p>
+<p>浮栅晶体管能存放多大的数据取决于对<strong>浮栅层</strong>中电子数量的粒度划分。</p>
+<p>寿命有限的原因是通过施加电压让电子反复穿过<strong>隧穿层</strong>，会破环<strong>隧穿层</strong>的结构，导致不能再有效的保持<strong>浮栅层</strong>中的电荷。</p>
+<h3 id="存储类型"><a href="#存储类型" class="headerlink" title="存储类型"></a>存储类型</h3><ul>
+<li><strong>SLC</strong>：单层单元，每个单元存储位数(1bit)，电压只有两种状态(0和1)</li>
+<li><strong>MLC</strong>：多层单元，每个单元存储位数(2bit)，电压有四种状态(00,01,10,11)</li>
+<li><strong>TLC</strong>：三层单元，每个单元存储位数(3bit)，电压有八种状态(000,001,010,011,100,101,110,111)</li>
+<li><strong>QLC</strong>：四层单元，每个单元存储位数(4bit)，电压有十六种状态(0000,0001,……,1111)</li>
+</ul>
+<img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/3225ebbed6033e2a5bc71bc1cb30b57.png" class="" title="SLC&#x2F;MLC&#x2F;TLC&#x2F;QLC对比">
+
+<h2 id="写放大"><a href="#写放大" class="headerlink" title="写放大"></a>写放大</h2><p><strong>写放大</strong>：指的是在执行写入操作时，SSD硬盘发生的写入量，实际要远大于实际写入的数据量。</p>
+<p><strong>原因</strong>：NAND数据写入的方式是以页面为单位写入，但是要想删除数据却要以块为单位。</p>
+<h3 id="降低写放大的方法"><a href="#降低写放大的方法" class="headerlink" title="降低写放大的方法"></a>降低写放大的方法</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/b6aaf6b4393362c87b9434bc2a0543c.png" class="" title="降低写放大的方法">
+
+<ul>
+<li>磨损均衡：将写操作均匀分布到各个块上，避免某些块过度磨损</li>
+<li>垃圾回收：及时回收无效数据，腾出空间</li>
+<li>预留空间：保留部分空间作为缓冲区</li>
+</ul>
+<h3 id="磨损均衡原理"><a href="#磨损均衡原理" class="headerlink" title="磨损均衡原理"></a>磨损均衡原理</h3><img src="/2024/04/11/SSD%E7%9A%84%E5%86%85%E9%83%A8%E7%BB%93%E6%9E%84/c24b32c2668cc724120e8413202e202.png" class="" title="磨损均衡原理">
+
+<ul>
+<li><strong>动态磨损均衡</strong>：更多的使用擦除次数较少的块</li>
+<li><strong>静态磨损平衡</strong>：将冷数据迁移到磨损程度较高的块上，使磨损均匀分布。为了尽量减少块之间的磨损差异，额外的开销以迁移的形式增加。</li>
+</ul>
+<h2 id="SSD和HDD的关键区别"><a href="#SSD和HDD的关键区别" class="headerlink" title="SSD和HDD的关键区别"></a>SSD和HDD的关键区别</h2><p>除了吞吐量和延迟外，HDD会将来自主机的多个请求序列化到单个队列中，每次处理一次，而SSD可以同时处理多个请求，因为SSD将多个芯片连接到多个管道，虽然每个管道一次只能处理一个请求，但多个通道的存在允许同时访问不同的芯片。因此SSD的并发性能优势不可忽略。</p>
+]]></content>
+      <categories>
+        <category>存储</category>
+      </categories>
+      <tags>
+        <tag>SSD</tag>
+        <tag>存储系统</tag>
+        <tag>硬件</tag>
       </tags>
   </entry>
   <entry>
@@ -395,6 +395,127 @@
       </tags>
   </entry>
   <entry>
+    <title>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</title>
+    <url>/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/</url>
+    <content><![CDATA[<h1 id="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"><a href="#论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案" class="headerlink" title="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"></a>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</h1><blockquote>
+<p>论文：<em>InPlaceKV: In-place Update Scheme for SSD-based KV Storage Systems under Update-intensive Workloads</em></p>
+</blockquote>
+<h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>传统的KV存储的写入方式是以追加写的形式写入，而不是采用就地更新的方式来写入键值对。这样的设计是因为在HDD上，顺序访问的性能远远优于随机访问，因此使用顺序写入可以获得更好的吞吐量。<strong>但是由于使用追加写的方式写入键值对，数据会不断地积累，导致需要压缩（对于LSM-tree）或者垃圾回收（对于KV分离方案）。</strong></p>
+<p>论文作者发现，在SSD上，<strong>顺序访问和随机访问的性能差距会随着请求大小的增加而缩小</strong>，也就是说，对于足够大的I&#x2F;O请求，SSD的顺序写和随机写的性能相差不大。因此提出了InPlaceKV：&#x3D;&#x3D;InPlaceKV是基于SSD构建的，它采用就地大型更新方案和热度感知方法进行KV对的更新&#x3D;&#x3D;，而不是使用传统的LSM树的追加方式，这有助于减少因为压缩或GC引发的额外开销。</p>
+<h2 id="LSM-tree结构的优化方向"><a href="#LSM-tree结构的优化方向" class="headerlink" title="LSM-tree结构的优化方向"></a>LSM-tree结构的优化方向</h2><h3 id="1-放宽LSM-tree的全局有序性"><a href="#1-放宽LSM-tree的全局有序性" class="headerlink" title="(1) 放宽LSM-tree的全局有序性"></a>(1) 放宽LSM-tree的全局有序性</h3><p>如PebblesDB、Dostoevsky等。其中：</p>
+<ul>
+<li><strong>PebblesDB</strong>：主要引入了类似跳表的想法，为L1层及以上的层级引入Guard，这样就将同一层划分成了不同的范围，在处理压缩时只会在相同Guard范围内执行，即减少了每次压缩合并时需要遍历的SSTable数量，从而降低开销；</li>
+<li><strong>Dostoevsky</strong>：能够根据工作负载动态调整合并策略的键值存储系统。</li>
+</ul>
+<h3 id="2-KV分离"><a href="#2-KV分离" class="headerlink" title="(2) KV分离"></a>(2) KV分离</h3><p>如WiscKey、DiffKV、HashKV、FenceKV等。KV分离的核心思想是：<code>Key</code>依然存储在LSM树中，但Value存储在单独的<strong>日志结构（Log）</strong>中。在compaction过程中，LSM树只需要处理<code>Key</code>和指向<code>Value</code>的指针，而不需要反复移动<code>Value</code>，通过这种方式来减少写放大。但是这又引出了新的问题→<strong>垃圾回收（GC）</strong>：过期的<code>Value</code>需要通过GC来清理，造成了额外的开销。</p>
+<p>本文提出的InPlaceKV&#x3D;&#x3D;具有热感知就地更新功能，可覆盖无效数据&#x3D;&#x3D;，<strong>且采用了原位更新的日志结构</strong>，而不是LSM树结构，从而消除了压缩造成的写放大，提高了系统吞吐量。</p>
+<h2 id="SSD随机写性能的启发"><a href="#SSD随机写性能的启发" class="headerlink" title="SSD随机写性能的启发"></a>SSD随机写性能的启发</h2><p>NVMe SSD性能测试如下图所示，可以得到结论：<strong>当请求大小从4KB到512KB时，顺序访问和随机访问之间的性能差距越来越小；且当请求大小大于128KB时，随机写入的IOPS与顺序写入的IOPS几乎相同。</strong></p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/d8242140da3f518fff4a776a383e536.png" class="" title="NVMe SSD性能测试">
+
+<p>作者由此提出疑问：对于KV存储系统是否还有必要采用只追加写（append-only）文件的方式？（因为追加写是为了更好地发挥HDD的性能，而当前SSD随机与顺序访问的差距随着请求大小的增加已经几乎没有特别大的差别。）</p>
+<p>本文的主要理念：<strong>利用SSD在进行&#x3D;&#x3D;大规模随机访问&#x3D;&#x3D;时表现出的高性能，来替代传统追加写策略的LSM树方法</strong>。关键问题是：&#x3D;&#x3D;(1)怎么触发大规模更新？&#x3D;&#x3D;因为LSM树的理念就是为了合并小请求，如果抛弃LSM的结构，小请求就无法合并。</p>
+<h3 id="传统方案的写放大从哪来"><a href="#传统方案的写放大从哪来" class="headerlink" title="传统方案的写放大从哪来"></a>传统方案的写放大从哪来</h3><img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741249758007.png" class="" title="LevelDB架构">
+
+<p>上图为LevelDB架构（就是传统的LSM树存储结构），而传统LSM树结构的写放大主要体现在如下过程：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741251264045.png" class="" title="传统LSM树的compaction开销">
+
+<p>即在进行compaction时，需要将SST1、SST2和SST3都读取到内存，丢弃旧的版本值V1、V2、V7和V9，并将最新的有效的KV对进行排序，重新生成新的SST文件。这个过程引入了12个KV对读取和8个KV对写入。</p>
+<p>而KV分离的架构会有额外的GC开销，如下图所示：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/abb93da458359e119a8f8749da0c899.png" class="" title="KV分离的GC开销">
+
+<p>由于KV分离，K依旧放在LSM树中进行compaction，但是由于K很小，它的开销没有传统的LSM树那么大。但是由于V是额外存储在Log中的，对于旧的V就要删除。对于VLog，它有2个指针（头和尾），新值被添加到头指针，而尾指针则告诉我们GC时需要从哪里开始释放空间。每次GC时，会从中读取几个KV对，并通过LSM树查询这些V是否有效，有效的V会被追加回VLog的头部。在上述过程中，GC操作期间需要额外读取7个KV对和写入3个KV对，即产生了额外开销。</p>
+<h2 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h2><ol>
+<li>使用追加写的KV存储（具有传统的LSM树和KV分离）分别会产生压缩和GC操作，这都会使它们的吞吐量下降，尤其是当更新的KV对数量特别大时；</li>
+<li>使用追加写是因为HDD的顺序写和随机写性能相差很多，但是对于现阶段的SSD来说，差距已经不是很明显。</li>
+</ol>
+<p>&#x3D;&#x3D;在KV存储系统中，如何充分利用固态硬盘的大随机存取性能来执行就地更新，而不是仅通过追加写入进行更新？&#x3D;&#x3D;</p>
+<h2 id="Design"><a href="#Design" class="headerlink" title="Design"></a>Design</h2><p>设计目标：</p>
+<ol>
+<li>在基于现代固态硬盘构建的KV存储系统中，<strong>使用大随机存取的就地更新来取代只写附加文件</strong>，消除因为仅追加写入造成的写&#x2F;读放大；</li>
+<li>使用适当的数据结构和工作流程来实现就地更新和大量随机存取的KV存储系统以提高性能；</li>
+<li>提升系统的鲁棒性。因为在大型就地更新单元中，原位置仍有少数KV对处于有效状态（不可能所有的KV对都是无效的），这些有效的KV对应该怎么处理？</li>
+</ol>
+<p>InPlaceKV的架构如下：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/23a4d82edafb8a4267774cae7dac7e0.png" class="" title="InPlaceKV架构">
+
+<p>通过<strong>热度感知分组</strong>来将小块合并，针对合并后的大块进行就地更新来提升性能。</p>
+<h3 id="1-数据结构"><a href="#1-数据结构" class="headerlink" title="1. 数据结构"></a>1. 数据结构</h3><p>&#x3D;&#x3D;内存缓存层&#x3D;&#x3D;中有多种结构：</p>
+<ul>
+<li>**<code>Write_MemTable</code>**：负责缓存新插入的KV对；</li>
+<li>**<code>Update_MemTable</code>**：负责缓存已存在的KV对的更新。</li>
+</ul>
+<p>两个结构的作用类似于LSM-tree的MemTable，本质上是跳表，用于高效地存储和查询KV数据。当<code>Write_MemTable</code>或<code>Update_MemTable</code>的大小达到阈值时（默认是4MB），其中的KV对会<strong>根据热度排序</strong>，然后批量刷写（flush）到SSD。这个排序过程依赖于<code>Frequency_Table</code>。</p>
+<ul>
+<li>**<code>Frequency_Table</code>**：用来记录KV访问频率，这里一个KV对的热度&#x3D;<strong>访问次数</strong>（即在MemTable中被访问的次数），用于flush之前对KV进行热度排序，然后按照热度存储到SSD。&#x3D;&#x3D;高热度KV会被存入同一个Data Block中&#x3D;&#x3D;，以优化后续in-place更新和访问效率；</li>
+<li>**<code>B-tree</code>**：在内存中维护全局有序的KV索引，记录KV在SSD上的存储地址，用于高效查询（这里是支持范围查询的）；</li>
+<li>**<code>FreeList</code>**：记录已删除或已更新KV对的旧存储地址，以便未来回收空间。</li>
+</ul>
+<p>InPlaceKV使用KVLog来存储KV对，每个KVLog由多个数据块组成。排序后的KV块会存储在数据块中，数据块的结构为<code>(ks, k, vs, v)</code>，其中ks表示Key的大小、k表示Key、vs表示Value的大小、v表示Value。</p>
+<h3 id="2-工作流程"><a href="#2-工作流程" class="headerlink" title="2. 工作流程"></a>2. 工作流程</h3><p><strong>(1) 写流程</strong></p>
+<p>在处理写入的KV对时，InPlaceKV首先检查内存中的B-tree，如果返回NULL，则说明这是新写入的KV对，则将其缓冲到<code>Write_MemTable</code>中，并在<code>Frequency_Table</code>中进行更新。如果<code>Write_MemTable</code>已满，则会合并<code>Write_MemTable</code>中的所有KV对（去重），然后根据<code>Frequency_Table</code>中记录的热度进行排序，最后以KVLog的形式刷新到SSD中。</p>
+<p><strong>(2) 更新流程</strong></p>
+<p>依旧是先检查内存中的B-tree：</p>
+<ul>
+<li>如果<strong>key存在，但是没有地址信息</strong>，说明旧版本仍然在<code>Write_MemTable</code>（还没刷到SSD），则直接把更新的KV对缓冲在<code>Write_MemTable</code>；</li>
+<li>如果<strong>Key存在，且有地址信息</strong>，说明旧版本已经被刷到SSD中，此时将更新的KV对缓冲在<code>Update_MemTable</code>中。</li>
+</ul>
+<p>&#x3D;&#x3D;当<code>Update_MemTable</code>已满时，&#x3D;&#x3D;根据如下的算法将其中的KV对刷新到SSD：</p>
+<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/f49f30820300a523557c8b63fd43df5.png" class="" title="Update_MemTable刷盘算法">
+
+<p>对于上述算法：</p>
+<p>InPlaceKV先会为所有<strong>按热度（访问频率）排序</strong>的KV对创建一个迭代器，这些KV对会被划分成多个<strong>逻辑数据块（LDB）</strong>，每个LDB都是一个可以刷入SSD的独立单位。当LDB的大小达到<code>Update_Unit</code>（比如4KB）时，会触发刷盘。此时会计算<strong>哪些更新的KV对属于同一个物理数据块（PDB）</strong>，用<code>Update_Rate</code>去衡量<strong>某个PDB里更新的KV对所占比例</strong>：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Update_Rate = N(PDB-KVs) / N(KVs)</span><br></pre></td></tr></table></figure>
+
+<p>这个<code>Update_Rate</code>反映的是PDB里需要更新的KV数量：</p>
+<ol>
+<li>当<code>Update_Rate == 1</code>时：说明这个PDB所有KV对都需要更新，<strong>直接执行原地大规模更新，无需额外数据迁移</strong>；</li>
+<li>当<code>TH（设置的阈值）&lt; Update_Rate &lt; 1</code>时：说明PDB中大部分KV需要更新。<strong>未更新的KV对迁移到<code>Write_MemTable</code>、在<code>FreeList</code>中记录这些未更新的KV对位置（因为这些位置更新后是空的，是可用的）、执行原地大规模更新</strong>；</li>
+<li>当<code>Update_Rate &lt;= TH</code>时：说明大部分数据是有效的。<strong>新建一个PDB并将数据写入</strong>，这里的新PDB可以是<strong>一个无效数据超过<code>TH</code>的PDB</strong>。</li>
+</ol>
+<p>&#x3D;&#x3D;最后，修改<code>B-tree</code>来反映数据的新位置。&#x3D;&#x3D;</p>
+<p><strong>(3) 读流程</strong></p>
+<ol>
+<li>先检查内存表：检查<code>Write_MemTable</code>和<code>Update_MemTable</code>，如果找到则直接返回；</li>
+<li>检查<code>B-tree</code>：检查该KV对是否存在，以及其在存储系统中的物理地址。如果在<code>B-tree</code>中没找到该KV对，则说明该键值对不存在于存储系统中，可以直接返回查询失败；</li>
+<li>读取PDB：通过<code>B-tree</code>找到KV对的物理地址后，读取PDB并将结果返回。</li>
+</ol>
+<p><strong>(4) 扫描和删除</strong></p>
+<p>对于<strong>扫描操作</strong>来说，InPlaceKV先在<code>B-tree</code>中查找符合扫描范围的叶子节点，因为<code>B-tree</code>存储了KV对（键和值）的地址信息。如果叶子节点包含键和值的地址 → 直接从SSD读取相应的KV对；如果叶子节点没有找到相关的KV对 → 说明这些KV对可能在<code>Write_MemTable</code>或<code>Update_MemTable</code>中，InPlaceKV会在<code>Write_MemTable</code>或<code>Update_MemTable</code>中查找，并返回结果。</p>
+<p>对于<strong>删除操作</strong>来说，它的本质是逻辑删除。InPlaceKV会将KV对记录到<code>FreeList</code>中，并修改<code>B-tree</code>将该KV对标记为已删除，使其不可被查询。在后续的更新操作中，该KV对的内容所占用的空间将会被覆盖。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>InPlaceKV的洞察是一个”反常识”的事实：<strong>追加写是HDD时代的遗产</strong>。当SSD上大请求（&gt;128KB）的随机写与顺序写性能几乎持平时，为规避随机写而付出的compaction&#x2F;GC代价就成了纯负担。它用三个手段替代LSM树：</p>
+<table>
+<thead>
+<tr>
+<th>设计</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>热度感知分组</td>
+<td>高热度KV存入同一Data Block，让”要更新的数据”物理上聚集</td>
+</tr>
+<tr>
+<td>Update_Rate分级</td>
+<td>按更新比例决定原地更新&#x2F;迁移+原地&#x2F;新建PDB，处理部分有效的边界情况</td>
+</tr>
+<tr>
+<td>B-tree全局索引</td>
+<td>支持点查和范围查询，替代LSM树的层层查找</td>
+</tr>
+</tbody></table>
+<p>核心取舍在于：就地更新消除了压缩和GC，代价是引入了热度统计和逻辑&#x2F;物理数据块的管理复杂度，且依赖负载本身具有更新局部性（update-intensive）才能发挥最大效果。</p>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>SSD</tag>
+        <tag>分布式存储</tag>
+        <tag>LSM-tree</tag>
+        <tag>KV存储</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>论文阅读：CARP——面向流数据的范围查询优化索引</title>
     <url>/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/</url>
     <content><![CDATA[<h1 id="论文阅读：CARP——面向流数据的范围查询优化索引"><a href="#论文阅读：CARP——面向流数据的范围查询优化索引" class="headerlink" title="论文阅读：CARP——面向流数据的范围查询优化索引"></a>论文阅读：CARP——面向流数据的范围查询优化索引</h1><blockquote>
@@ -560,288 +681,6 @@
         <tag>索引</tag>
         <tag>流数据</tag>
         <tag>范围查询</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>论文阅读：理解Ceph对象存储中存储后端的写入行为</title>
-    <url>/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/</url>
-    <content><![CDATA[<h1 id="论文阅读：理解Ceph对象存储中存储后端的写入行为"><a href="#论文阅读：理解Ceph对象存储中存储后端的写入行为" class="headerlink" title="论文阅读：理解Ceph对象存储中存储后端的写入行为"></a>论文阅读：理解Ceph对象存储中存储后端的写入行为</h1><blockquote>
-<p>论文：<em>Understanding Write Behaviors of Storage Backends in Ceph Object Store</em></p>
-</blockquote>
-<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>论文作者对Ceph提供的三种存储后端（FileStore、KStore和BlueStore）通过微基准测试与长期工作负载的综合分析进行了测试，主要聚焦于WAF（写放大系数）。</p>
-<p>核心发现：&#x3D;&#x3D;不管是哪种存储后端，WAF都大于13&#x3D;&#x3D;。其中BlueStore的综合性能最稳定，FileStore在SSD上的表现最好，BlueStore在HDD上表现不错。</p>
-<p>这三种存储后端的写放大的来源如下：</p>
-<p><strong>FileStore</strong>：需要先将数据写入独立的journal（日志设备），然后再写入主存储区。这本应是”双写（double write）”，即写流量为2倍，但实验发现实际是<strong>3倍</strong>。因为文件系统本身也有自己的日志系统，即数据流程变成：<strong>数据 → Ceph journal → 文件系统 → 文件系统 journal → 真正写入位置</strong>。&#x3D;&#x3D;结果导致：<strong>文件系统的元数据+日志流量 ≈ 原始数据量大小</strong>，写放大更严重。&#x3D;&#x3D;</p>
-<p><strong>KStore</strong>：KStore采用RocksDB存储元数据。由于RocksDB的LSM-tree结构，后台会进行大量compaction。实验发现：&#x3D;&#x3D;几乎所有写流量都来自compaction，而不是用户写入的数据。&#x3D;&#x3D;</p>
-<p><strong>BlueStore</strong>：数据直接写入裸设备，不经过文件系统，因此它<strong>避免了FileStore的journaling of journal问题</strong>。但是它的写放大依旧存在，主要来源是”Ceph仍使用RocksDB存储元数据和对象属性”，这些RocksDB写流量的大小<strong>超过真实数据写入量的3倍</strong>。简而言之：<strong>BlueStore解决了日志嵌套的问题，但RocksDB的元数据写放大仍然很严重。</strong></p>
-<h2 id="Background"><a href="#Background" class="headerlink" title="Background"></a>Background</h2><h3 id="Ceph的三种存储接口"><a href="#Ceph的三种存储接口" class="headerlink" title="Ceph的三种存储接口"></a>Ceph的三种存储接口</h3><table>
-<thead>
-<tr>
-<th>存储类型</th>
-<th>描述</th>
-<th>举例</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>对象存储（Object Storage）</td>
-<td>类似 Amazon S3、Swift，存储对象（Object）</td>
-<td>Ceph Object Storage（RADOS Gateway）</td>
-</tr>
-<tr>
-<td>块存储（Block Storage）</td>
-<td>给虚拟机或系统提供块设备</td>
-<td>Ceph RBD（RADOS Block Device）</td>
-</tr>
-<tr>
-<td>文件系统（File System）</td>
-<td>类似分布式文件系统</td>
-<td>CephFS</td>
-</tr>
-</tbody></table>
-<p>虽然提供三种不同形态的服务，但<strong>它们的底层都是建立在同一个统一核心：&#x3D;&#x3D;RADOS&#x3D;&#x3D;（Reliable Autonomic Distributed Object Store）之上</strong>。RADOS层运行着Ceph内部的关键组件：</p>
-<table>
-<thead>
-<tr>
-<th>名称</th>
-<th>全称</th>
-<th>是否是守护进程（Daemon）</th>
-<th>是否运行在 RADOS 层？</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong>MON</strong></td>
-<td>Monitor</td>
-<td>✅ 是</td>
-<td>✅ 是</td>
-<td>保存并管理集群状态（如 OSD 列表、集群地图），负责一致性和选举</td>
-</tr>
-<tr>
-<td><strong>MDS</strong></td>
-<td>Metadata Server</td>
-<td>✅ 是</td>
-<td>✅ 是（但只用于 CephFS 文件系统）</td>
-<td>管理文件系统的目录、权限和名称等元数据</td>
-</tr>
-<tr>
-<td><strong>OSD</strong></td>
-<td>Object Storage Daemon</td>
-<td>✅ 是</td>
-<td>✅ 是</td>
-<td>存储数据对象、处理读写请求、执行数据复制和恢复</td>
-</tr>
-</tbody></table>
-<h3 id="Ceph与传统分布式存储的区别"><a href="#Ceph与传统分布式存储的区别" class="headerlink" title="Ceph与传统分布式存储的区别"></a>Ceph与传统分布式存储的区别</h3><ol>
-<li>客户端可以<strong>直接联系负责该数据的主OSD节点（primary OSD）</strong>，无需中间服务器；</li>
-<li>不需要固定的元数据服务器来告诉客户端”数据在哪里”；</li>
-<li>数据的位置是通过<strong>CRUSH算法</strong>算出来的，而不是查表得到。</li>
-</ol>
-<h3 id="BlueStore的定位"><a href="#BlueStore的定位" class="headerlink" title="BlueStore的定位"></a>BlueStore的定位</h3><p>BlueStore是Ceph的另一种存储后端，其核心理念在于高效管理对象数据，突破FileStore的局限性。FileStore存在的问题之一是外部日志记录导致的双重写入开销。BlueStore则直接将对象数据存储于原始块设备，同时使用RocksDB管理元数据。由于跳过了本地文件系统层，可规避日志记录等文件系统开销。</p>
-<p>需注意的是，由于运行RocksDB仍需文件系统支持，BlueStore内部集成了名为BlueFS的轻量级用户级文件系统。此外，Ceph通常需处理大量对象，且常需按顺序枚举所有对象以进行一致性检查和恢复，然而POSIX并未提供从多个目录高效检索对象的方法。使用RocksDB的另一优势在于，Ceph能够轻松检索并枚举系统中存储的所有对象。</p>
-<h2 id="微基准测试结果"><a href="#微基准测试结果" class="headerlink" title="微基准测试结果"></a>微基准测试结果</h2><h3 id="FileStore"><a href="#FileStore" class="headerlink" title="FileStore"></a>FileStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/d995d2090d5b758453b8043d301818f9.png" class="" title="FileStore微基准测试结果">
-
-<p>4KB写入在Ceph内部的路径为：</p>
-<p><strong>(1) 客户端定位数据应该写到哪个OSD</strong></p>
-<p>客户端通过CRUSH算法在O(1)时间内计算出负责该对象的<strong>主OSD</strong>，然后将写请求发送给主OSD。</p>
-<p><strong>(2) 写副本</strong></p>
-<p>主OSD将写请求转发给另外两个OSD（即副本#2和副本#3）。因为副本机制（replication factor &#x3D; 3），这一步本身就会<strong>产生3倍流量</strong>。</p>
-<p><strong>(3) 在每个OSD内部，数据会被打包成一个”事务”</strong></p>
-<table>
-<thead>
-<tr>
-<th>内容</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>对象数据（object data）</td>
-<td>你写入的 4KB 数据</td>
-</tr>
-<tr>
-<td>对象元数据（object metadata）</td>
-<td>比如对象大小、时间戳、offset 等</td>
-</tr>
-<tr>
-<td>LevelDB（或 RocksDB）键值对</td>
-<td>存储对象索引与属性，用来快速定位和管理对象</td>
-</tr>
-</tbody></table>
-<p><strong>(4) FileStore接收到这个事务后，会做两件事（双写来源）：</strong></p>
-<ol>
-<li><p><strong>先写Ceph Journal（预写日志，Write-Ahead Logging）</strong>：保护事务的原子性（可崩溃恢复），这是第一部分写放大来源；</p>
-</li>
-<li><p><strong>再把这份事务写入XFS（真实数据 + LevelDB数据 + 文件系统元数据）</strong>：</p>
-<ul>
-<li>真实文件写入 &#x3D; object data；</li>
-<li>LevelDB的写放大（LSM-tree会产生compaction）；</li>
-<li>XFS文件系统写元数据 + XFS Journaling。</li>
-</ul>
-<p>这是第二次写放大，导致”journal of journal（日志的日志）”问题。</p>
-</li>
-</ol>
-<p>所以4KB写入的WAF因子很大且有波动性，但是随着写入请求大小的增大，直至4MB时，WAF收敛至6，因为相对于请求大小，对象元数据、键值对、文件系统元数据和文件系统日志的占比会相对缩小。</p>
-<h3 id="BlueStore"><a href="#BlueStore" class="headerlink" title="BlueStore"></a>BlueStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/f9c30590713a818b6c4c260315e01a59.png" class="" title="BlueStore微基准测试结果">
-
-<p>可以发现第3次写（3rd Write）的WAF很高，论文解释原因为：BlueStore按<strong>最小分配粒度 &#x3D; 64KB Chunk</strong>来管理数据。当写入请求落在某个Chunk中间、且打破了它的连续性时，BlueStore必须做：&#x3D;&#x3D;把当前64KB Chunk中未写满的部分用<strong>零填充（zero padding）</strong>，然后整个64KB写入磁盘。&#x3D;&#x3D;</p>
-<blockquote>
-<p>笔者注：在Ceph官网实际调研后发现，现在BlueStore默认的最小分配粒度已经是4KB了，也就是说这里补0带来的WAF应该已经没有了。总体上BlueStore效果更好，因为没有了日志双写问题。</p>
-</blockquote>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这篇论文的价值在于系统性地量化了Ceph三种存储后端的写放大来源：</p>
-<table>
-<thead>
-<tr>
-<th>后端</th>
-<th>主要写放大来源</th>
-<th>关键问题</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>FileStore</td>
-<td>Journal双写 + 文件系统日志（journal of journal）</td>
-<td>双写实际为3倍而非2倍</td>
-</tr>
-<tr>
-<td>KStore</td>
-<td>RocksDB的LSM-tree compaction</td>
-<td>写流量几乎全来自compaction</td>
-</tr>
-<tr>
-<td>BlueStore</td>
-<td>RocksDB元数据写流量（超过真实数据3倍）</td>
-<td>解决了日志嵌套但元数据放大仍在</td>
-</tr>
-</tbody></table>
-<p>结论指向一个明确的方向：<strong>分布式存储系统的后端如果想进一步降低写放大，要么换掉LSM-tree的元数据方案，要么优化元数据的落盘路径</strong>——这也与后续一系列针对RocksDB&#x2F;BlueStore的优化工作（如MatrixKV、就地更新方案等）相呼应。</p>
-]]></content>
-      <categories>
-        <category>论文阅读</category>
-      </categories>
-      <tags>
-        <tag>分布式存储</tag>
-        <tag>Ceph</tag>
-        <tag>BlueStore</tag>
-        <tag>写放大</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</title>
-    <url>/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/</url>
-    <content><![CDATA[<h1 id="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"><a href="#论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案" class="headerlink" title="论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案"></a>论文阅读：InPlaceKV——更新密集型负载下基于SSD的KV存储就地更新方案</h1><blockquote>
-<p>论文：<em>InPlaceKV: In-place Update Scheme for SSD-based KV Storage Systems under Update-intensive Workloads</em></p>
-</blockquote>
-<h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>传统的KV存储的写入方式是以追加写的形式写入，而不是采用就地更新的方式来写入键值对。这样的设计是因为在HDD上，顺序访问的性能远远优于随机访问，因此使用顺序写入可以获得更好的吞吐量。<strong>但是由于使用追加写的方式写入键值对，数据会不断地积累，导致需要压缩（对于LSM-tree）或者垃圾回收（对于KV分离方案）。</strong></p>
-<p>论文作者发现，在SSD上，<strong>顺序访问和随机访问的性能差距会随着请求大小的增加而缩小</strong>，也就是说，对于足够大的I&#x2F;O请求，SSD的顺序写和随机写的性能相差不大。因此提出了InPlaceKV：&#x3D;&#x3D;InPlaceKV是基于SSD构建的，它采用就地大型更新方案和热度感知方法进行KV对的更新&#x3D;&#x3D;，而不是使用传统的LSM树的追加方式，这有助于减少因为压缩或GC引发的额外开销。</p>
-<h2 id="LSM-tree结构的优化方向"><a href="#LSM-tree结构的优化方向" class="headerlink" title="LSM-tree结构的优化方向"></a>LSM-tree结构的优化方向</h2><h3 id="1-放宽LSM-tree的全局有序性"><a href="#1-放宽LSM-tree的全局有序性" class="headerlink" title="(1) 放宽LSM-tree的全局有序性"></a>(1) 放宽LSM-tree的全局有序性</h3><p>如PebblesDB、Dostoevsky等。其中：</p>
-<ul>
-<li><strong>PebblesDB</strong>：主要引入了类似跳表的想法，为L1层及以上的层级引入Guard，这样就将同一层划分成了不同的范围，在处理压缩时只会在相同Guard范围内执行，即减少了每次压缩合并时需要遍历的SSTable数量，从而降低开销；</li>
-<li><strong>Dostoevsky</strong>：能够根据工作负载动态调整合并策略的键值存储系统。</li>
-</ul>
-<h3 id="2-KV分离"><a href="#2-KV分离" class="headerlink" title="(2) KV分离"></a>(2) KV分离</h3><p>如WiscKey、DiffKV、HashKV、FenceKV等。KV分离的核心思想是：<code>Key</code>依然存储在LSM树中，但Value存储在单独的<strong>日志结构（Log）</strong>中。在compaction过程中，LSM树只需要处理<code>Key</code>和指向<code>Value</code>的指针，而不需要反复移动<code>Value</code>，通过这种方式来减少写放大。但是这又引出了新的问题→<strong>垃圾回收（GC）</strong>：过期的<code>Value</code>需要通过GC来清理，造成了额外的开销。</p>
-<p>本文提出的InPlaceKV&#x3D;&#x3D;具有热感知就地更新功能，可覆盖无效数据&#x3D;&#x3D;，<strong>且采用了原位更新的日志结构</strong>，而不是LSM树结构，从而消除了压缩造成的写放大，提高了系统吞吐量。</p>
-<h2 id="SSD随机写性能的启发"><a href="#SSD随机写性能的启发" class="headerlink" title="SSD随机写性能的启发"></a>SSD随机写性能的启发</h2><p>NVMe SSD性能测试如下图所示，可以得到结论：<strong>当请求大小从4KB到512KB时，顺序访问和随机访问之间的性能差距越来越小；且当请求大小大于128KB时，随机写入的IOPS与顺序写入的IOPS几乎相同。</strong></p>
-<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/d8242140da3f518fff4a776a383e536.png" class="" title="NVMe SSD性能测试">
-
-<p>作者由此提出疑问：对于KV存储系统是否还有必要采用只追加写（append-only）文件的方式？（因为追加写是为了更好地发挥HDD的性能，而当前SSD随机与顺序访问的差距随着请求大小的增加已经几乎没有特别大的差别。）</p>
-<p>本文的主要理念：<strong>利用SSD在进行&#x3D;&#x3D;大规模随机访问&#x3D;&#x3D;时表现出的高性能，来替代传统追加写策略的LSM树方法</strong>。关键问题是：&#x3D;&#x3D;(1)怎么触发大规模更新？&#x3D;&#x3D;因为LSM树的理念就是为了合并小请求，如果抛弃LSM的结构，小请求就无法合并。</p>
-<h3 id="传统方案的写放大从哪来"><a href="#传统方案的写放大从哪来" class="headerlink" title="传统方案的写放大从哪来"></a>传统方案的写放大从哪来</h3><img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741249758007.png" class="" title="LevelDB架构">
-
-<p>上图为LevelDB架构（就是传统的LSM树存储结构），而传统LSM树结构的写放大主要体现在如下过程：</p>
-<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/1741251264045.png" class="" title="传统LSM树的compaction开销">
-
-<p>即在进行compaction时，需要将SST1、SST2和SST3都读取到内存，丢弃旧的版本值V1、V2、V7和V9，并将最新的有效的KV对进行排序，重新生成新的SST文件。这个过程引入了12个KV对读取和8个KV对写入。</p>
-<p>而KV分离的架构会有额外的GC开销，如下图所示：</p>
-<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/abb93da458359e119a8f8749da0c899.png" class="" title="KV分离的GC开销">
-
-<p>由于KV分离，K依旧放在LSM树中进行compaction，但是由于K很小，它的开销没有传统的LSM树那么大。但是由于V是额外存储在Log中的，对于旧的V就要删除。对于VLog，它有2个指针（头和尾），新值被添加到头指针，而尾指针则告诉我们GC时需要从哪里开始释放空间。每次GC时，会从中读取几个KV对，并通过LSM树查询这些V是否有效，有效的V会被追加回VLog的头部。在上述过程中，GC操作期间需要额外读取7个KV对和写入3个KV对，即产生了额外开销。</p>
-<h2 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h2><ol>
-<li>使用追加写的KV存储（具有传统的LSM树和KV分离）分别会产生压缩和GC操作，这都会使它们的吞吐量下降，尤其是当更新的KV对数量特别大时；</li>
-<li>使用追加写是因为HDD的顺序写和随机写性能相差很多，但是对于现阶段的SSD来说，差距已经不是很明显。</li>
-</ol>
-<p>&#x3D;&#x3D;在KV存储系统中，如何充分利用固态硬盘的大随机存取性能来执行就地更新，而不是仅通过追加写入进行更新？&#x3D;&#x3D;</p>
-<h2 id="Design"><a href="#Design" class="headerlink" title="Design"></a>Design</h2><p>设计目标：</p>
-<ol>
-<li>在基于现代固态硬盘构建的KV存储系统中，<strong>使用大随机存取的就地更新来取代只写附加文件</strong>，消除因为仅追加写入造成的写&#x2F;读放大；</li>
-<li>使用适当的数据结构和工作流程来实现就地更新和大量随机存取的KV存储系统以提高性能；</li>
-<li>提升系统的鲁棒性。因为在大型就地更新单元中，原位置仍有少数KV对处于有效状态（不可能所有的KV对都是无效的），这些有效的KV对应该怎么处理？</li>
-</ol>
-<p>InPlaceKV的架构如下：</p>
-<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/23a4d82edafb8a4267774cae7dac7e0.png" class="" title="InPlaceKV架构">
-
-<p>通过<strong>热度感知分组</strong>来将小块合并，针对合并后的大块进行就地更新来提升性能。</p>
-<h3 id="1-数据结构"><a href="#1-数据结构" class="headerlink" title="1. 数据结构"></a>1. 数据结构</h3><p>&#x3D;&#x3D;内存缓存层&#x3D;&#x3D;中有多种结构：</p>
-<ul>
-<li>**<code>Write_MemTable</code>**：负责缓存新插入的KV对；</li>
-<li>**<code>Update_MemTable</code>**：负责缓存已存在的KV对的更新。</li>
-</ul>
-<p>两个结构的作用类似于LSM-tree的MemTable，本质上是跳表，用于高效地存储和查询KV数据。当<code>Write_MemTable</code>或<code>Update_MemTable</code>的大小达到阈值时（默认是4MB），其中的KV对会<strong>根据热度排序</strong>，然后批量刷写（flush）到SSD。这个排序过程依赖于<code>Frequency_Table</code>。</p>
-<ul>
-<li>**<code>Frequency_Table</code>**：用来记录KV访问频率，这里一个KV对的热度&#x3D;<strong>访问次数</strong>（即在MemTable中被访问的次数），用于flush之前对KV进行热度排序，然后按照热度存储到SSD。&#x3D;&#x3D;高热度KV会被存入同一个Data Block中&#x3D;&#x3D;，以优化后续in-place更新和访问效率；</li>
-<li>**<code>B-tree</code>**：在内存中维护全局有序的KV索引，记录KV在SSD上的存储地址，用于高效查询（这里是支持范围查询的）；</li>
-<li>**<code>FreeList</code>**：记录已删除或已更新KV对的旧存储地址，以便未来回收空间。</li>
-</ul>
-<p>InPlaceKV使用KVLog来存储KV对，每个KVLog由多个数据块组成。排序后的KV块会存储在数据块中，数据块的结构为<code>(ks, k, vs, v)</code>，其中ks表示Key的大小、k表示Key、vs表示Value的大小、v表示Value。</p>
-<h3 id="2-工作流程"><a href="#2-工作流程" class="headerlink" title="2. 工作流程"></a>2. 工作流程</h3><p><strong>(1) 写流程</strong></p>
-<p>在处理写入的KV对时，InPlaceKV首先检查内存中的B-tree，如果返回NULL，则说明这是新写入的KV对，则将其缓冲到<code>Write_MemTable</code>中，并在<code>Frequency_Table</code>中进行更新。如果<code>Write_MemTable</code>已满，则会合并<code>Write_MemTable</code>中的所有KV对（去重），然后根据<code>Frequency_Table</code>中记录的热度进行排序，最后以KVLog的形式刷新到SSD中。</p>
-<p><strong>(2) 更新流程</strong></p>
-<p>依旧是先检查内存中的B-tree：</p>
-<ul>
-<li>如果<strong>key存在，但是没有地址信息</strong>，说明旧版本仍然在<code>Write_MemTable</code>（还没刷到SSD），则直接把更新的KV对缓冲在<code>Write_MemTable</code>；</li>
-<li>如果<strong>Key存在，且有地址信息</strong>，说明旧版本已经被刷到SSD中，此时将更新的KV对缓冲在<code>Update_MemTable</code>中。</li>
-</ul>
-<p>&#x3D;&#x3D;当<code>Update_MemTable</code>已满时，&#x3D;&#x3D;根据如下的算法将其中的KV对刷新到SSD：</p>
-<img src="/2024/07/12/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-InPlaceKV%E5%9F%BA%E4%BA%8ESSD%E7%9A%84KV%E5%AD%98%E5%82%A8%E5%B0%B1%E5%9C%B0%E6%9B%B4%E6%96%B0%E6%96%B9%E6%A1%88/f49f30820300a523557c8b63fd43df5.png" class="" title="Update_MemTable刷盘算法">
-
-<p>对于上述算法：</p>
-<p>InPlaceKV先会为所有<strong>按热度（访问频率）排序</strong>的KV对创建一个迭代器，这些KV对会被划分成多个<strong>逻辑数据块（LDB）</strong>，每个LDB都是一个可以刷入SSD的独立单位。当LDB的大小达到<code>Update_Unit</code>（比如4KB）时，会触发刷盘。此时会计算<strong>哪些更新的KV对属于同一个物理数据块（PDB）</strong>，用<code>Update_Rate</code>去衡量<strong>某个PDB里更新的KV对所占比例</strong>：</p>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Update_Rate = N(PDB-KVs) / N(KVs)</span><br></pre></td></tr></table></figure>
-
-<p>这个<code>Update_Rate</code>反映的是PDB里需要更新的KV数量：</p>
-<ol>
-<li>当<code>Update_Rate == 1</code>时：说明这个PDB所有KV对都需要更新，<strong>直接执行原地大规模更新，无需额外数据迁移</strong>；</li>
-<li>当<code>TH（设置的阈值）&lt; Update_Rate &lt; 1</code>时：说明PDB中大部分KV需要更新。<strong>未更新的KV对迁移到<code>Write_MemTable</code>、在<code>FreeList</code>中记录这些未更新的KV对位置（因为这些位置更新后是空的，是可用的）、执行原地大规模更新</strong>；</li>
-<li>当<code>Update_Rate &lt;= TH</code>时：说明大部分数据是有效的。<strong>新建一个PDB并将数据写入</strong>，这里的新PDB可以是<strong>一个无效数据超过<code>TH</code>的PDB</strong>。</li>
-</ol>
-<p>&#x3D;&#x3D;最后，修改<code>B-tree</code>来反映数据的新位置。&#x3D;&#x3D;</p>
-<p><strong>(3) 读流程</strong></p>
-<ol>
-<li>先检查内存表：检查<code>Write_MemTable</code>和<code>Update_MemTable</code>，如果找到则直接返回；</li>
-<li>检查<code>B-tree</code>：检查该KV对是否存在，以及其在存储系统中的物理地址。如果在<code>B-tree</code>中没找到该KV对，则说明该键值对不存在于存储系统中，可以直接返回查询失败；</li>
-<li>读取PDB：通过<code>B-tree</code>找到KV对的物理地址后，读取PDB并将结果返回。</li>
-</ol>
-<p><strong>(4) 扫描和删除</strong></p>
-<p>对于<strong>扫描操作</strong>来说，InPlaceKV先在<code>B-tree</code>中查找符合扫描范围的叶子节点，因为<code>B-tree</code>存储了KV对（键和值）的地址信息。如果叶子节点包含键和值的地址 → 直接从SSD读取相应的KV对；如果叶子节点没有找到相关的KV对 → 说明这些KV对可能在<code>Write_MemTable</code>或<code>Update_MemTable</code>中，InPlaceKV会在<code>Write_MemTable</code>或<code>Update_MemTable</code>中查找，并返回结果。</p>
-<p>对于<strong>删除操作</strong>来说，它的本质是逻辑删除。InPlaceKV会将KV对记录到<code>FreeList</code>中，并修改<code>B-tree</code>将该KV对标记为已删除，使其不可被查询。在后续的更新操作中，该KV对的内容所占用的空间将会被覆盖。</p>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>InPlaceKV的洞察是一个”反常识”的事实：<strong>追加写是HDD时代的遗产</strong>。当SSD上大请求（&gt;128KB）的随机写与顺序写性能几乎持平时，为规避随机写而付出的compaction&#x2F;GC代价就成了纯负担。它用三个手段替代LSM树：</p>
-<table>
-<thead>
-<tr>
-<th>设计</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>热度感知分组</td>
-<td>高热度KV存入同一Data Block，让”要更新的数据”物理上聚集</td>
-</tr>
-<tr>
-<td>Update_Rate分级</td>
-<td>按更新比例决定原地更新&#x2F;迁移+原地&#x2F;新建PDB，处理部分有效的边界情况</td>
-</tr>
-<tr>
-<td>B-tree全局索引</td>
-<td>支持点查和范围查询，替代LSM树的层层查找</td>
-</tr>
-</tbody></table>
-<p>核心取舍在于：就地更新消除了压缩和GC，代价是引入了热度统计和逻辑&#x2F;物理数据块的管理复杂度，且依赖负载本身具有更新局部性（update-intensive）才能发挥最大效果。</p>
-]]></content>
-      <categories>
-        <category>论文阅读</category>
-      </categories>
-      <tags>
-        <tag>SSD</tag>
-        <tag>分布式存储</tag>
-        <tag>LSM-tree</tag>
-        <tag>KV存储</tag>
       </tags>
   </entry>
   <entry>
@@ -1017,6 +856,129 @@
         <tag>LSM-tree</tag>
         <tag>NVM</tag>
         <tag>RocksDB</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>论文阅读：提高高性能存储设备的键值存储性能</title>
+    <url>/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/</url>
+    <content><![CDATA[<h1 id="论文阅读：提高高性能存储设备的键值存储性能"><a href="#论文阅读：提高高性能存储设备的键值存储性能" class="headerlink" title="论文阅读：提高高性能存储设备的键值存储性能"></a>论文阅读：提高高性能存储设备的键值存储性能</h1><blockquote>
+<p>论文：<em>Improving Performance of Key–Value Stores for High-Performance Storage Devices</em></p>
+</blockquote>
+<h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>KV存储因其高性能和数据管理简单，在学术界和工业界都变得越来越受欢迎。与传统的关系型数据库不同，KV存储以”键–值”的形式管理数据，不支持表之间的关系或复杂的查询，这种”结构简单”的特点有助于其实现更高的性能。为了进一步提升KV存储系统的性能，研究者和开发者广泛采用了SSD和NVMe SSD等高性能存储设备。</p>
+<p>尽管使用了高性能硬件，但由于KV存储系统<strong>缺乏多线程编程的支持</strong>，它们的实际性能<strong>远远低于硬件的理论性能上限</strong>。通过分析发现：性能差距的根本原因在于当前系统中使用的<strong>粗粒度锁机制</strong>，即锁的范围太大，限制了并发能力。为了改善上述问题，&#x3D;&#x3D;提出了一种<strong>多线程压缩操作</strong>方案，该方法让空闲线程参与到I&#x2F;O操作中，从而提高资源利用率。&#x3D;&#x3D;</p>
+<h2 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h2><p>首先分析现有KV存储系统RocksDB中的I&#x2F;O操作，目的是找出其中的性能瓶颈。</p>
+<p>对RocksDB的I&#x2F;O路径分析发现，<strong>后台I&#x2F;O操作</strong>（如flush和compaction）会导致<strong>前台I&#x2F;O操作发生阻塞</strong>。即使为前台I&#x2F;O分配了更多线程，这些线程中的大部分还是会处于等待状态，直到后台任务（flush或compaction）完成。</p>
+<p>对于RocksDB的<strong>compaction操作</strong>来说，需要读取多个文件，并对key–value对进行排序。这个过程涉及大量递归的读操作，但RocksDB当前实现中，这些读操作<strong>只使用了一个线程</strong>来完成。为了优化这一点，&#x3D;&#x3D;<strong>通过创建读取缓冲区和预取机制，使文件读操作可以并发执行</strong>&#x3D;&#x3D;，即多个线程同时读取不同文件内容，并缓存在临时缓冲区中。</p>
+<h2 id="Background-and-Motivation"><a href="#Background-and-Motivation" class="headerlink" title="Background and Motivation"></a>Background and Motivation</h2><p>RocksDB的架构如下所示：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/069f2931998d58c5dee022e81cf56e3.png" class="" title="RocksDB架构">
+
+<p>RocksDB在插入操作过程中I&#x2F;O路径的伪代码如下：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1748224222824.png" class="" title="RocksDB插入操作I&#x2F;O路径伪代码">
+
+<blockquote>
+<ul>
+<li>RocksDB使用<code>DoWrite()</code>函数启动插入操作；</li>
+<li>在这个函数中第一个到达的写线程被选为”Leader”，负责后续协调工作（加锁、唤醒其他写线程等）；</li>
+<li>Leader线程获得一个锁，并进行预处理操作（如检查写入大小、更新内部统计、分配内存等）；</li>
+<li>写控制器会监控后台作业（flush、compaction）的进度。如果后台作业进度过慢或资源不足，写控制器会指示Leader延迟或暂停前台写入；</li>
+<li><strong>Flush阻塞</strong>：当memtable已满但后台flush还没把旧数据刷到磁盘时，新的写入无处可放，只能等待；</li>
+<li><strong>Compaction阻塞</strong>：为了防止Level 0文件过多，后台会触发compaction；如果Level 0达到阈值，新的memtable刷盘就会被阻塞，Leader线程被迫等待直到compaction释放空间；</li>
+<li>前台写入（insert）能否继续，<strong>完全依赖于flush和compaction</strong>这两个后台I&#x2F;O的完成情况。</li>
+</ul>
+</blockquote>
+<p>RocksDB的前台插入操作在很大程度上被后台的<strong>flush</strong>和<strong>compaction</strong>作业”拖累”。只要后台还在忙，Leader线程就会<strong>加锁后等待</strong>，直到后台工作完成，才能继续写WAL、sync WAL、并唤醒并行写入。</p>
+<blockquote>
+<p><strong>Leader&#x2F;Follower写入机制</strong>：当多个线程调用<code>Write()</code>执行写入时，第一个进入<code>DoWrite()</code>并获得写锁的线程被称为<strong>Leader</strong>。后续线程成为<strong>Follower</strong>，它们不会自己做写入，而是排队等Leader帮它们处理。Leader不仅处理自己的写请求，还会收集Follower的写请求（即多个线程的<code>WriteBatch</code>），合并成一个大batch，然后统一写入WAL和memtable。</p>
+</blockquote>
+<p>&#x3D;&#x3D;RocksDB的插入操作采用Leader&#x2F;Follower机制，所有写入线程组成一个Group，由Leader线程统一处理写入逻辑。一旦Leader被阻塞（例如因为Flush或Compaction没完成），整个Group（包括所有Follower）就全部阻塞，无法继续写入。&#x3D;&#x3D;</p>
+<h3 id="线程扩展性实验"><a href="#线程扩展性实验" class="headerlink" title="线程扩展性实验"></a>线程扩展性实验</h3><p>RocksDB在不同数量的应用线程、后台刷新线程和后台压缩进程下的性能表现：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1748241856063.png" class="" title="不同线程配置下的性能">
+
+<ol>
+<li><strong>增加应用线程数</strong>：&#x3D;&#x3D;性能不升反降&#x3D;&#x3D;，因为<strong>只有一个Leader线程</strong>执行I&#x2F;O，其它线程要么<strong>空闲等待</strong>，要么在<strong>竞争锁资源</strong>，反而降低了整体效率（说明当前的RocksDB架构无法有效利用多核CPU）；</li>
+<li><strong>增加后台Flush和Compaction线程数</strong>：&#x3D;&#x3D;性能无明显提升，甚至性能下降&#x3D;&#x3D;，造成这个现象的根本原因仍然是：<strong>I&#x2F;O最终只由一个线程处理，其他线程要么干等，要么造成锁争用</strong>，所以线程越多，性能反而可能越差。</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th align="center">配置变化</th>
+<th align="center">性能表现</th>
+<th align="center">原因说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">增加前台应用线程数</td>
+<td align="center">性能下降</td>
+<td align="center">仅Leader执行I&#x2F;O，其他线程空等或抢锁</td>
+</tr>
+<tr>
+<td align="center">增加Flush线程数</td>
+<td align="center">性能下降</td>
+<td align="center">多线程造成更大锁竞争，Flush本身也是瓶颈</td>
+</tr>
+<tr>
+<td align="center">增加 Compaction 线程数</td>
+<td align="center">无明显提升或性能下降</td>
+<td align="center">Compaction被串行逻辑限制，不能有效并行</td>
+</tr>
+</tbody></table>
+<p>上述内容得出一个结论：&#x3D;&#x3D;当前的RocksDB实现并未针对多核CPU和高性能存储设备进行有效优化。&#x3D;&#x3D;</p>
+<h2 id="Design"><a href="#Design" class="headerlink" title="Design"></a>Design</h2><p>作者提出的优化设计架构如<code>(b)</code>所示，<code>(a)</code>则是当前的架构。新方案的核心思想是：&#x3D;&#x3D;让原本空闲的follower线程也参与到I&#x2F;O操作中来（执行Flush或Compaction的子任务）&#x3D;&#x3D;。这种方式借鉴了文件系统中用于提升可扩展性的优化技术，可以在不引入额外线程开销的前提下，充分利用多核CPU的资源，提高并发度和整体性能。</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1748307376018.png" class="" title="优化设计架构对比">
+
+<p>具体做法：</p>
+<ol>
+<li>在<code>compaction</code>操作中识别出需要读入的SST文件，然后预先分配一块内存缓冲区（用于缓存这些SST文件）；</li>
+<li>利用空等的前台进程去执行读文件的任务（即空闲的follower线程会被调度去执行读取文件的任务）；</li>
+<li>后台真正执行<code>compaction</code>的线程可以直接从内存中读取这些被预加载的数据，而不需要去访问慢速的存储设备。</li>
+</ol>
+<p>这样可以显著减少前台写操作被阻塞的时间，因为<code>flush/compaction</code>能更快做完，前台写也就能更快恢复。</p>
+<h3 id="全局数据结构ReadQueue"><a href="#全局数据结构ReadQueue" class="headerlink" title="全局数据结构ReadQueue"></a>全局数据结构ReadQueue</h3><p>为了实现上述目标，引入了一个全局数据结构<code>ReadQueue</code>：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1748313544883.png" class="" title="ReadQueue相关代码">
+
+<p>对于上述代码：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">procedure <span class="title function_">PROCESSKEYVALUECOMPACTION</span><span class="params">()</span>  <span class="comment">// 后台 compaction 任务的入口函数</span></span><br><span class="line">  <span class="comment">// 查找 compaction 的目标文件</span></span><br><span class="line">  <span class="keyword">if</span> file 是目标 key 范围 then</span><br><span class="line">    <span class="title function_">ADDFILETOREADQUEUE</span><span class="params">()</span>  <span class="comment">// 将该文件加入全局 ReadQueue 中</span></span><br><span class="line">  end <span class="keyword">if</span></span><br><span class="line">  <span class="comment">// 执行原始的 compaction 工作（如合并、重排序等）</span></span><br><span class="line">end procedure</span><br><span class="line"></span><br><span class="line">procedure <span class="title function_">DELAYWRITE</span><span class="params">()</span>   <span class="comment">// 空闲线程的等待逻辑中添加预取操作</span></span><br><span class="line">  <span class="title function_">PREFETCHQUEUEDATA</span><span class="params">()</span>    <span class="comment">// 新加入的逻辑：空闲时执行预取操作</span></span><br><span class="line">  <span class="keyword">if</span> WRITE_CONTROLLER_.<span class="title function_">ISSTOPPED</span><span class="params">()</span> or .<span class="title function_">NEEDSDELAY</span><span class="params">()</span> then</span><br><span class="line">    <span class="title function_">WAIT</span><span class="params">()</span>               <span class="comment">// 等待写控制器解除限制</span></span><br><span class="line">  end <span class="keyword">if</span></span><br><span class="line">end procedure</span><br><span class="line"></span><br><span class="line">procedure <span class="title function_">PREFETCHQUEUEDATA</span><span class="params">()</span>     <span class="comment">// 实际执行预取任务</span></span><br><span class="line">  <span class="keyword">if</span> QUEUE.<span class="title function_">ISEMPTY</span><span class="params">()</span> then</span><br><span class="line">    <span class="keyword">return</span>              <span class="comment">// 队列为空，无需做预取</span></span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    <span class="title function_">SELECTFILETOPREFETCH</span><span class="params">()</span>    <span class="comment">// 选择一个文件（带锁）</span></span><br><span class="line">    <span class="title function_">ALLOCATEBUFFER</span><span class="params">()</span>          <span class="comment">// 为读入数据分配内存</span></span><br><span class="line">    <span class="title function_">READ</span><span class="params">()</span>                    <span class="comment">// 将文件读入内存</span></span><br><span class="line">    <span class="title function_">REMOVEFILEFROMREADQUEUE</span><span class="params">()</span> <span class="comment">// 从队列中移除</span></span><br><span class="line">  end <span class="keyword">if</span></span><br><span class="line">end procedure</span><br></pre></td></tr></table></figure>
+
+<p>总体过程如下：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1751370694923.png" class="" title="优化方案总体过程">
+
+<h2 id="Evaluation"><a href="#Evaluation" class="headerlink" title="Evaluation"></a>Evaluation</h2><p>作者在Linux 4.17版本内核上对RocksDB 5.13进行了实现，采用ext4作为文件系统，针对不同的线程数对原有方案和建议方案进行了性能测试，实验结果如下：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1751372944893.png" class="" title="性能测试结果">
+
+<p>&#x3D;&#x3D;图4展示了RocksDB在两台不同机器上使用现有方案和建议方案后的性能表现。在1到16个线程数的范围内，建议方案在两台机器上都将RocksDB的性能提高了16%。具体来说，在机器A上，当为前台I&#x2F;O操作分配1、2、4、8和16个线程时，建议方案的性能分别提高了9%、15%、15%、10%和11%；在机器B上，在相同的线程分配情况下，建议方案的性能分别提高了9%、15%、16%、13%和13%。&#x3D;&#x3D;</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1751374538061.png" class="" title="论文进一步的实验结果">
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这篇论文的思路可以概括为”变废为宝”：RocksDB的Leader&#x2F;Follower写入组机制下，Follower线程在Leader被后台I&#x2F;O阻塞时只能空等——这些空闲线程本身就是浪费的多核资源。论文的方案没有增加任何新线程，而是：</p>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>识别</td>
+<td>compaction线程把目标SST文件注册进全局ReadQueue</td>
+</tr>
+<tr>
+<td>预取</td>
+<td>空等的Follower线程在DELAYWRITE等待点执行预取，把文件读入内存缓冲区</td>
+</tr>
+<tr>
+<td>加速</td>
+<td>后台compaction直接从内存读预加载的数据，不再访问慢速存储</td>
+</tr>
+</tbody></table>
+<p>最终flush&#x2F;compaction更快完成、前台写更早恢复，在两台机器上均获得约16%的性能提升。这个设计对理解”粗粒度锁+单线程I&#x2F;O”如何在多核时代成为瓶颈，以及如何用最小改动的协同线程架构解决它，是很好的案例。</p>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>LSM-tree</tag>
+        <tag>KV存储</tag>
+        <tag>RocksDB</tag>
+        <tag>多线程优化</tag>
       </tags>
   </entry>
   <entry>
@@ -1380,8 +1342,8 @@
       </categories>
       <tags>
         <tag>分布式存储</tag>
-        <tag>Ceph</tag>
         <tag>NVMe</tag>
+        <tag>Ceph</tag>
         <tag>块存储</tag>
       </tags>
   </entry>
@@ -4244,6 +4206,167 @@
       </categories>
       <tags>
         <tag>C++</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>论文阅读：理解Ceph对象存储中存储后端的写入行为</title>
+    <url>/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<h1 id="论文阅读：理解Ceph对象存储中存储后端的写入行为"><a href="#论文阅读：理解Ceph对象存储中存储后端的写入行为" class="headerlink" title="论文阅读：理解Ceph对象存储中存储后端的写入行为"></a>论文阅读：理解Ceph对象存储中存储后端的写入行为</h1><blockquote>
+<p>论文：<em>Understanding Write Behaviors of Storage Backends in Ceph Object Store</em></p>
+</blockquote>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>论文作者对Ceph提供的三种存储后端（FileStore、KStore和BlueStore）通过微基准测试与长期工作负载的综合分析进行了测试，主要聚焦于WAF（写放大系数）。</p>
+<p>核心发现：&#x3D;&#x3D;不管是哪种存储后端，WAF都大于13&#x3D;&#x3D;。其中BlueStore的综合性能最稳定，FileStore在SSD上的表现最好，BlueStore在HDD上表现不错。</p>
+<p>这三种存储后端的写放大的来源如下：</p>
+<p><strong>FileStore</strong>：需要先将数据写入独立的journal（日志设备），然后再写入主存储区。这本应是”双写（double write）”，即写流量为2倍，但实验发现实际是<strong>3倍</strong>。因为文件系统本身也有自己的日志系统，即数据流程变成：<strong>数据 → Ceph journal → 文件系统 → 文件系统 journal → 真正写入位置</strong>。&#x3D;&#x3D;结果导致：<strong>文件系统的元数据+日志流量 ≈ 原始数据量大小</strong>，写放大更严重。&#x3D;&#x3D;</p>
+<p><strong>KStore</strong>：KStore采用RocksDB存储元数据。由于RocksDB的LSM-tree结构，后台会进行大量compaction。实验发现：&#x3D;&#x3D;几乎所有写流量都来自compaction，而不是用户写入的数据。&#x3D;&#x3D;</p>
+<p><strong>BlueStore</strong>：数据直接写入裸设备，不经过文件系统，因此它<strong>避免了FileStore的journaling of journal问题</strong>。但是它的写放大依旧存在，主要来源是”Ceph仍使用RocksDB存储元数据和对象属性”，这些RocksDB写流量的大小<strong>超过真实数据写入量的3倍</strong>。简而言之：<strong>BlueStore解决了日志嵌套的问题，但RocksDB的元数据写放大仍然很严重。</strong></p>
+<h2 id="Background"><a href="#Background" class="headerlink" title="Background"></a>Background</h2><h3 id="Ceph的三种存储接口"><a href="#Ceph的三种存储接口" class="headerlink" title="Ceph的三种存储接口"></a>Ceph的三种存储接口</h3><table>
+<thead>
+<tr>
+<th>存储类型</th>
+<th>描述</th>
+<th>举例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对象存储（Object Storage）</td>
+<td>类似 Amazon S3、Swift，存储对象（Object）</td>
+<td>Ceph Object Storage（RADOS Gateway）</td>
+</tr>
+<tr>
+<td>块存储（Block Storage）</td>
+<td>给虚拟机或系统提供块设备</td>
+<td>Ceph RBD（RADOS Block Device）</td>
+</tr>
+<tr>
+<td>文件系统（File System）</td>
+<td>类似分布式文件系统</td>
+<td>CephFS</td>
+</tr>
+</tbody></table>
+<p>虽然提供三种不同形态的服务，但<strong>它们的底层都是建立在同一个统一核心：&#x3D;&#x3D;RADOS&#x3D;&#x3D;（Reliable Autonomic Distributed Object Store）之上</strong>。RADOS层运行着Ceph内部的关键组件：</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>全称</th>
+<th>是否是守护进程（Daemon）</th>
+<th>是否运行在 RADOS 层？</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>MON</strong></td>
+<td>Monitor</td>
+<td>✅ 是</td>
+<td>✅ 是</td>
+<td>保存并管理集群状态（如 OSD 列表、集群地图），负责一致性和选举</td>
+</tr>
+<tr>
+<td><strong>MDS</strong></td>
+<td>Metadata Server</td>
+<td>✅ 是</td>
+<td>✅ 是（但只用于 CephFS 文件系统）</td>
+<td>管理文件系统的目录、权限和名称等元数据</td>
+</tr>
+<tr>
+<td><strong>OSD</strong></td>
+<td>Object Storage Daemon</td>
+<td>✅ 是</td>
+<td>✅ 是</td>
+<td>存储数据对象、处理读写请求、执行数据复制和恢复</td>
+</tr>
+</tbody></table>
+<h3 id="Ceph与传统分布式存储的区别"><a href="#Ceph与传统分布式存储的区别" class="headerlink" title="Ceph与传统分布式存储的区别"></a>Ceph与传统分布式存储的区别</h3><ol>
+<li>客户端可以<strong>直接联系负责该数据的主OSD节点（primary OSD）</strong>，无需中间服务器；</li>
+<li>不需要固定的元数据服务器来告诉客户端”数据在哪里”；</li>
+<li>数据的位置是通过<strong>CRUSH算法</strong>算出来的，而不是查表得到。</li>
+</ol>
+<h3 id="BlueStore的定位"><a href="#BlueStore的定位" class="headerlink" title="BlueStore的定位"></a>BlueStore的定位</h3><p>BlueStore是Ceph的另一种存储后端，其核心理念在于高效管理对象数据，突破FileStore的局限性。FileStore存在的问题之一是外部日志记录导致的双重写入开销。BlueStore则直接将对象数据存储于原始块设备，同时使用RocksDB管理元数据。由于跳过了本地文件系统层，可规避日志记录等文件系统开销。</p>
+<p>需注意的是，由于运行RocksDB仍需文件系统支持，BlueStore内部集成了名为BlueFS的轻量级用户级文件系统。此外，Ceph通常需处理大量对象，且常需按顺序枚举所有对象以进行一致性检查和恢复，然而POSIX并未提供从多个目录高效检索对象的方法。使用RocksDB的另一优势在于，Ceph能够轻松检索并枚举系统中存储的所有对象。</p>
+<h2 id="微基准测试结果"><a href="#微基准测试结果" class="headerlink" title="微基准测试结果"></a>微基准测试结果</h2><h3 id="FileStore"><a href="#FileStore" class="headerlink" title="FileStore"></a>FileStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/d995d2090d5b758453b8043d301818f9.png" class="" title="FileStore微基准测试结果">
+
+<p>4KB写入在Ceph内部的路径为：</p>
+<p><strong>(1) 客户端定位数据应该写到哪个OSD</strong></p>
+<p>客户端通过CRUSH算法在O(1)时间内计算出负责该对象的<strong>主OSD</strong>，然后将写请求发送给主OSD。</p>
+<p><strong>(2) 写副本</strong></p>
+<p>主OSD将写请求转发给另外两个OSD（即副本#2和副本#3）。因为副本机制（replication factor &#x3D; 3），这一步本身就会<strong>产生3倍流量</strong>。</p>
+<p><strong>(3) 在每个OSD内部，数据会被打包成一个”事务”</strong></p>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对象数据（object data）</td>
+<td>你写入的 4KB 数据</td>
+</tr>
+<tr>
+<td>对象元数据（object metadata）</td>
+<td>比如对象大小、时间戳、offset 等</td>
+</tr>
+<tr>
+<td>LevelDB（或 RocksDB）键值对</td>
+<td>存储对象索引与属性，用来快速定位和管理对象</td>
+</tr>
+</tbody></table>
+<p><strong>(4) FileStore接收到这个事务后，会做两件事（双写来源）：</strong></p>
+<ol>
+<li><p><strong>先写Ceph Journal（预写日志，Write-Ahead Logging）</strong>：保护事务的原子性（可崩溃恢复），这是第一部分写放大来源；</p>
+</li>
+<li><p><strong>再把这份事务写入XFS（真实数据 + LevelDB数据 + 文件系统元数据）</strong>：</p>
+<ul>
+<li>真实文件写入 &#x3D; object data；</li>
+<li>LevelDB的写放大（LSM-tree会产生compaction）；</li>
+<li>XFS文件系统写元数据 + XFS Journaling。</li>
+</ul>
+<p>这是第二次写放大，导致”journal of journal（日志的日志）”问题。</p>
+</li>
+</ol>
+<p>所以4KB写入的WAF因子很大且有波动性，但是随着写入请求大小的增大，直至4MB时，WAF收敛至6，因为相对于请求大小，对象元数据、键值对、文件系统元数据和文件系统日志的占比会相对缩小。</p>
+<h3 id="BlueStore"><a href="#BlueStore" class="headerlink" title="BlueStore"></a>BlueStore</h3><img src="/2024/06/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-Ceph%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%90%8E%E7%AB%AF%E7%9A%84%E5%86%99%E5%85%A5%E8%A1%8C%E4%B8%BA%E5%88%86%E6%9E%90/f9c30590713a818b6c4c260315e01a59.png" class="" title="BlueStore微基准测试结果">
+
+<p>可以发现第3次写（3rd Write）的WAF很高，论文解释原因为：BlueStore按<strong>最小分配粒度 &#x3D; 64KB Chunk</strong>来管理数据。当写入请求落在某个Chunk中间、且打破了它的连续性时，BlueStore必须做：&#x3D;&#x3D;把当前64KB Chunk中未写满的部分用<strong>零填充（zero padding）</strong>，然后整个64KB写入磁盘。&#x3D;&#x3D;</p>
+<blockquote>
+<p>笔者注：在Ceph官网实际调研后发现，现在BlueStore默认的最小分配粒度已经是4KB了，也就是说这里补0带来的WAF应该已经没有了。总体上BlueStore效果更好，因为没有了日志双写问题。</p>
+</blockquote>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这篇论文的价值在于系统性地量化了Ceph三种存储后端的写放大来源：</p>
+<table>
+<thead>
+<tr>
+<th>后端</th>
+<th>主要写放大来源</th>
+<th>关键问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FileStore</td>
+<td>Journal双写 + 文件系统日志（journal of journal）</td>
+<td>双写实际为3倍而非2倍</td>
+</tr>
+<tr>
+<td>KStore</td>
+<td>RocksDB的LSM-tree compaction</td>
+<td>写流量几乎全来自compaction</td>
+</tr>
+<tr>
+<td>BlueStore</td>
+<td>RocksDB元数据写流量（超过真实数据3倍）</td>
+<td>解决了日志嵌套但元数据放大仍在</td>
+</tr>
+</tbody></table>
+<p>结论指向一个明确的方向：<strong>分布式存储系统的后端如果想进一步降低写放大，要么换掉LSM-tree的元数据方案，要么优化元数据的落盘路径</strong>——这也与后续一系列针对RocksDB&#x2F;BlueStore的优化工作（如MatrixKV、就地更新方案等）相呼应。</p>
+]]></content>
+      <categories>
+        <category>论文阅读</category>
+      </categories>
+      <tags>
+        <tag>分布式存储</tag>
+        <tag>Ceph</tag>
+        <tag>BlueStore</tag>
+        <tag>写放大</tag>
       </tags>
   </entry>
 </search>

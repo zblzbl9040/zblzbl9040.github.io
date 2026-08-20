@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-siteapp">
     <title>
         
-            归档
+            论文阅读：提高高性能存储设备的键值存储性能
         
     </title>
     <link rel="shortcut icon" href="#"/>
@@ -33,15 +33,46 @@
 </head>
 <body>
     <a id="cover"></a>
-    <link type="text/css" rel="stylesheet" href="/css/archive.css">
+    <link type="text/css" rel="stylesheet" href="/css/post.css">
 <div id="header" class="header">
     <div class="vertical">
         <div class="inner">
             
-                <h1 class="header-subtitle">归档</h1>
+                <h1 class="header-subtitle">论文阅读：提高高性能存储设备的键值存储性能</h1>
                 <div class="header-subinfo">
-                    <p class="article-info-text Chinese"></p>
-                    <p class="article-info-text English"></p>                  
+                    <p class="article-info-text">
+                        <span>
+                            <i class="iconfont icon-time"></i> 发表时间：2024-09-19
+                        </span>
+                        
+                            
+                                <span id="/2024/09/19/论文阅读-提高高性能存储设备的KV存储性能/" class="leancloud_visitors" data-flag-title="论文阅读：提高高性能存储设备的键值存储性能">
+                                    <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
+                                </span>
+                            
+                            
+                                <span>
+                                    <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2024/09/19/论文阅读-提高高性能存储设备的KV存储性能/"></span>
+                                </span>
+                              
+                        
+                    </p>
+                    
+                        
+                            <span class="category-color">论文阅读</span>
+                        
+                    
+                    
+                        
+                            <span class="tag-color">LSM-tree</span>
+                        
+                            <span class="tag-color">KV存储</span>
+                        
+                            <span class="tag-color">RocksDB</span>
+                        
+                            <span class="tag-color">多线程优化</span>
+                        
+                    
                 </div>
             
         </div>
@@ -50,37 +81,204 @@
 </div>
 <div id="container">
     
-        
-            <!-- 归档页面、分类归档页面、标签归档页面 -->
-            <div class="articles">
-                <div class="articles-wrap">
-                    <span class="archive-move-on"></span>
-                    <span class="archive-counter">
+        <!-- 文章页面 -->
+        <div id="article">
+            <div class="toc"></div>
+            <div class="article-body">
+                <h1 id="论文阅读：提高高性能存储设备的键值存储性能"><a href="#论文阅读：提高高性能存储设备的键值存储性能" class="headerlink" title="论文阅读：提高高性能存储设备的键值存储性能"></a>论文阅读：提高高性能存储设备的键值存储性能</h1><blockquote>
+<p>论文：<em>Improving Performance of Key–Value Stores for High-Performance Storage Devices</em></p>
+</blockquote>
+<h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>KV存储因其高性能和数据管理简单，在学术界和工业界都变得越来越受欢迎。与传统的关系型数据库不同，KV存储以”键–值”的形式管理数据，不支持表之间的关系或复杂的查询，这种”结构简单”的特点有助于其实现更高的性能。为了进一步提升KV存储系统的性能，研究者和开发者广泛采用了SSD和NVMe SSD等高性能存储设备。</p>
+<p>尽管使用了高性能硬件，但由于KV存储系统<strong>缺乏多线程编程的支持</strong>，它们的实际性能<strong>远远低于硬件的理论性能上限</strong>。通过分析发现：性能差距的根本原因在于当前系统中使用的<strong>粗粒度锁机制</strong>，即锁的范围太大，限制了并发能力。为了改善上述问题，&#x3D;&#x3D;提出了一种<strong>多线程压缩操作</strong>方案，该方法让空闲线程参与到I&#x2F;O操作中，从而提高资源利用率。&#x3D;&#x3D;</p>
+<h2 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h2><p>首先分析现有KV存储系统RocksDB中的I&#x2F;O操作，目的是找出其中的性能瓶颈。</p>
+<p>对RocksDB的I&#x2F;O路径分析发现，<strong>后台I&#x2F;O操作</strong>（如flush和compaction）会导致<strong>前台I&#x2F;O操作发生阻塞</strong>。即使为前台I&#x2F;O分配了更多线程，这些线程中的大部分还是会处于等待状态，直到后台任务（flush或compaction）完成。</p>
+<p>对于RocksDB的<strong>compaction操作</strong>来说，需要读取多个文件，并对key–value对进行排序。这个过程涉及大量递归的读操作，但RocksDB当前实现中，这些读操作<strong>只使用了一个线程</strong>来完成。为了优化这一点，&#x3D;&#x3D;<strong>通过创建读取缓冲区和预取机制，使文件读操作可以并发执行</strong>&#x3D;&#x3D;，即多个线程同时读取不同文件内容，并缓存在临时缓冲区中。</p>
+<h2 id="Background-and-Motivation"><a href="#Background-and-Motivation" class="headerlink" title="Background and Motivation"></a>Background and Motivation</h2><p>RocksDB的架构如下所示：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/069f2931998d58c5dee022e81cf56e3.png" class="" title="RocksDB架构">
+
+<p>RocksDB在插入操作过程中I&#x2F;O路径的伪代码如下：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1748224222824.png" class="" title="RocksDB插入操作I&#x2F;O路径伪代码">
+
+<blockquote>
+<ul>
+<li>RocksDB使用<code>DoWrite()</code>函数启动插入操作；</li>
+<li>在这个函数中第一个到达的写线程被选为”Leader”，负责后续协调工作（加锁、唤醒其他写线程等）；</li>
+<li>Leader线程获得一个锁，并进行预处理操作（如检查写入大小、更新内部统计、分配内存等）；</li>
+<li>写控制器会监控后台作业（flush、compaction）的进度。如果后台作业进度过慢或资源不足，写控制器会指示Leader延迟或暂停前台写入；</li>
+<li><strong>Flush阻塞</strong>：当memtable已满但后台flush还没把旧数据刷到磁盘时，新的写入无处可放，只能等待；</li>
+<li><strong>Compaction阻塞</strong>：为了防止Level 0文件过多，后台会触发compaction；如果Level 0达到阈值，新的memtable刷盘就会被阻塞，Leader线程被迫等待直到compaction释放空间；</li>
+<li>前台写入（insert）能否继续，<strong>完全依赖于flush和compaction</strong>这两个后台I&#x2F;O的完成情况。</li>
+</ul>
+</blockquote>
+<p>RocksDB的前台插入操作在很大程度上被后台的<strong>flush</strong>和<strong>compaction</strong>作业”拖累”。只要后台还在忙，Leader线程就会<strong>加锁后等待</strong>，直到后台工作完成，才能继续写WAL、sync WAL、并唤醒并行写入。</p>
+<blockquote>
+<p><strong>Leader&#x2F;Follower写入机制</strong>：当多个线程调用<code>Write()</code>执行写入时，第一个进入<code>DoWrite()</code>并获得写锁的线程被称为<strong>Leader</strong>。后续线程成为<strong>Follower</strong>，它们不会自己做写入，而是排队等Leader帮它们处理。Leader不仅处理自己的写请求，还会收集Follower的写请求（即多个线程的<code>WriteBatch</code>），合并成一个大batch，然后统一写入WAL和memtable。</p>
+</blockquote>
+<p>&#x3D;&#x3D;RocksDB的插入操作采用Leader&#x2F;Follower机制，所有写入线程组成一个Group，由Leader线程统一处理写入逻辑。一旦Leader被阻塞（例如因为Flush或Compaction没完成），整个Group（包括所有Follower）就全部阻塞，无法继续写入。&#x3D;&#x3D;</p>
+<h3 id="线程扩展性实验"><a href="#线程扩展性实验" class="headerlink" title="线程扩展性实验"></a>线程扩展性实验</h3><p>RocksDB在不同数量的应用线程、后台刷新线程和后台压缩进程下的性能表现：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1748241856063.png" class="" title="不同线程配置下的性能">
+
+<ol>
+<li><strong>增加应用线程数</strong>：&#x3D;&#x3D;性能不升反降&#x3D;&#x3D;，因为<strong>只有一个Leader线程</strong>执行I&#x2F;O，其它线程要么<strong>空闲等待</strong>，要么在<strong>竞争锁资源</strong>，反而降低了整体效率（说明当前的RocksDB架构无法有效利用多核CPU）；</li>
+<li><strong>增加后台Flush和Compaction线程数</strong>：&#x3D;&#x3D;性能无明显提升，甚至性能下降&#x3D;&#x3D;，造成这个现象的根本原因仍然是：<strong>I&#x2F;O最终只由一个线程处理，其他线程要么干等，要么造成锁争用</strong>，所以线程越多，性能反而可能越差。</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th align="center">配置变化</th>
+<th align="center">性能表现</th>
+<th align="center">原因说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">增加前台应用线程数</td>
+<td align="center">性能下降</td>
+<td align="center">仅Leader执行I&#x2F;O，其他线程空等或抢锁</td>
+</tr>
+<tr>
+<td align="center">增加Flush线程数</td>
+<td align="center">性能下降</td>
+<td align="center">多线程造成更大锁竞争，Flush本身也是瓶颈</td>
+</tr>
+<tr>
+<td align="center">增加 Compaction 线程数</td>
+<td align="center">无明显提升或性能下降</td>
+<td align="center">Compaction被串行逻辑限制，不能有效并行</td>
+</tr>
+</tbody></table>
+<p>上述内容得出一个结论：&#x3D;&#x3D;当前的RocksDB实现并未针对多核CPU和高性能存储设备进行有效优化。&#x3D;&#x3D;</p>
+<h2 id="Design"><a href="#Design" class="headerlink" title="Design"></a>Design</h2><p>作者提出的优化设计架构如<code>(b)</code>所示，<code>(a)</code>则是当前的架构。新方案的核心思想是：&#x3D;&#x3D;让原本空闲的follower线程也参与到I&#x2F;O操作中来（执行Flush或Compaction的子任务）&#x3D;&#x3D;。这种方式借鉴了文件系统中用于提升可扩展性的优化技术，可以在不引入额外线程开销的前提下，充分利用多核CPU的资源，提高并发度和整体性能。</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1748307376018.png" class="" title="优化设计架构对比">
+
+<p>具体做法：</p>
+<ol>
+<li>在<code>compaction</code>操作中识别出需要读入的SST文件，然后预先分配一块内存缓冲区（用于缓存这些SST文件）；</li>
+<li>利用空等的前台进程去执行读文件的任务（即空闲的follower线程会被调度去执行读取文件的任务）；</li>
+<li>后台真正执行<code>compaction</code>的线程可以直接从内存中读取这些被预加载的数据，而不需要去访问慢速的存储设备。</li>
+</ol>
+<p>这样可以显著减少前台写操作被阻塞的时间，因为<code>flush/compaction</code>能更快做完，前台写也就能更快恢复。</p>
+<h3 id="全局数据结构ReadQueue"><a href="#全局数据结构ReadQueue" class="headerlink" title="全局数据结构ReadQueue"></a>全局数据结构ReadQueue</h3><p>为了实现上述目标，引入了一个全局数据结构<code>ReadQueue</code>：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1748313544883.png" class="" title="ReadQueue相关代码">
+
+<p>对于上述代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">procedure <span class="title function_">PROCESSKEYVALUECOMPACTION</span><span class="params">()</span>  <span class="comment">// 后台 compaction 任务的入口函数</span></span><br><span class="line">  <span class="comment">// 查找 compaction 的目标文件</span></span><br><span class="line">  <span class="keyword">if</span> file 是目标 key 范围 then</span><br><span class="line">    <span class="title function_">ADDFILETOREADQUEUE</span><span class="params">()</span>  <span class="comment">// 将该文件加入全局 ReadQueue 中</span></span><br><span class="line">  end <span class="keyword">if</span></span><br><span class="line">  <span class="comment">// 执行原始的 compaction 工作（如合并、重排序等）</span></span><br><span class="line">end procedure</span><br><span class="line"></span><br><span class="line">procedure <span class="title function_">DELAYWRITE</span><span class="params">()</span>   <span class="comment">// 空闲线程的等待逻辑中添加预取操作</span></span><br><span class="line">  <span class="title function_">PREFETCHQUEUEDATA</span><span class="params">()</span>    <span class="comment">// 新加入的逻辑：空闲时执行预取操作</span></span><br><span class="line">  <span class="keyword">if</span> WRITE_CONTROLLER_.<span class="title function_">ISSTOPPED</span><span class="params">()</span> or .<span class="title function_">NEEDSDELAY</span><span class="params">()</span> then</span><br><span class="line">    <span class="title function_">WAIT</span><span class="params">()</span>               <span class="comment">// 等待写控制器解除限制</span></span><br><span class="line">  end <span class="keyword">if</span></span><br><span class="line">end procedure</span><br><span class="line"></span><br><span class="line">procedure <span class="title function_">PREFETCHQUEUEDATA</span><span class="params">()</span>     <span class="comment">// 实际执行预取任务</span></span><br><span class="line">  <span class="keyword">if</span> QUEUE.<span class="title function_">ISEMPTY</span><span class="params">()</span> then</span><br><span class="line">    <span class="keyword">return</span>              <span class="comment">// 队列为空，无需做预取</span></span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    <span class="title function_">SELECTFILETOPREFETCH</span><span class="params">()</span>    <span class="comment">// 选择一个文件（带锁）</span></span><br><span class="line">    <span class="title function_">ALLOCATEBUFFER</span><span class="params">()</span>          <span class="comment">// 为读入数据分配内存</span></span><br><span class="line">    <span class="title function_">READ</span><span class="params">()</span>                    <span class="comment">// 将文件读入内存</span></span><br><span class="line">    <span class="title function_">REMOVEFILEFROMREADQUEUE</span><span class="params">()</span> <span class="comment">// 从队列中移除</span></span><br><span class="line">  end <span class="keyword">if</span></span><br><span class="line">end procedure</span><br></pre></td></tr></table></figure>
+
+<p>总体过程如下：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1751370694923.png" class="" title="优化方案总体过程">
+
+<h2 id="Evaluation"><a href="#Evaluation" class="headerlink" title="Evaluation"></a>Evaluation</h2><p>作者在Linux 4.17版本内核上对RocksDB 5.13进行了实现，采用ext4作为文件系统，针对不同的线程数对原有方案和建议方案进行了性能测试，实验结果如下：</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1751372944893.png" class="" title="性能测试结果">
+
+<p>&#x3D;&#x3D;图4展示了RocksDB在两台不同机器上使用现有方案和建议方案后的性能表现。在1到16个线程数的范围内，建议方案在两台机器上都将RocksDB的性能提高了16%。具体来说，在机器A上，当为前台I&#x2F;O操作分配1、2、4、8和16个线程时，建议方案的性能分别提高了9%、15%、15%、10%和11%；在机器B上，在相同的线程分配情况下，建议方案的性能分别提高了9%、15%、16%、13%和13%。&#x3D;&#x3D;</p>
+<img src="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/1751374538061.png" class="" title="论文进一步的实验结果">
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这篇论文的思路可以概括为”变废为宝”：RocksDB的Leader&#x2F;Follower写入组机制下，Follower线程在Leader被后台I&#x2F;O阻塞时只能空等——这些空闲线程本身就是浪费的多核资源。论文的方案没有增加任何新线程，而是：</p>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>做法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>识别</td>
+<td>compaction线程把目标SST文件注册进全局ReadQueue</td>
+</tr>
+<tr>
+<td>预取</td>
+<td>空等的Follower线程在DELAYWRITE等待点执行预取，把文件读入内存缓冲区</td>
+</tr>
+<tr>
+<td>加速</td>
+<td>后台compaction直接从内存读预加载的数据，不再访问慢速存储</td>
+</tr>
+</tbody></table>
+<p>最终flush&#x2F;compaction更快完成、前台写更早恢复，在两台机器上均获得约16%的性能提升。这个设计对理解”粗粒度锁+单线程I&#x2F;O”如何在多核时代成为瓶颈，以及如何用最小改动的协同线程架构解决它，是很好的案例。</p>
+
+                
+                <p class="end">__END__</p>
+            </div>
+            <div class="article-footer">
+                <div class="suffix-box">
+    <div class="suffix-box-left">
+        <img src="/image/sidebar/avatar.jpg" alt="振兴东北">
+    </div>
+    <div class="suffix-box-right">
+        <span class="suffix-box-title">文章作者：</span>拳击手胖虎
+        <br>
+        <span class="suffix-box-title">文章出处：</span><a href="/2024/09/19/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E6%8F%90%E9%AB%98%E9%AB%98%E6%80%A7%E8%83%BD%E5%AD%98%E5%82%A8%E8%AE%BE%E5%A4%87%E7%9A%84KV%E5%AD%98%E5%82%A8%E6%80%A7%E8%83%BD/" target="_blank">论文阅读：提高高性能存储设备的键值存储性能</a>
+        <br>
+        <span class="suffix-box-title">作者签名：</span>不成木讷树，便做自由风
+        <br>
+        <span class="suffix-box-title">关于主题：</span><a href="https://github.com/first19326/Hexo-LiveForCode" target="_blank">Hexo - Live For Code</a>
+        <br>
+        <span class="suffix-box-title">版权声明：</span>文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" title="BY-NC-SA" target="_blank">BY-NC-SA</a> 许可协议，转载请注明出处
+        <br>
+    </div>
+    <div style="clear: both;"></div>
+</div>
+                
+                    <div class="category">
+                        分类：
                         
-                            目前共计 12 篇日志，继续加油！
+                            <a href="/categories/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB/">论文阅读</a>
                         
-                    </span>
+                    </div>
+                
+                
+                    <div class="tag">
+                        标签：
+                        
+                            <a href="/tags/LSM-tree/">LSM-tree</a>
+                        
+                            <a href="/tags/KV%E5%AD%98%E5%82%A8/">KV存储</a>
+                        
+                            <a href="/tags/RocksDB/">RocksDB</a>
+                        
+                            <a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E4%BC%98%E5%8C%96/">多线程优化</a>
+                        
+                    </div>
+                
+                <div class="article-prev-next">
+                    
+                        <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/" class="prev-prefix">« </a> 上一篇：    <a href="/2025/11/12/C-%E7%AC%94%E8%AE%B0/" title="发布于 2025-11-12 10:06">C++笔记</a>
+                        <br>
                     
                     
-                        
-                            <div class="archive-title">
-                                <h2 class="archive-year">2026</h2>
-                            </div>
-                            
-                           
-                        <div class="article">
-                            <div class="article-header">
-                                <h1 class="article-title"><a href="/2026/07/14/mTLS%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81/"><span>mTLS双向认证：从选型到落地的完整实践</span></a></h1>
-                                <div class="article-meta">
-                                    <span class="article-time">07-14</span>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/" class="next-prefix">» </a> 下一篇：    <a href="/2024/09/07/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-CARP%E6%B5%81%E6%95%B0%E6%8D%AE%E7%9A%84%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96%E7%B4%A2%E5%BC%95/" title="发布于 2024-09-07 09:00">论文阅读：CARP——面向流数据的范围查询优化索引</a>
                     
                 </div>
             </div>
             
+    <div class="article-comments">
         
+            <div class="comments-title">
+                评论列表
+            </div>
+        
+        <div class="comments-content">
+            
+                <script src="https://giscus.app/client.js"
+                    data-repo="zblzbl9040/zblzbl9040.github.io"
+                    data-repo-id="R_kgDONJvMDQ"
+                    data-category="Announcements"
+                    data-category-id="DIC_kwDONJvMDc4C-Nmz"
+                    data-mapping="pathname"
+                    data-strict="0"
+                    data-reactions-enabled="1"
+                    data-emit-metadata="0"
+                    data-input-position="bottom"
+                    data-theme="preferred_color_scheme"
+                    data-lang="zh-CN"
+                    crossorigin="anonymous"
+                    async>
+                </script>
+            
+        </div>
+    </div>
+    
+ 
+        </div>
     
 </div>
     <div id="footer">
@@ -118,7 +316,7 @@
                     
                         <li class=""><a href="/tags" class="" target="_self"><span class="iconfont icon-discount-fill"></span>标签</a></li>
                     
-                        <li class=" active "><a href="/archives" class="" target="_self"><span class="iconfont icon-calendar-fill"></span>归档</a></li>
+                        <li class=""><a href="/archives" class="" target="_self"><span class="iconfont icon-calendar-fill"></span>归档</a></li>
                     
                         <li class=""><a href="/donate" class="" target="_self"><span class="iconfont icon-heart-fill"></span>赞赏</a></li>
                     
