@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, shrink-to-fit=no">
+    <meta name="referrer" content="origin">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="Cache-Control" content="no-transform">
+    <meta http-equiv="Cache-Control" content="no-siteapp">
+    <title>
+        
+            开放数据中心大会（ODCC）存储系统论坛技术洞察汇总
+        
+    </title>
+    <link rel="shortcut icon" href="#"/>
+
+    <link type="text/css" rel="stylesheet" href="/font/LongCang.css">
+    <link type="text/css" rel="stylesheet" href="/font/Monda.css">
+    <link type="text/css" rel="stylesheet" href="/font/NotoSansSC.css">
+    <link type="text/css" rel="stylesheet" href="/font/NotoSerifSC.css">
+    <link type="text/css" rel="stylesheet" href="/font/Playball.css">
+    <link type="text/css" rel="stylesheet" href="/font/PTMono.css">
+    <link type="text/css" rel="stylesheet" href="/font/Roboto.css">
+    <link type="text/css" rel="stylesheet" href="/font/RobotoSlab.css">
+    <link type="text/css" rel="stylesheet" href="/font/Rosario.css">
+    <link type="text/css" rel="stylesheet" href="/font/UbuntuMono.css">
+
+    <link type="text/css" rel="stylesheet" href="/css/base.css">
+    <link type="text/css" rel="stylesheet" href="/css/code.css">
+
+    <script type="text/javascript" src="/js/jquery-3.4.1.min.js"></script>
+<meta name="generator" content="Hexo 7.3.0"><link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+</head>
+<body>
+    <a id="cover"></a>
+    <link type="text/css" rel="stylesheet" href="/css/post.css">
+<div id="header" class="header">
+    <div class="vertical">
+        <div class="inner">
+            
+                <h1 class="header-subtitle">开放数据中心大会（ODCC）存储系统论坛技术洞察汇总</h1>
+                <div class="header-subinfo">
+                    <p class="article-info-text">
+                        <span>
+                            <i class="iconfont icon-time"></i> 发表时间：2026-09-07
+                        </span>
+                        
+                            
+                                <span id="/2026/09/07/开放数据中心大会存储论坛技术洞察/" class="leancloud_visitors" data-flag-title="开放数据中心大会（ODCC）存储系统论坛技术洞察汇总">
+                                    <i class="iconfont icon-browse"></i> 阅读：<sapn class="leancloud-visitors-count"></span>
+                                </span>
+                            
+                            
+                                <span>
+                                    <i class="iconfont icon-interactive"></i> 评论：<span class="valine-comment-count" data-xid="/2026/09/07/开放数据中心大会存储论坛技术洞察/"></span>
+                                </span>
+                              
+                        
+                    </p>
+                    
+                        
+                            <span class="category-color">技术洞察</span>
+                        
+                    
+                    
+                        
+                            <span class="tag-color">AI存储</span>
+                        
+                            <span class="tag-color">KVCache</span>
+                        
+                            <span class="tag-color">CXL</span>
+                        
+                            <span class="tag-color">数据中心</span>
+                        
+                    
+                </div>
+            
+        </div>
+    </div>
+    
+</div>
+<div id="container">
+    
+        <!-- 文章页面 -->
+        <div id="article">
+            <div class="toc"></div>
+            <div class="article-body">
+                <h1 id="开放数据中心大会（ODCC）存储系统论坛技术洞察汇总"><a href="#开放数据中心大会（ODCC）存储系统论坛技术洞察汇总" class="headerlink" title="开放数据中心大会（ODCC）存储系统论坛技术洞察汇总"></a>开放数据中心大会（ODCC）存储系统论坛技术洞察汇总</h1><blockquote>
+<p>本文是参加开放数据中心大会存储系统论坛的听会笔记汇总，涵盖八个议题：大规模万亿大模型训练与推理存储、分层与解耦架构、智能体时代存储、机器视觉编码、CXL内存池化、KVoF协议、KVCache测试研究、智算存储生态。</p>
+</blockquote>
+<h2 id="一、《大规模万亿大模型训练与推理存储挑战及优化》"><a href="#一、《大规模万亿大模型训练与推理存储挑战及优化》" class="headerlink" title="一、《大规模万亿大模型训练与推理存储挑战及优化》"></a>一、《大规模万亿大模型训练与推理存储挑战及优化》</h2><p>AI大模型正向”万亿参数”和”百万Token上下文”的规模发展，存储已进入前后台计算的关键路径。</p>
+<p>在AI Coding场景下，AI Coding需要多轮上下文本交互，极其依赖KVCache；AI Agent需要数十轮长程推演和超并发，&#x3D;&#x3D;存储状态的共享、迁移与恢复决定了端到端效率&#x3D;&#x3D;。</p>
+<p>为此，阿里云提出了一套从一体机到集群、从千卡到万卡的全覆盖AI存储解决方案：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905102358501.png" class="" title="阿里云AI存储解决方案总体架构">
+
+<p>底层为APFS并行文件系统，中间新增了一层新的Fusion Cache（近计算缓存）用来服务上层的模型训练和推理。</p>
+<blockquote>
+<p>近计算缓存的核心思路是把数据”拦截”在算力设备附近的存储介质上，来解决大模型推理时访问远端存储高延迟、大带宽占用的问题。（个人理解是直接将数据卸载到本地存储介质上，来避免网络传输延迟）</p>
+</blockquote>
+<p>基于这样的架构，模型训练的核心挑战从”带宽不足”变为”千节点并发下的低一致性瓶颈与故障放大”。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905105137766.png" class="" title="千节点并发的两大挑战">
+
+<blockquote>
+<p>这里的”千节点并发下的低一致性瓶颈与故障放大”主要体现在两个方面：</p>
+<ol>
+<li><strong>低一致性瓶颈</strong>：传统文件系统为了确保数据一致性，通常采用”强一致性”锁机制。但是在大模型训练时，成千上万个节点会同时去读写海量的小文件（数据集切片）、频繁创建&#x2F;删除临时文件、以及在CheckPoint时同时写模型权重。这导致了&#x3D;&#x3D;元数据锁争抢&#x3D;&#x3D; + &#x3D;&#x3D;单点瓶颈&#x3D;&#x3D;：<ul>
+<li>元数据锁争抢（主要原因）：比如有1000个节点同时请求”在同一个父目录下创建文件”，为了保持一致性，文件系统必须先加锁（父目录锁），然后分配inode，再分配数据块，最后解锁；</li>
+<li>单点瓶颈（次要原因）：所有节点都要去请求中心化的元数据服务器，或者争夺同一个锁。这不仅导致每秒的元数据操作数（IOPS）极低，还导致延迟迅速上升。</li>
+</ul>
+</li>
+<li><strong>故障放大</strong>：大模型训练是一个高度同步的过程。几乎所有的GPU都在一个计算迭代（Step）里，必须等所有人把数据都准备好、把梯度同步完，才能进行下一步。这会出现三个问题：&#x3D;&#x3D;非抢占式锁与慢节点&#x3D;&#x3D; + &#x3D;&#x3D;同步屏障&#x3D;&#x3D; + &#x3D;&#x3D;异构硬件故障率高&#x3D;&#x3D;：<ul>
+<li>非抢占式锁与慢节点：如果某个节点因为硬件老化（比如PCIe降速）、网络丢包变成了所谓的”慢节点”，它会占用着锁不放，其他节点为了等这个锁，只能被迫排队；</li>
+<li>同步屏障：在同步训练模式下，只要有一个节点慢，整个集群都要等它；如果它一直不恢复，整个训练任务就会超时中断。一旦任务重启，几千张卡上的CheckPoint都需要从存储里重新加载；</li>
+<li>异构硬件故障率高：千卡集群中，网卡、光模块、交换机的故障率是极高的，在这种高度耦合的存储架构下，故障会影响全集群。</li>
+</ul>
+</li>
+</ol>
+</blockquote>
+<p>为了解决上面提到的问题，提出了如下解决方案：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905105910367.png" class="" title="训练存储挑战的解决方案">
+
+<ol>
+<li><p><strong>针对锁的问题</strong>：提出<strong>资源预分配、异步申请、批量授权</strong>，提前把资源分给各节点，尽可能避免锁竞争。此外，使用<strong>全分布式打散与集中管理相结合</strong>的方式进行管理。（个人理解是：同一把大锁拆分成无数个分片锁，分布在不同机器上并行处理；同时保留一个集中管理模块来宏观调控）</p>
+</li>
+<li><p><strong>针对慢节点问题</strong>：提出<strong>持续沉淀飞行检查案例库与周期性巡检</strong> + <strong>Bonding技术</strong>：</p>
+<ul>
+<li><strong>持续沉淀飞行检查案例库与周期性巡检</strong>：引入类似”哨兵”的机制，会总结历史上出现的各种节点故障、PCIe降速等案例，定期主动激活去检查所有的计算节点，一旦发现某节点延迟过高或报错，系统会果断将其剔除（针对节点问题的处理）；</li>
+<li><strong>Bonding技术</strong>（网卡绑定）：多条链路备用，一条链路断了，其他链路毫秒级自动顶替。”多路径重选和协议降级”保证即使路不通了也能绕道走或者降低标准先传过去（针对网络问题的处理）。</li>
+</ul>
+</li>
+<li><p><strong>针对存储节点</strong>：提出<strong>分组与多副本</strong> + <strong>故障域设计</strong>。确保数据在物理上有多份副本保障；结合故障域设计，把副本放在不同的机柜或机房，避免大片的单点故障；数据与元数据分离是为了避免管理海量数据的节点被数据读写拖垮。</p>
+</li>
+</ol>
+<p>此外，为了优化集群级有效算力和控制TCO，提出了如下解决方案：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905111940896.png" class="" title="DPU卸载模式与传统模式对比">
+
+<ul>
+<li><strong>左侧（传统模式）</strong>：存储任务（FS、块IO）跑在主机的Host OS内核里，必须占用CPU资源，再通过NIC去访问APFS；</li>
+<li><strong>右侧（DPU卸载模式）</strong>：将FS、块IO、协议栈全部<strong>下放到专用的DPU芯片</strong>上，主机CPU只负责”用户线程”和”计算任务”。</li>
+</ul>
+<blockquote>
+<p>用到的核心技术：Virtio-FS性能优化（虚拟化传输）、DMA&#x2F;零拷贝（数据不经过CPU内存直接传）、EC&#x2F;CRC硬件卸载（交给DPU芯片算），以及组件资源开销优化：</p>
+<ul>
+<li><strong>Virtio-FS</strong>：利用宿主机与虚拟机”共置”的特性，通过共享内存和DAX技术绕过宿主操作系统，极大减少了通信层数，让高速端到端网络路径尽可能直连，不需要频繁调用系统内核切换内核态与用户态；</li>
+<li><strong>DMA&#x2F;零拷贝</strong>：利用专用硬件（如RDMA）将数据直接从内存放入存储，全程不经过CPU；</li>
+<li><strong>EC&#x2F;CRC硬件卸载</strong>：让网络适配器（NIC）在数据流经时边传边算，直接将硬件算力用于存放校验码，避免线程调度；</li>
+<li><strong>组件资源开销优化</strong>：让DPU优先处理长连接关键流量，把短暂的突发流量留给CPU处理。</li>
+</ul>
+</blockquote>
+<p>下图讨论了在模型训练时，KVCache的决策，即KVCache的卸载过程需要考虑以下内容：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905113008358.png" class="" title="KVCache卸载决策">
+
+<ul>
+<li><p><strong>缓存命中的总开销必须小于重新PreFill（预填充）的开销</strong>：</p>
+<blockquote>
+<p>重新计算的路径是：<code>排队 -&gt; 重新PreFill -&gt; Decode</code>；缓存命中的路径是<code>排队 -&gt; 查找 -&gt; 读取 -&gt; 网络 -&gt; 注返 -&gt; Decode</code>。虽然缓存命中省去了耗时的PreFill，但引入了查找、读取和网络传输的额外开销。右侧的曲线给出了策略：&#x3D;&#x3D;复用概率高时，优先缓存；复用概率低时，直接重算&#x3D;&#x3D;。如果网络太慢，读取缓存比现算还慢，那就不缓存。</p>
+</blockquote>
+</li>
+<li><p>在实际卸载时，系统必须同时回答四个问题，全部通过才允许卸载：</p>
+<blockquote>
+<ol>
+<li><strong>值不值得缓存</strong>：重算的成本，能否覆盖读取、传输和注返（注入到显存）的开销？</li>
+<li><strong>能不能准确命中</strong>：租户、模型、版本、前缀与KV格式必须完全一致，如果换个模型乱命中，产生的就是”脏数据”；</li>
+<li><strong>能不能及时取回</strong>：带宽是否足够？排队是否会阻塞？必须满足用户的SLO；</li>
+<li><strong>异常时怎么办</strong>：网络抖动导致Miss、超时或数据异常了怎么办？系统必须能快速回退重算，不能让请求挂死。</li>
+</ol>
+</blockquote>
+</li>
+</ul>
+<p>Fusion Cache的产品结构：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905114051472.png" class="" title="Fusion Cache产品结构">
+
+<ul>
+<li><strong>最上层（PPU节点）</strong>：推理引擎运行在带HBM和CPU Memory的PPU（加速计算芯片）节点上，HBM最快但最贵，只能放最活跃的数据；</li>
+<li><strong>中间层（推理加速组件）</strong>：包含多级缓存、智能路由、预取加速、全局共享、高速通信，这些组件负责智能判断数据怎么写、怎么读；</li>
+<li><strong>下一层（本地NVMe + Fusion Cache Pro）</strong>：通过RDMA高速网络，将多台机器的本地NVMe打通，形成一个”近计算多机分布式存储池”，实现跨实例共享；</li>
+<li><strong>最底层（Fusion Cache APFS）</strong>：提供底层的”服务池级共享持久化存储池”，实现本地&#x2F;远端分层，以及计算与容量的彻底解耦。</li>
+</ul>
+<h2 id="二、《规模化AI存储架构设计——分层与解耦架构为何至关重要》"><a href="#二、《规模化AI存储架构设计——分层与解耦架构为何至关重要》" class="headerlink" title="二、《规模化AI存储架构设计——分层与解耦架构为何至关重要》"></a>二、《规模化AI存储架构设计——分层与解耦架构为何至关重要》</h2><h3 id="1-AI数据全景概览"><a href="#1-AI数据全景概览" class="headerlink" title="1. AI数据全景概览"></a>1. AI数据全景概览</h3><p>IDC预测：2028年全球数据生成量将达到394ZB，2023-2028年复合年增长率高达24%。且图像、音频与视频密集型AI模型是当前存储需求的最核心驱动力。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905115049432.png" class="" title="全球数据生成量预测">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905115303385.png" class="" title="图像音频视频密集型模型是存储需求核心驱动力">
+
+<h3 id="2-超大规模客户分层存储的成熟实践"><a href="#2-超大规模客户分层存储的成熟实践" class="headerlink" title="2. 超大规模客户分层存储的成熟实践"></a>2. 超大规模客户分层存储的成熟实践</h3><p>经过统计，约80%的云存储是基于HDD的。因此提出了”<strong>数据周期需要分层存储架构，每个阶段匹配适合的存储介质以优化TCO</strong>“的核心理念。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905115757619.png" class="" title="AI数据生命周期的分层匹配示意图">
+
+<ul>
+<li><strong>数据摄入&#x2F;准备阶段</strong>：使用冷存储&#x2F;温存储（HDD为主，容量优先，带宽为辅）；</li>
+<li><strong>训练阶段</strong>：使用温存储（HDD为主，性能优先，容量为辅）；</li>
+<li><strong>推理阶段</strong>：因为需要极速读取，使用温&#x2F;热存储（HDD &amp; 闪存，带宽与容量并重）。</li>
+</ul>
+<p>为了降低TCO，给出了不同存储介质的成本对比：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120203471.png" class="" title="不同存储介质成本对比1">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120505221.png" class="" title="不同存储介质成本对比2">
+
+<p>对于<strong>1EB容量、5年期的总拥有成本</strong>：QLC全闪存高达7.29亿美元，而CMR HDD只需1.43亿美元，SMR HDD最便宜，只需1.221亿美元。SMR比全闪存便宜约6倍，比CMR便宜约15%。且在五年周期内，SMR对CMR的累计成本优势从1460万美元扩大到了2110万美元。</p>
+<p>同样是承载1EB数据，SMR只需要55个机架，CMR需要72个，QLC需要61个。SMR相比CMR节省了17个机架（约-24%），这不仅意味着更少的磁盘柜和交换机，更意味着大幅降低数据中心极其昂贵的电力消耗。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120548207.png" class="" title="1EB数据的机架数量对比">
+
+<h3 id="3-西部数据开放软件生态"><a href="#3-西部数据开放软件生态" class="headerlink" title="3. 西部数据开放软件生态"></a>3. 西部数据开放软件生态</h3><p>西部数据将其高密度硬盘与Ceph、IBM Storage Scale、BeeGFS、Leil等主流存储软件进行了联合测试与适配，证明了分层存储理念能够在TCO优化上有重要的作用。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120731555.png" class="" title="西部数据开放软件生态">
+
+<h2 id="三、《智能体时代存储的新机遇和挑战》"><a href="#三、《智能体时代存储的新机遇和挑战》" class="headerlink" title="三、《智能体时代存储的新机遇和挑战》"></a>三、《智能体时代存储的新机遇和挑战》</h2><p>过去的对话式推理是短上下文、临时缓存、低并发；现在进入Agentic智能体时代，变成了多轮工作流、超长上下文、可复用长期记忆、自我派生增长。这直接激化了&#x3D;&#x3D;“HBM的高昂成本”与“推理负载需要高效复用”&#x3D;&#x3D;之间的矛盾。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123010082.png" class="" title="对话式推理与智能体时代的对比">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123243141.png" class="" title="智能体时代的存储需求">
+
+<p>由于长上下文的发展趋势，存储厂商必须通过多级存储来平衡成本。这就引入了一个新的问题：选择本地存储还是外部存储。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123504614.png" class="" title="本地存储与外部存储的选择">
+
+<p>由于外部存储是一个可共享分离的NVMe Pool，核心优势是<strong>池化、共享，能带来更大的容量、性能和更优的数据管理</strong>，相比于本地存储更具优势，因此使用外部存储作为KVCache的底层大容量共享底座，为智能体提供长期的持久化存储。</p>
+<p>GPU真正在算的时间才是产出的时间。当KVCache加载时间小于计算时间时是”纯收益”，大于时就是”负收益”（在第一个议题中也有表达）。这个平衡点称为”黄金交叉点”。理想的卸载率要无限接近100%，但又要保证不产生延迟。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123840196.png" class="" title="KVCache加载与计算的黄金交叉点">
+
+<p>此外，AI工作流中的大模型（特别是稀疏注意力模型）产生的新数据特征，与底层传统存储架构能提供的IO特性之间存在严重的”错配”问题：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905124119563.png" class="" title="大IO顺序读取与小IO稀疏读取的错配">
+
+<ul>
+<li><strong>左侧部分：大IO顺序读取</strong>。存储把整块巨大的KVCache数据，全部通过大IO顺序加载到HBM里，然后再由GPU上的”Top-K selector（选择器）”挑出其中真正需要的token送给Sparse Attention（稀疏注意力）。这样的负载对存储系统极其友好，但是对HBM的计算资源造成了浪费，因为存在着大量无效读取；</li>
+<li><strong>右侧部分：小IO稀疏读取</strong>。存储精确识别出真正需要的token，直接把它抽取出来（Sparse Retrieved），跳过HBM的大块预加载，直接放进HBM，然后再喂给稀疏注意力。这样的操作极大地节省了HBM空间和传输的数据量，但是这样的随机小IO对存储系统来说是一个巨大的挑战（寻址开销大，存储的带宽发挥不出来，排队延迟增加）。</li>
+</ul>
+<p>在这种稀疏化小IO场景下，传统以CPU为中心的架构中，CPU已经成为系统的主要瓶颈：</p>
+<ul>
+<li>从GPU服务器侧看，一颗CPU无力承担多至8路GPU的巨大IO并发；</li>
+<li>从外部存储节点看，4张网卡和24&#x2F;36块NVMe的并发能力也已经远超CPU处理能力。</li>
+</ul>
+<p>为了解决上述瓶颈，提出了”CXL内存 + NVMe全闪”和”DPU直通”的双架构，并推出了软硬件一体的Xcache方案。它可以向上兼容NVIDIA、昆仑芯、沐曦等所有异构算力，以及vLLM、SGLang、TensorRT-LLM等推理引擎。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905125231405.png" class="" title="Xcache方案总体">
+
+<h3 id="1-硬件架构"><a href="#1-硬件架构" class="headerlink" title="1. 硬件架构"></a>1. 硬件架构</h3><p><strong>CXL高性能可共享内存池</strong>：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905125356847.png" class="" title="CXL内存池">
+
+<p>利用CXL 2.0协议，把多台服务器的内存池化，做成”千TB级”的CXL内存框。它用Load&#x2F;Store直接内存级访问语义，实现KV的精准稀疏读取和”智能挑选”，时延低至亚微秒。</p>
+<blockquote>
+<p>为了解决大小IO错配问题。</p>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905125741769.png" class="" title="DPU直通架构">
+
+<p>把DPU放进存储盘柜里，通过NVMeoF KV标准协议互通。DPU硬件加速IO栈，绕过CPU的协议解析，实现原生KV直通，让KVCache拥有长期记忆和灵活共享复用，兼容传统CPU主控模式。</p>
+<blockquote>
+<p>解决CPU瓶颈问题。</p>
+</blockquote>
+<h3 id="2-软件架构"><a href="#2-软件架构" class="headerlink" title="2. 软件架构"></a>2. 软件架构</h3><p>有了上面的这些硬件，Xcache分层存储结构从快到慢划分出了6层：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905130233985.png" class="" title="Xcache六层分层存储结构">
+
+<ul>
+<li><strong>G1（HBM）</strong>和<strong>G2（Local Memory）</strong>：放当前最热的、机架内复用的数据；</li>
+<li><strong>G2.5（CXL Memory）</strong>：CXL内存框，放跨节点的稀疏复用、POD共享和长期记忆；</li>
+<li><strong>G3（Local&#x2F;Rack SSD）</strong>：放前缀复用；</li>
+<li><strong>G3.5（CMS &#x2F; EBOF盘框）</strong>：EBOF，放PB级容量、可靠存储的KV，延迟是亚毫秒级；</li>
+<li><strong>G4（分布式存储）</strong>：通过POSIX RDMA（毫秒级），放上百PB级的集群共享、历史长期记忆。</li>
+</ul>
+<p>此外，通过KVCache原生的分布式存储系统软件来实现对硬件的调度：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905131921056.png" class="" title="KVCache原生分布式存储系统软件">
+
+<ul>
+<li><strong>CMS Backend</strong>：由于在硬件上通过NVMeoF KV标准协议实现了互通，因此CMS存储可以直接<code>KV -&gt; DPU -&gt; NVMe盘</code>，不再需要中间的文件系统层。因此<strong>数据不需要被拆成块，直接以键值对的形式在底层被命中并读取</strong>，且KV的读写指令都由DPU硬件卸载完成，绕过了主机CPU的干预；</li>
+<li><strong>命名空间</strong>：对于离散型KV（如多轮对话中互不相干的独立上下文），CMS采用DHT一致性HASH算法来打散，保证了数据均匀分布在所有存储节点上；对于Radix索引型KV（长上下文常见的结构），它们有大量的<strong>公共前缀</strong>，CMS采用<strong>按子模分裂打散</strong>，把公共前缀提取出来共用，底层用Radix树结构来组织；</li>
+<li><strong>空间索引</strong>：针对离散型KV，使用动态hash索引；针对Radix型KV，使用ART树索引。</li>
+</ul>
+<h2 id="四、《面向低带宽传输和存储的视觉语义编码技术与标准——机器视觉编码技术与标准进展》"><a href="#四、《面向低带宽传输和存储的视觉语义编码技术与标准——机器视觉编码技术与标准进展》" class="headerlink" title="四、《面向低带宽传输和存储的视觉语义编码技术与标准——机器视觉编码技术与标准进展》"></a>四、《面向低带宽传输和存储的视觉语义编码技术与标准——机器视觉编码技术与标准进展》</h2><h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><p>在过去30多年来，视频标准从MPEG-2、H.264、H.265到H.266，每一代追求的都是压缩效率翻倍，这些的主要驱动力是5000亿视频服务+5700亿智能手机这个市场。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906105720483.png" class="" title="视频编码标准演进">
+
+<p>80%的人类感知来自视觉，视频流量占网络主流。更重要的是，机器视觉是AI最大的应用领域，大多数5G应用场景都跟机器视觉有关，市场规模正在暴涨，传统的视频编码已经跟不上了。</p>
+<blockquote>
+<p>传统的视频编码协议都是为了给人看，最终的目标是感知质量。但是在机器视觉中，模型看视频主要是为了提取特征。</p>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906110015066.png" class="" title="机器视觉是AI最大的应用领域">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906110405785.png" class="" title="机器视觉只需要特征">
+
+<p>这里主要想体现的是：在机器视觉的应用中，传输数据时，没必要把客观世界的完整视频传过去，只需要把机器需要的特征传过去就行了。</p>
+<blockquote>
+<p>通过限定的码率下，最小化机器视觉任务的损失，实现压缩率与任务准确率的平衡。这能在极低带宽下，实现极高的压缩比。</p>
+</blockquote>
+<p>为了解决上述的问题，提出了”面向机器视觉和人机混合视觉的压缩编码”：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906111114110.png" class="" title="面向机器视觉的压缩编码框架">
+
+<p><strong>左侧部分（编码端）</strong>：</p>
+<ul>
+<li><strong>Temporal resample（时域重采样）</strong>：降低帧率。机器识别动作不需要像人类眼睛一样看30帧&#x2F;秒，可能5帧&#x2F;秒就足够了，这直接减少了大量时间维度的冗余；</li>
+<li><strong>Spatial resample（空域重采样）</strong>：降低分辨率。机器进行目标检测时，把4K降采样到1080p甚至720p，不影响机器的识别；</li>
+<li><strong>Task-based preprocessing（基于任务的预处理）</strong>：基于AI任务”定向增强”，比如根据识别任务去噪、增强边缘对比度，让机器更容易提取特征，把不相关的背景信息直接过滤掉；</li>
+<li><strong>Bit truncation（比特截断）</strong>：降低位深。机器识别主要靠亮度轮廓，直接把代表精度的比特位截掉即可。</li>
+</ul>
+<p><strong>中间部分（解码器VTM）</strong>：直接将编码端处理后的数据喂给VTM引擎去压缩。</p>
+<p><strong>右侧部分（解码端）</strong>：</p>
+<ul>
+<li><strong>Bit enhancement（比特增强）</strong>：补齐被截断的比特位；</li>
+<li><strong>Temporal restoration（时域恢复）</strong>：把降低的帧率恢复到原来的平滑度；</li>
+<li><strong>Spatial restoration（空域恢复）</strong>：把降低的分辨率用超分算法恢复上去；</li>
+<li><strong>Task-based restoration（基于任务的恢复）</strong>：根据AI任务的需求，重建出被去掉的特征。</li>
+</ul>
+<h3 id="FCM技术路线"><a href="#FCM技术路线" class="headerlink" title="FCM技术路线"></a>FCM技术路线</h3><blockquote>
+<p>FCM是作为一个过渡到VCM的技术路线，核心思路是直接压缩特征。</p>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906112340387.png" class="" title="FCM技术路线">
+
+<ul>
+<li><strong>核心流程</strong>：提取中间特征（Intermediate features） -&gt; 特征降维（降采样&#x2F;多尺度特征重建，把没用的特征丢弃） -&gt; 特征转换（打包、量化，变成二进制） -&gt; 特征内核编码（Feature Inner Coding）。</li>
+</ul>
+<blockquote>
+<p>中间部分的内容表示出，FCM为内核编码提供传统的成熟H.264、H.266&#x2F;VVC编码器外，还提供超先验神经熵编码器（deepCABAC），同时包含了PCA、时域重采样、感兴趣区域选择等经典算法。</p>
+</blockquote>
+<h3 id="DCM技术方案"><a href="#DCM技术方案" class="headerlink" title="DCM技术方案"></a>DCM技术方案</h3><blockquote>
+<p>DCM展现的是未来最终的编码方案，完全抛弃传统视频编码规则，端到端使用深度神经网络来压缩图像。</p>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906112823824.png" class="" title="DCM端到端神经编码方案">
+
+<p><strong>编码端（左侧）</strong>：</p>
+<ul>
+<li><strong>输入图像 → 特征提取模块</strong>：图像首先进入特征提取网络（由Conv3x3、LeakyReLU、Conv1x1、GDN等构成），这个网络负责把像素级的图像转换成一个压缩的特征张量Y；</li>
+<li><strong>正交变换模块 &amp; 量化模块（Q）</strong>：通过量化（Q）操作，把神经网络算出来的连续小数变成离散的整数；</li>
+<li><strong>可变码率模块</strong>：通过超先验网络控制量化的步长。</li>
+</ul>
+<p><strong>超先验与上下文模型</strong>：</p>
+<ul>
+<li><strong>超先验获取模块</strong>：从主特征Y中提取出另一个更小的特征Z（超先验）；</li>
+<li><strong>上下文估计模块、均值估计模块、方差估计模块</strong>：这组成了上下文模型。它利用前面已经解码出来的数据（利用自回归或注意力机制），结合Z，实时预测当前数据块的概率。预测得越准，熵编码（AE&#x2F;AD）压缩得越多。右侧的红蓝相间的模块（Conv1x1、GDN、LeakyReLU）是用来计算这些概率参数的神经网络。</li>
+</ul>
+<p><strong>解码端（右侧底部）</strong>：</p>
+<ul>
+<li><strong>特征匹配模块 &amp; 重建模块</strong>：解码头接收到量化后的特征Yhat后，通过反量化、逆向变换，最后经过一系列神经网络进行重建。</li>
+</ul>
+<p><strong>应用案例</strong>：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906113737208.png" class="" title="机器视觉编码应用案例1">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906113841497.png" class="" title="机器视觉编码应用案例2">
+
+<h2 id="五、《解耦·共享·增效：CXL内存池化的场景验证》"><a href="#五、《解耦·共享·增效：CXL内存池化的场景验证》" class="headerlink" title="五、《解耦·共享·增效：CXL内存池化的场景验证》"></a>五、《解耦·共享·增效：CXL内存池化的场景验证》</h2><p>主要问题：AI模型参数暴增，服务器对HBM和DDR的需求激增。但HBM受限于GPU封装难以扩展；传统DDR受限于DIMM插槽数量，扩展往往需要连带升级昂贵的CPU和主板；SSD虽然便宜，但IO路径长、延迟高，不适合高性能场景。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906115314991.png" class="" title="内存扩展的困境">
+
+<p>为了解决上述的问题，提出了CMM-D高性能内存拓展器。采用CXL 2.0 &amp; PCIe 5.0标准，单卡最高256GB，带宽可达36GB&#x2F;s，延迟约110ns。</p>
+<blockquote>
+<p>它的关键是能脱离CPU主板独立插拔。</p>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906115506169.png" class="" title="CMM-D内存拓展器">
+
+<p>基于CMM-D的硬件支撑，提出了CXL池化方案：</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906120457543.png" class="" title="CXL内存池化方案">
+
+<ul>
+<li><strong>基于RDMA的内存池化</strong>：通过网线扩展内存，依赖外部服务器，TCO极高，且性能受网络限制；</li>
+<li><strong>基于CXL的内存池化</strong>：通过CXL交换机扩展，不依赖服务器，无需网卡，TCO极低，且提供硬件级的内存一致性。</li>
+</ul>
+<p>为了验证基于CXL的内存池化的表现，实测了在三种典型高负载场景下的表现：</p>
+<h3 id="场景一：Redis集群"><a href="#场景一：Redis集群" class="headerlink" title="场景一：Redis集群"></a>场景一：Redis集群</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906120733787.png" class="" title="Redis集群场景">
+
+<p>传统的Redis扩容必须”Scale-out”（买新CPU和主板），且冷热数据不均会导致负载不均衡，数据迁移会造成性能损失。</p>
+<p>基于CXL内存池化的Redis集群方案的核心是：引入CXL Switch，将Redis内存池化。将<strong>Value</strong>放在CXL Switch后面的共享内存池中，而<strong>Key</strong>保留在本地节点的DRAM中。</p>
+<blockquote>
+<p>通过CXL内存共享，热点节点的内存压力可以由CXL共享池中的空闲空间去分担，实现了零拷贝的负载均衡。</p>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906121117537.png" class="" title="CXL Redis性能表现">
+
+<p>在Intel Xeon CPU、256GB DDR5、两块256GB的CMM-D、Redis 7.2.4，并使用业界标准的YCSB “All read”负载测试下，对比传统的RDMA Redis，CXL Redis的吞吐性能提升了41%，负载均衡时间缩短了46%。</p>
+<h3 id="场景二：LLM-KV-Cache"><a href="#场景二：LLM-KV-Cache" class="headerlink" title="场景二：LLM KV Cache"></a>场景二：LLM KV Cache</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906121350789.png" class="" title="LLM KV Cache场景">
+
+<p>随着上下文变长，KV Cache爆炸式增长，GPU显存和主机内存不够；用SSD卸载延迟太高；用RDMA卸载成本太高。</p>
+<p>方案核心是：将CMM-D接入vLLM推理系统，通过修改内核将其视为独立NUMA节点，并修改LMCache支持CXL内存Pinning，让GPU能高效直访CXL内存。</p>
+<blockquote>
+<p>软件上：</p>
+<ul>
+<li><strong>修改内核</strong>：将CMM-D识别为独立NUMA节点；</li>
+<li><strong>修改LMCache</strong>：使其支持以交织的方式访问CXL switch的内存池，让大模型不把数据只留在本地；</li>
+<li><strong>配置内存固定</strong>：GPU绕过CPU，直接通过PCIe&#x2F;CXL通道访问远端的CXL内存池。</li>
+</ul>
+<p>硬件上：</p>
+<ul>
+<li><strong>计算端</strong>：有两个CPU（CPU0&#x2F;CPU1），连接着各自的本地DIMM以及本地的E3.S 2T插槽；</li>
+<li><strong>网络&#x2F;交换层</strong>：CPU通过PCIe交换机连接到CXL Switch；</li>
+<li><strong>异构算力端（GPU&#x2F;DSP）</strong>：在CXL Switch下方，连接着DSP，下面挂着GPU和M200等加速卡。</li>
+</ul>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906121600271.png" class="" title="CXL KVCache性能表现">
+
+<blockquote>
+<p>在常规容量下，经过适配修改后的CXL方案吞吐性能已与原生DRAM基本持平；而当KV Cache容量超过DRAM极限触发重算时，CXL switch方案可提供5.6倍的有效容量扩展，并依然维持约36万TPS的高吞吐性能。</p>
+</blockquote>
+<h3 id="场景三：MySQL-NDB分布式数据库"><a href="#场景三：MySQL-NDB分布式数据库" class="headerlink" title="场景三：MySQL NDB分布式数据库"></a>场景三：MySQL NDB分布式数据库</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906122930147.png" class="" title="MySQL NDB场景">
+
+<p>数据节点与SQL节点之间，依赖传统的TCP&#x2F;IP或RDMA网络通信，小数据包高频传输时，网络延迟成为了巨大瓶颈。</p>
+<p>方案核心是：用CXL Switch直接取代网络交换机，把原本需要通过网线传输的数据变成了内存级直接访问。</p>
+<blockquote>
+<p>数据节点检索到数据后，直接写入CXL内存；SQL节点直接从CXL内存里读数据，绕过了网络协议栈和网卡，实现了零拷贝共享。同时，CXL内存池还可以扩展数据的缓冲池，加速数据获取。</p>
+</blockquote>
+<p>在Intel Xeon CPU、1TB DDR5、两块256GB的CMM-D、MySQL NDB分布式数据库下，对比传统的RDMA MySQL，CXL MySQL的系统总吞吐量提升了17%，其中写入场景性能提升幅度最大，达到了17.4%。</p>
+<h2 id="六、《KVoF：KV时代的Fabric协议》"><a href="#六、《KVoF：KV时代的Fabric协议》" class="headerlink" title="六、《KVoF：KV时代的Fabric协议》"></a>六、《KVoF：KV时代的Fabric协议》</h2><h3 id="背景-1"><a href="#背景-1" class="headerlink" title="背景"></a>背景</h3><ul>
+<li><strong>趋势一：KVCache，以存代算。</strong> 大模型无论是全注意力还是线性注意力，KV重算的代价都极其高昂。只要存下KV，就能免去重算（以存代算）。行业印证：Mooncake以KVCache为核心做PD分离与分层缓存，吞吐提升75%。</li>
+</ul>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906124916779.png" class="" title="KVCache以存代算">
+
+<ul>
+<li><strong>趋势二：序列M级增长——分级缓存。</strong> 主流模型上下文已从4k涨到1M甚至4M以上，1M上下文约需70GB的KV。容量巨大，单点XPU（GPU）显存放不下，必须层层下移（HBM → DRAM → SCM → SSD），但每下一层时延增加10-100倍，成本大降。层与层之间需要高性能、差异化的连接与访问。</li>
+</ul>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906124944527.png" class="" title="序列M级增长与分级缓存">
+
+<ul>
+<li><strong>趋势三：Agent记忆——KV持久化+向量记忆。</strong> Agent任务跨会话、跨轮次，需要长期记忆和短期记忆。这种”可写、共享、跨会话”的记忆，要求按Key内容寻址、细粒度随机读，且对时延极敏感。两类记忆（KV和向量）统一在同一个数据面承载。</li>
+</ul>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906125001761.png" class="" title="Agent记忆与KV持久化">
+
+<h3 id="挑战"><a href="#挑战" class="headerlink" title="挑战"></a>挑战</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906125530089.png" class="" title="KVoF面临的挑战">
+
+<blockquote>
+<p>这里主要总结了当前面临的一些挑战：</p>
+<ol>
+<li><strong>多后端协议兼容，适配爆炸</strong>：DRAM、3FS、SSD、对象存储协议各异，推理框架需要做N×M适配，重复造轮子；</li>
+<li><strong>异构介质访问，语义断层</strong>：介质有快有慢，网络有机内、机间、集群。冷热&#x2F;优先级&#x2F;TTL语义无法统一，无法做到在对的时间，把对的KV放到对的层；</li>
+<li><strong>性能（512B小IO @ 100M IOPS）</strong>：NVMe时代的命题是4KB@1M IOPS，而KV时代变成了<strong>512B@100M IOPS</strong>。这是”IOPS bound”而不是带宽问题，必须通过深度流水线、预取和协议层聚合来压榨出性能；</li>
+<li><strong>XPU自身开销，算力被浪费</strong>：最贵的是XPU，但它被当作”二传手”，要处理拷贝、内存bounce buffer、网络协议栈、网卡doorbell，挤占了宝贵的Decode算力。目标是XPU Near-Zero Overhead（近零开销）。</li>
+</ol>
+</blockquote>
+<p>为了解决上面提到的一些问题&#x2F;挑战，提出了KVoF协议（面向KV数据对象的开放传输协议，连接推理应用与多级存储介质）：</p>
+<blockquote>
+<p>主要目的是：统一KV数据在大模型推理环境下的访问和传输标准。</p>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906125931947.png" class="" title="KVoF协议总体设计">
+
+<blockquote>
+<ul>
+<li><strong>数据传输层</strong>：摒弃CPU作为中间缓冲，利用RDMA和CXL的硬件地址翻译原语。XPU直接登记自己的显存物理地址，网卡或CXL交换机收到请求后，直接将数据包通过PCIe总线写入显存地址。CPU完全不感知数据搬运，无内核态切换，无内存拷贝。对于CXL，主机内存池化后，KV数据直接映射进XPU的地址空间，XPU直接通过Load&#x2F;Store指令读取远端内存；</li>
+<li><strong>事务层：IO聚合与分散聚集结合</strong>：KVoF在传输层里实现了批量聚合提交，软件层把同一批次内成百上千个稀疏的512B请求合并成一个大的传输事务，利用大包的高带宽传输；接收端通过Scatter-Gather List将网络包拆解，精准投递到XPU显存中对应的分散地址，减少单次IO开销，充分利用硬件传输效率；</li>
+<li><strong>寻址与路由：控制面与数据面分离的硬件加速引擎</strong>：控制面（CPU）运行在普通CPU上，负责计算KV的冷热度、Namespace管理、QoS策略，并将”逻辑Key到物理地址”的映射表通过低速控制通道下发到DPU&#x2F;NIC的内存中；数据面（DPU&#x2F;NIC）里面固化了一个专门的KV解析与查找引擎，当收到KV请求时，硬件直接在本地SRAM中查表，找到物理地址，直接发起DMA读，查询过程完全不产生CPU中断，不触发系统调用；</li>
+<li><strong>XPU调度：异步流水线与计算通信重叠</strong>：协议栈在XPU侧提供了一套异步提交原语。XPU发起IO请求后，马上返回去算下一层（Layer i+1）的注意力。当数据通过RDMA到达显存后，网卡向XPU发出一个轻量中断或Doorbell，XPU直接去取数据。</li>
+</ul>
+</blockquote>
+<p><strong>统一寻址格式</strong>：不同推理框架底层寻址方式完全不同，这就导致了同一份KV，换个框架就无法寻址，底层存储系统无法统一管理。为了解决这个问题，定义了一个统一的寻址格式，包含<code>&#123;模型/版本/层, token块/前缀hash, dtype, 生命周期元数据&#125;</code>。这时同内容同Key，因为是按内容哈希寻址，所以天然支持前缀复用与跨实例去重。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906132801773.png" class="" title="统一寻址格式">
+
+<p><strong>XPU直通IO</strong>：传统路径为<code>存储 -&gt; 网络 -&gt; CPU -&gt; XPU</code>，数据要先拷到CPU内存，CPU再处理网络协议栈，最后再拷给GPU，极大地浪费了昂贵的CPU算力，并增加极高延迟。为了解决这个问题，KVoF让<strong>XPU直接发起并完成KV IO</strong>，路径变为<code>存储 -&gt; 网络 -&gt; XPU</code>：</p>
+<blockquote>
+<p>XPU直接向存储发起读写请求，数据通过RDMA&#x2F;CXL直达XPU显存。</p>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906132958761.png" class="" title="XPU直通IO路径">
+
+<p>此外，KVoF直接把KV语义硬化进DPU &#x2F; 网卡 &#x2F; 存储控制器，让硬件直接处理KV指令：</p>
+<blockquote>
+<ol>
+<li><strong>Key解析与路由</strong>：硬件直接理解KV寻址，不再需要CPU解析复杂的哈希；</li>
+<li><strong>放置查找</strong>：元数据查询不出芯片，大幅降低访问延迟；</li>
+<li><strong>IO聚合</strong>：针对模型产生的海量小IO，在硬件内部进行聚合，碎片不下发，提升网络利用率；</li>
+<li><strong>协议栈offload</strong>：传输协议全流程卸载到硬件，彻底绕开CPU处理网络协议栈的开销。</li>
+</ol>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906133200380.png" class="" title="KV语义硬件化">
+
+<p>为了进一步消除GPU（XPU）空转，解决海量小IO和稀疏读取带来的性能损耗，KVoF通过以下方法实现：</p>
+<blockquote>
+<ol>
+<li><strong>批量聚合提交</strong>：将模型产生的多个离散且微小的KV块，合并为一次大的IO请求，按批聚合；</li>
+<li><strong>异步流水线</strong>：IO提交与Attention计算重叠，XPU发起IO后不等数据，而是继续算当前层；</li>
+<li><strong>稀疏访问下沉</strong>：稀疏查找、元数据访问等任务，下放到底层硬件（DPU&#x2F;网卡）。</li>
+</ol>
+</blockquote>
+<h2 id="七、《面向大模型推理场景的KVCache测试研究》"><a href="#七、《面向大模型推理场景的KVCache测试研究》" class="headerlink" title="七、《面向大模型推理场景的KVCache测试研究》"></a>七、《面向大模型推理场景的KVCache测试研究》</h2><p>这个议题主要汇报的是一个测试报告，通过标准化测试，为AI存储选型提供量化基准和数据支撑。</p>
+<p>测试环境——硬件：H20 GPU推理服务器、SN5600网络交换机（400G&#x2F;800G）、BlueField-3 DPU、高性能SSD；软件：vLLM&#x2F;SGLang等推理引擎，Qwen&#x2F;DeepSeek等主流模型，以及焱融科技、XSKY、泛联信息等提供的存储系统。</p>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906134546080.png" class="" title="KVCache测试环境">
+
+<blockquote>
+<ul>
+<li>测试场景：PD一体及分离，基于DeepSeek-R1，对比原生vLLM和接入YRCache后的系统；</li>
+<li>核心结果：通过引入YRCache，中端GDDR GPU的推理性能显著提升，已接近甚至在某些部分超越了高端HBM GPU原生方案，实现了推理提速降本的双重突破。</li>
+</ul>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906134803236.png" class="" title="YRCache测试结果1">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906134855155.png" class="" title="YRCache测试结果2">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135008925.png" class="" title="YRCache测试结果3">
+
+<blockquote>
+<ul>
+<li>测试场景：基于JBOF存储，专注Prefill-Only，对比KVCache命中与重算；</li>
+<li>核心结果：长序列场景下，TTFT（首Token时延）从数秒降至百毫秒级；吞吐量提升了一个数量级（达10-28倍，最高32倍）。JBOF性能接近标准服务器集群。</li>
+</ul>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135157407.png" class="" title="JBOF测试结果1">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135253560.png" class="" title="JBOF测试结果2">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135307696.png" class="" title="JBOF测试结果3">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135341684.png" class="" title="JBOF测试结果4">
+
+<blockquote>
+<ul>
+<li>测试场景：双RDMA路径（GPU Direct RDMA、普通RDMA）适配，基于DeepSeek-R1和Qwen3-235B；</li>
+<li>核心结果：TTFT最大降幅达98%，Token吞吐量TPS最高提升65倍。大幅缩小了中端GDDR GPU与高端HBM GPU之间的算力差距，实现了结构性降本。</li>
+</ul>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135400641.png" class="" title="双RDMA路径测试结果">
+
+<blockquote>
+<ul>
+<li>测试场景：单台配置4块BF-3 DPU，24块NVMe SSD，对KV Cache卸载涉及的四种IO模型（顺序读写、随机读写）、五种RAID配置进行全面基准测试；</li>
+<li>核心结果：为业界AI推理KV Cache卸载场景的存储选型提供了量化基准。</li>
+</ul>
+</blockquote>
+<h2 id="八、《智算存储技术发展与生态构建》"><a href="#八、《智算存储技术发展与生态构建》" class="headerlink" title="八、《智算存储技术发展与生态构建》"></a>八、《智算存储技术发展与生态构建》</h2><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135722369.png" class="" title="大模型训练全生命周期">
+
+<p>大模型训练过程全生命周期为：数据采集、数据预处理、模型训练、推理。</p>
+<blockquote>
+<p>整个过程中，IO特征矩阵为：</p>
+<ul>
+<li>预处理：多线程、小IO（KB级）、顺序读、系统吞吐性能强；</li>
+<li>训练CheckPoint写&#x2F;断点续训读：多线程、大IO（MB级）、顺序读写、多文件（GB级）；</li>
+<li>推理模型加载：多线程、大IO（MB级）、顺序读；</li>
+<li>推理KV Cache读写：多线程、混合IO（KB+MB级）、随机读写、系统吞吐性能强；</li>
+<li>推理Prefill&#x2F;Decode：多线程、小IO（KB级）、混合随机读写。</li>
+</ul>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135942063.png" class="" title="IO特征矩阵">
+
+<blockquote>
+<p><strong>数据预处理时</strong>，数据会加载到服务器内存中，由CPU进行解码、格式转换、数据增强，再批量送给GPU。此时，系统需要具备极高的系统吞吐性能，且要能扛住海量小文件元数据操作的巨大压力。</p>
+<p><strong>训练过程CheckPoint</strong>：在训练过程中大约每2小时保存一次，需要所有GPU卡并发写出大IO的多个大文件。这种”周期性、瞬时性”的巨大带宽需求，不仅给存储网络带来巨大的冲刷压力，还造成了昂贵的GPU算力白白停滞。</p>
+</blockquote>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906140004905.png" class="" title="推理阶段的IO特征">
+
+<blockquote>
+<p>模型推理阶段的特征相反：在<strong>模型加载</strong>时，多线程大IO顺序读多个大文件，主要靠系统吞吐性能；KVCache缓存读写是多线程、混合IO，不仅顺序读多个大文件，还有随机的读写请求，且要求系统高吞吐；<strong>推理Prefill&#x2F;Decode</strong>时，则是多线程、小IO、混合随机读写多个大文件。传统SSD和文件系统擅长顺序大块读取，而稀疏注意力机制产生的是大量的512B小IO随机读取，导致存储系统无法有效利用带宽，引发严重的CPU Bubble。</p>
+</blockquote>
+<h3 id="常见的解决方案"><a href="#常见的解决方案" class="headerlink" title="常见的解决方案"></a>常见的解决方案</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906140552541.png" class="" title="常见解决方案总览">
+
+<p><strong>软件&#x2F;文件系统侧：</strong></p>
+<p>1）<strong>DeepSeek（3FS分布式文件系统）方案</strong>：</p>
+<ul>
+<li><strong>架构</strong>：HBM池化 + 外置存储，通过”Prefill Load Balancer”和”Decode Load Balancer”将任务分发；</li>
+<li><strong>核心技术</strong>：将Token上下文的Key-Value数据，通过3FS分布式文件系统，以”小文件合并成大文件”的方式，基于POSIX接口，<strong>直接卸载至外部KV Cache Storage</strong>；</li>
+<li><strong>特点</strong>：极度依赖并行文件系统（3FS）的超大带宽来满足7.2 Tbps的高速CXL接口，通过多级池化有效降低了内存成本。</li>
+</ul>
+<p>2）<strong>Mooncake（PD分离+存算分离）方案</strong>：</p>
+<ul>
+<li><strong>架构</strong>：将Prefill（预填充）和Decode（解码）节点彻底分离，将GPU集群的DRAM、SSD等存储资源组合成一个<strong>分布式的多级KVCache缓存资源池</strong>（GPU显存 -&gt; 主机内存 -&gt; 本地SSD）；</li>
+<li><strong>优化目标</strong>：对Prefill阶段优化”Max Cache Reuse”和”TTFT SLO（首字延迟）”；对Decode阶段优化”Max Throughput”；</li>
+<li><strong>特点</strong>：通过精细的KVCache管理，实现”以存代算”。</li>
+</ul>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906140612889.png" class="" title="DeepSeek与Mooncake方案">
+
+<p><strong>硬件侧：</strong></p>
+<p>1）<strong>NVIDIA ICMS（Inference Context Memory Storage）+ 华为</strong>：</p>
+<ul>
+<li><strong>加速手段</strong>：通过BlueField-4 DPU硬件加速，实现跨节点的KV Cache共享和低时延访问；</li>
+<li><strong>华为”超节点”存储分层定义（G1-G4）</strong>：<ul>
+<li>G1 GPU HBM（100GB，纳秒级）</li>
+<li>G2 系统DRAM（TB级，10-100纳秒）</li>
+<li>G3 本地SSD（10-100微秒）</li>
+<li>G3.5 Context Memory Storage（PB级，超节点共享，针对复用KV）</li>
+<li>G4 温存储（毫秒级）</li>
+</ul>
+</li>
+</ul>
+<p>2）<strong>中兴</strong>：</p>
+<ul>
+<li><strong>核心设计</strong>：引入”计算侧DH DPU（ZMS多级推理上下文管理平台）”，GPU与底层SSD之间通过KV服务接口直接通信，通过交换网络连接；</li>
+<li><strong>控制流与数据流分离</strong>：图中红线为控制流，蓝线为数据流。控制流通过DPU下发，数据流通过NVMe over KV、Fabric直通，支持GPU直通存储、设备侧NVMe over KV和双端口盘访问；</li>
+<li><strong>特点</strong>：本质上是将KV Cache的存储引擎完全”下沉”到DPU芯片中，绕过CPU，实现了近零开销和极高IOPS。</li>
+</ul>
+<h3 id="KVCache生态的接口不统一问题"><a href="#KVCache生态的接口不统一问题" class="headerlink" title="KVCache生态的接口不统一问题"></a>KVCache生态的接口不统一问题</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906141025470.png" class="" title="KVCache存储管理与适配接口不统一">
+
+<p>这里表达了上层软件生态上KVCache存储管理与适配的接口不统一：当前各家KVCache方案各不相同，推理引擎（MindIE、vLLM、SGLang）接口互不兼容，导致底层存储无法实现高效统一管理。</p>
+<blockquote>
+<p>主要从4个维度介绍：</p>
+<ol>
+<li><strong>多级架构（硬件层）</strong>：分L1（HBM显存）、L2（DRAM内存）、L3（本机&#x2F;外置SSD）。业界目前有两大派系：以Mooncake为主的HBM+DRAM+SSD，和以DeepSeek为主的HBM+外存，但没有成熟的多级组合指引；</li>
+<li><strong>缓存管理（中间层）</strong>：需要实现生命周期管理、热点数据管理、老化删除以及节点间KV调度协同；</li>
+<li><strong>接口适配（软件层）</strong>：各框架数据结构、API不同；存储厂家适配能力弱。面临两难选择：要么”每个存储适配多框架”（高效但复杂），要么”统一框架KV交互接口”（标准但效率未知）；</li>
+<li><strong>传输加速（网络层）</strong>：通过高性能存储、并行文件系统、RoCE网络、GPUDirect保障KV读取性能。</li>
+</ol>
+</blockquote>
+<p>（需多方推动适配vLLM&#x2F;SGLang&#x2F;MindIE框架，推动KV交换接口成熟，共建KVCache多级缓存生态）</p>
+<h3 id="GPU直接访问存储技术（GDS）"><a href="#GPU直接访问存储技术（GDS）" class="headerlink" title="GPU直接访问存储技术（GDS）"></a>GPU直接访问存储技术（GDS）</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906141055563.png" class="" title="GDS技术">
+
+<p><strong>核心概念</strong>：GDS（GPU Direct Storage）技术通过让GPU绕过CPU和系统内存，直接访问本地或远程存储设备（如NVMe SSD、网络存储），实现降低延迟、提高带宽、释放CPU资源。</p>
+<p><strong>传统IO路径（左图）</strong>：GPU显存 -&gt; PCIe Switch -&gt; NVMe&#x2F;NIC -&gt; 主机内存（CPU处理） -&gt; SSD。存储系统需调用CPU内核接口，配置DMA地址，流程冗长。</p>
+<p><strong>直通技术核心（右图）</strong>：</p>
+<ol>
+<li><strong>路径简化与去中介化</strong>：移除CPU在数据传输中的调度、中断处理与拷贝职责；</li>
+<li><strong>建立直通管道</strong>：在GPU与存储设备之间建立端到端直达路径；</li>
+<li><strong>零拷贝（Zero-Copy）架构</strong>：数据从存储设备直达GPU显存，消除主机内存中的冗余缓冲；</li>
+<li><strong>高速互连释放</strong>：最大化利用PCIe&#x2F;NVLink（本地）、RDMA over InfiniBand&#x2F;RoCE（远程）或CXL（可扩展内存池）等超高速互连潜力。</li>
+</ol>
+<p>（由于各GPU厂商接口不统一，需存储与GPU平台做一对一适配，当前正拉动行业构建国产GDS生态）</p>
+<h3 id="存储适配RAG系统的语义化接口"><a href="#存储适配RAG系统的语义化接口" class="headerlink" title="存储适配RAG系统的语义化接口"></a>存储适配RAG系统的语义化接口</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906141110756.png" class="" title="RAG生命周期与语义接口层">
+
+<p>这里介绍了如何让底层存储直接适配大模型的知识库（RAG系统），通过语义化接口减少模型幻觉。</p>
+<p><strong>左图：RAG的完整生命周期（离线与在线）</strong>：</p>
+<ul>
+<li><strong>离线阶段</strong>：外部文档注入 -&gt; 文档解析 -&gt; 文档切分（切片） -&gt; 通过Embedding模型提取语义 -&gt; 存入”向量数据库” -&gt; 最终落盘到”存储系统”；</li>
+<li><strong>在线阶段</strong>：用户提问 -&gt; 推理智能问答（将问题向量化，通过RAG API去向量数据库检索） -&gt; 提取相关片段 -&gt; Rerank（重排序模型） -&gt; 喂给LLM（大模型）生成最终回答。</li>
+</ul>
+<blockquote>
+<p>RAG系统无论是”离线写入”还是”在线检索”，<strong>底层都需要高效率的存储系统来支撑</strong>。</p>
+</blockquote>
+<p><strong>右表：语义接口层（提供模型原生接口）</strong>——传统存储只懂”块”和”文件”，而AI懂的是”向量”、”张量”和”图谱”。因此存储必须<strong>提供三种AI原生接口</strong>：</p>
+<ul>
+<li><strong>接口1：向量原生</strong><ul>
+<li><strong>核心功能</strong>：支持近似最近邻（ANN）搜索（找最相似的向量）；支持基于向量ID或内容的相似性检索；支持批量向量写入与流式写入；</li>
+<li><strong>应用场景</strong>：RAG系统、推荐系统、相似性去重，这是当前最主流的接口；</li>
+</ul>
+</li>
+<li><strong>接口2：张量原生</strong><ul>
+<li><strong>核心功能</strong>：支持多维张量（比如多维度矩阵）的高效切片、转置、分块读取；支持张量的并行I&#x2F;O接口，适配模型并行训练；优化小尺寸张量的高并发读取；</li>
+<li><strong>应用场景</strong>：模型训练与推理、特征库管理，这能极大地减少CPU去拆解复杂数组的负担；</li>
+</ul>
+</li>
+<li><strong>接口3：RAG图谱原生</strong><ul>
+<li><strong>核心功能</strong>：协同存储向量、原文块及它们之间的复杂关系（也就是图结构）；支持在图谱上进行多跳查询与子图检索；</li>
+<li><strong>应用场景</strong>：复杂知识推理、事理图谱分析。传统存储存图很难，原生图谱接口能直接跑通逻辑链路。</li>
+</ul>
+</li>
+</ul>
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906142112099.png" class="" title="总结与展望">
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这场存储系统论坛的议题高度聚焦在<strong>AI推理时代的存储新命题</strong>上，可以提炼出几条贯穿全场的主线：</p>
+<ol>
+<li><strong>KVCache成为AI存储的核心战场</strong>：几乎所有议题（阿里云Fusion Cache、Xcache、KVoF、KVCache测试、智算生态）都在回答同一个问题——如何把KVCache放得下、取得快、管得好。”以存代算”已成共识，缓存命中与重算的”黄金交叉点”是决策核心；</li>
+<li><strong>CPU成为新瓶颈，硬件直通是共同答案</strong>：从DPU卸载、GDS、KVoF的XPU直通到中兴的KV下沉DPU，各家方案殊途同归——让数据绕过CPU直达GPU&#x2F;XPU；</li>
+<li><strong>分层与解耦是TCO的最优解</strong>：从西部数据的SMR&#x2F;CMR&#x2F;QLC介质分层（1EB容量5年差6倍成本），到G1-G4多级KVCache缓存，”在对的时间把对的数据放在对的层”是贯穿硬件和软件的设计哲学；</li>
+<li><strong>CXL从概念走向场景验证</strong>：Redis（吞吐+41%）、LLM KVCache（5.6倍容量扩展）、MySQL NDB（吞吐+17%）三个实测场景给出了量化答案；</li>
+<li><strong>生态碎片化是当前最大痛点</strong>：推理引擎接口不统一、GPU厂商GDS接口各异、KV寻址格式不同，标准化（KVoF协议、统一寻址）是行业下一步的努力方向。</li>
+</ol>
+
+                
+                <p class="end">__END__</p>
+            </div>
+            <div class="article-footer">
+                <div class="suffix-box">
+    <div class="suffix-box-left">
+        <img src="/image/sidebar/avatar.jpg" alt="振兴东北">
+    </div>
+    <div class="suffix-box-right">
+        <span class="suffix-box-title">文章作者：</span>拳击手胖虎
+        <br>
+        <span class="suffix-box-title">文章出处：</span><a href="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/" target="_blank">开放数据中心大会（ODCC）存储系统论坛技术洞察汇总</a>
+        <br>
+        <span class="suffix-box-title">作者签名：</span>不成木讷树，便做自由风
+        <br>
+        <span class="suffix-box-title">关于主题：</span><a href="https://github.com/first19326/Hexo-LiveForCode" target="_blank">Hexo - Live For Code</a>
+        <br>
+        <span class="suffix-box-title">版权声明：</span>文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" title="BY-NC-SA" target="_blank">BY-NC-SA</a> 许可协议，转载请注明出处
+        <br>
+    </div>
+    <div style="clear: both;"></div>
+</div>
+                
+                    <div class="category">
+                        分类：
+                        
+                            <a href="/categories/%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/">技术洞察</a>
+                        
+                    </div>
+                
+                
+                    <div class="tag">
+                        标签：
+                        
+                            <a href="/tags/AI%E5%AD%98%E5%82%A8/">AI存储</a>
+                        
+                            <a href="/tags/KVCache/">KVCache</a>
+                        
+                            <a href="/tags/CXL/">CXL</a>
+                        
+                            <a href="/tags/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83/">数据中心</a>
+                        
+                    </div>
+                
+                <div class="article-prev-next">
+                    
+                    
+                        <a href="/2026/08/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E5%9F%BA%E4%BA%8EExtent%E5%8A%A8%E6%80%81%E5%88%86%E5%B1%82%E7%9A%84%E6%88%90%E6%9C%AC%E9%AB%98%E6%95%88%E5%AD%98%E5%82%A8EDT/" class="next-prefix">» </a> 下一篇：    <a href="/2026/08/27/%E8%AE%BA%E6%96%87%E9%98%85%E8%AF%BB-%E5%9F%BA%E4%BA%8EExtent%E5%8A%A8%E6%80%81%E5%88%86%E5%B1%82%E7%9A%84%E6%88%90%E6%9C%AC%E9%AB%98%E6%95%88%E5%AD%98%E5%82%A8EDT/" title="发布于 2026-08-27 09:00">论文阅读：基于Extent动态分层的成本高效存储（EDT）</a>
+                    
+                </div>
+            </div>
+            
+    <div class="article-comments">
+        
+            <div class="comments-title">
+                评论列表
+            </div>
+        
+        <div class="comments-content">
+            
+                <script src="https://giscus.app/client.js"
+                    data-repo="zblzbl9040/zblzbl9040.github.io"
+                    data-repo-id="R_kgDONJvMDQ"
+                    data-category="Announcements"
+                    data-category-id="DIC_kwDONJvMDc4C-Nmz"
+                    data-mapping="pathname"
+                    data-strict="0"
+                    data-reactions-enabled="1"
+                    data-emit-metadata="0"
+                    data-input-position="bottom"
+                    data-theme="preferred_color_scheme"
+                    data-lang="zh-CN"
+                    crossorigin="anonymous"
+                    async>
+                </script>
+            
+        </div>
+    </div>
+    
+ 
+        </div>
+    
+</div>
+    <div id="footer">
+    <div><span class='face'>ღゝ◡╹)ノ♡</span></div><div>【不成木讷树<span><i class='iconfont icon-like-fill'></i></span>便做自由风】</div><div>&copy; 2020-2023 WorstOne. All Rights Reserved.</div>
+</div>
+    <div id="sidebar">
+    <div class="menu-wrap" style="display:none;">
+        
+            <div class="menu-notice">
+                <span class="iconfont icon-notice"></span>
+                <div class="notice">
+                    <span>不成木讷树，便做自由风</span>
+                </div>
+            </div>
+        
+        <nav class="menu">
+            <div class="menu-introduce"> 
+                <div class="introduce-avatar">
+                    <img src="/image/sidebar/avatar.jpg">
+                </div> 
+                <div class="introduce-info"> 
+                    <div class="introduce-user">
+                        
+                            <a href="https://worstone.cn" target="_blank"><span>拳击手胖虎</span></a>
+                        
+                    </div>
+                </div> 
+            </div> 
+            <div class="menu-list">
+                <ul>
+                    
+                        <li class=""><a href="/" class="" target="_self"><span class="iconfont icon-home-fill"></span>首页</a></li>
+                    
+                        <li class=""><a href="/categories" class="" target="_self"><span class="iconfont icon-folder-fill"></span>分类</a></li>
+                    
+                        <li class=""><a href="/tags" class="" target="_self"><span class="iconfont icon-discount-fill"></span>标签</a></li>
+                    
+                        <li class=""><a href="/archives" class="" target="_self"><span class="iconfont icon-calendar-fill"></span>归档</a></li>
+                    
+                        <li class=""><a href="/donate" class="" target="_self"><span class="iconfont icon-heart-fill"></span>赞赏</a></li>
+                    
+                        <li class=""><a href="/about" class="" target="_self"><span class="iconfont icon-about-fill"></span>关于</a></li>
+                    
+                        <li class=""><a href="/atom.xml" class="" target="_blank"><span class="iconfont icon-rss"></span>订阅</a></li>
+                    
+                        <li class=""><a href="javascript:;" class="search" target="_self"><span class="iconfont icon-search-menu"></span>搜索</a></li>
+                    
+                        <li class=""><a href="/comment" class="" target="_self"><span class="iconfont icon-comments-fill"></span>留言板</a></li>
+                    
+                </ul> 
+            </div> 
+            <div class="menu-link">
+                <div class="box">
+                    <div class="image-box"></div>
+                </div>
+                
+                    <a name="QQ" href="javascript:;" class="image" target="_self" data="/image/sidebar/QQ.jpg"><span class="iconfont icon-qq"></span></a>
+                
+                    <a name="微信" href="javascript:;" class="image" target="_self" data="/image/sidebar/weixin.jpg"><span class="iconfont icon-wechat"></span></a>
+                
+                    <a name="GitHub" href="https://github.com/zblzbl9040" class="" target="_blank" data=""><span class="iconfont icon-github"></span></a>
+                
+            </div> 
+        </nav>
+        <button class="menu-button-close"></button>
+        <div class="morph-shape" id="morph-shape" data-morph-open="M-7.312,0H15c0,0,66,113.339,66,399.5C81,664.006,15,800,15,800H-7.312V0z;M-7.312,0H100c0,0,0,113.839,0,400c0,264.506,0,400,0,400H-7.312V0z">
+            <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 100 800" preserveAspectRatio="none">
+                <path d="M-7.312,0H0c0,0,0,113.839,0,400c0,264.506,0,400,0,400h-7.312V0z"/>
+            </svg>
+        </div>
+    </div>
+    <button class="menu-button-open">MENU</button>
+    <div class="menu-cover"></div>
+</div>
+    <link type="text/css" rel="stylesheet" href="/css/search.css">
+<script type="text/javascript" src="/js/iscroll.js"></script>
+<script type="text/javascript" src="/js/search-local.js"></script>
+<div class="search-window">
+    <div class="search-content">
+        <div class="search-content-icon">
+            <i class="iconfont icon-search"></i>
+        </div>
+        <div id="search-input" class="search-input"></div>
+    </div>
+
+    <div class="search-scroll">
+        <div class="search-result">
+            <div id="search-stats" class="search-stats"></div>
+            <div id="search-hits"></div>
+            <div id="search-pagination" class="search-pagination"></div>
+        </div>
+    </div>
+
+    <span class="search-close-icon">
+        <i class="iconfont icon-close"></i>
+    </span>
+</div>
+    <div id="tools">
+    <div class="progressbar-top"></div>
+    
+    <link type="text/css" rel="stylesheet" href="/css/APlayer.css">
+    <script type="text/javascript" src="/js/APlayer.min.js"></script>
+    <script type="text/javascript" src="/js/Meting.min.js"></script>
+    <script>
+        var meting_api = 'https://api.i-meto.com/meting/api?server=:server&type=:type&id=:id&auth=:auth&r=:r';
+    </script>
+    <meting-js id="3778678" lrcshow="false" server="netease" type="playlist" fixed="true" autoplay="false" loop="all" order="random" preload="auto" volume="0.67" mutex="true"></meting-js>
+
+    <div class="wrap-right">
+    <div class="wrap-right-hide">
+         <div class="wrap-right-button favorites">
+            <div class="iconbox" switch="false">
+                <span class="iconfont icon-favorites"></span>
+            </div>
+            <span class="icontext">关注</span>
+         </div>
+        <div class="wrap-right-button search">
+            <div class="iconbox">
+                <span class="iconfont icon-search-menu"></span>
+            </div>
+            <span class="icontext">搜索</span>
+        </div>
+        <div class="wrap-right-button menu-button">
+            <div class="iconbox">
+                <span class="iconfont icon-menu"></span>
+            </div>
+            <span class="icontext">菜单</span>
+        </div>
+        <div class="wrap-right-button mode">
+            <div class="light">
+                <div class="iconbox">
+                    <span class="iconfont icon-daymode"></span>
+                </div>
+                <span class="icontext">浅色模式</span>
+            </div>
+            <div class="dark">
+                <div class="iconbox">
+                    <span class="iconfont icon-nightmode-fill"></span>
+                </div>
+                <span class="icontext">深色模式</span>
+            </div>
+        </div>
+        <div class="wrap-right-button bottom">
+            <div class="iconbox">
+                <span class="iconfont icon-top"></span>
+            </div>
+            <span class="icontext">跳至底部</span>
+        </div>
+    </div>
+    <div class="wrap-right-show">
+        <div class="wrap-right-button set">
+            <div class="iconbox">
+                <span class="iconfont icon-setting"></span>
+            </div>
+            <span class="icontext">设置</span>
+        </div>
+        <div class="wrap-right-button top">
+            <div class="iconbox">
+                <span class="iconfont icon-top"></span>
+            </div>
+            <span class="icontext">返回顶部</span>
+        </div>
+    </div>
+</div>
+    <div class="loading"></div>
+</div>
+    <script>
+    window.config = {
+        GitHubUserName     : "first19326",
+        GitHubRepositories : "Hexo-LiveForCode",
+
+        User             : "振兴东北",
+        UserAvatar       : "/image/sidebar/avatar.jpg",
+        WebsiteStartDate : "2020-01-01",
+        Home             : "https://worstone.cn",
+
+        WebsiteTitleBlur         : "(◍´꒳`◍) Hi, Live For Code",
+        WebsiteTitleBlurTimeOut  : 500,
+        WebsiteTitleFocus        : "(*´∇｀*) 欢迎回来!",
+        WebsiteTitleFocusTimeOut : 1000,
+        WebsiteFavicon           : {
+            light : "/image/website/logo/logo.png",
+            dark  : "/image/website/logo/logo-dark.png"
+        },
+
+        ProgressBar : {
+            id       : "topProgressBar",
+            color    : "#77B6FF",
+            height   : "2px",
+            duration : 0.2
+        },
+
+        Loading: {
+            rebound : {
+                tension  : 16,
+                friction : 5
+            },
+            spinner : {
+                id     : "spinner",
+                radius : 90,
+                sides  : 3,
+                depth  : 4,
+                colors : {
+                    background : "#F0F0F0",
+                    stroke     : "#272633",
+                    base       : "",
+                    child      : "#272633"
+                },
+                alwaysForward : true,
+                restAt        : 0.5,
+                renderBase    : false
+            }
+        },
+
+        HomeHeaderAnimationRendered : true,
+        HomeHeaderAnimation         : {
+            radius      : 15,
+            density     : 0.2,
+            color       : "rgba(255, 255, 255, .2)",
+            clearOffset : 0.3
+        },
+
+        BackAnimationRendered          : true,
+        IEBrowserBackAnimationRendered : false,
+        BackAnimation                  : {
+            colorSaturation  : "60%",
+            colorBrightness  : "50%",
+            colorAlpha       : 0.5,
+            colorCycleSpeed  : 5,
+            verticalPosition : "random",
+            horizontalSpeed  : 200,
+            ribbonCount      : 3,
+            strokeSize       : 0,
+            parallaxAmount   : -0.2,
+            animateSections  : true
+        },
+
+        HomeHeaderImage : [
+            
+                "/image/header/home.jpg",
+            
+                "/image/header/home.jpeg",
+            
+        ],
+        HomeBannerText  : "Keep Learning",
+
+        ArticleHeaderImage : [
+            
+                "/image/header/article.jpg",
+            
+        ],
+
+        OtherBannerText : "Keep Learning",
+
+        Error : {
+            icon    : "icon-swimming",
+            title   : "PAGE NOT FOUND",
+            content : [
+                
+                    "很抱歉，您访问的页面不存在！",
+                
+                    "可能是输入地址有误或该地址已变更。",
+                
+            ],
+            buttons : [
+                
+                    {
+                        icon  : "icon-home",
+                        text  : "返回首页",
+                        href  : "/",
+                        class : ""
+                    },
+                
+            ]
+        },
+
+        MenuNotice : {
+            enable : true,
+            notice : "不成木讷树，便做自由风",
+            speed  : 20
+        },
+        MenuList : [
+            
+                {
+                    name   : "首页",
+                    icon   : "icon-home-fill",
+                    href   : "/",
+                    type   : "index",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "分类",
+                    icon   : "icon-folder-fill",
+                    href   : "/categories",
+                    type   : "category",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "标签",
+                    icon   : "icon-discount-fill",
+                    href   : "/tags",
+                    type   : "tag",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "归档",
+                    icon   : "icon-calendar-fill",
+                    href   : "/archives",
+                    type   : "archive",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "赞赏",
+                    icon   : "icon-heart-fill",
+                    href   : "/donate",
+                    type   : "donate",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "关于",
+                    icon   : "icon-about-fill",
+                    href   : "/about",
+                    type   : "about",
+                    class  : "",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "订阅",
+                    icon   : "icon-rss",
+                    href   : "/atom.xml",
+                    type   : "",
+                    class  : "",
+                    target : "_blank"
+                },
+            
+                {
+                    name   : "搜索",
+                    icon   : "icon-search-menu",
+                    href   : "javascript:;",
+                    type   : "",
+                    class  : "search",
+                    target : "_self"
+                },
+            
+                {
+                    name   : "留言板",
+                    icon   : "icon-comments-fill",
+                    href   : "/comment",
+                    type   : "comment",
+                    class  : "",
+                    target : "_self"
+                },
+            
+        ],
+        MenuLink : [
+            
+                
+                    {
+                        name   : "QQ",
+                        icon   : "icon-qq",
+                        href   : "javascript:;",
+                        class  : "image",
+                        target : "_self",
+                        image  : "/image/sidebar/QQ.jpg"
+                    },
+                
+                    {
+                        name   : "微信",
+                        icon   : "icon-wechat",
+                        href   : "javascript:;",
+                        class  : "image",
+                        target : "_self",
+                        image  : "/image/sidebar/weixin.jpg"
+                    },
+                
+                    {
+                        name   : "GitHub",
+                        icon   : "icon-github",
+                        href   : "https://github.com/zblzbl9040",
+                        class  : "",
+                        target : "_blank",
+                        image  : ""
+                    },
+                
+            
+        ],
+
+        FooterStyle : 2,
+        BottomText  : "<div><span class='face'>ღゝ◡╹)ノ♡</span></div><div>【不成木讷树<span><i class='iconfont icon-like-fill'></i></span>便做自由风】</div><div>&copy; 2020-2023 WorstOne. All Rights Reserved.</div>",
+
+        ConsoleList : [
+            
+                
+                    [
+                        
+                            
+                                "Based on cnblogs theme SimpleMemory.",
+                            
+                                "",
+                            
+                        
+                    ],
+                
+                    [
+                        
+                            
+                                "SimpleMemory Author:",
+                            
+                                "BNDong",
+                            
+                        
+                    ],
+                
+                    [
+                        
+                            
+                                "Theme:",
+                            
+                                "LiveForCode",
+                            
+                        
+                    ],
+                
+            
+        ],
+
+        FontIconExtend : "",
+
+        Donate : {
+            paypal  : "",
+            bitcoin : "",
+            alipay  : "/image/donate/alipay.jpg",
+            wechat  : "/image/donate/wechat.jpg"
+        },
+
+        Search : {
+            applicationID : "010C3EANT8",
+            apiKey        : "c7abab9f11b79102b9aff7fe6d41447d",
+            indexName     : "Notes",
+            hits          : {
+                page : 10
+            },
+            labels        : {
+                placeholder : "搜索",
+                empty       : "未发现与 「${query}」 相关的内容",
+                stats       : "${hits} 条相关条目，使用了 ${time} 毫秒",
+            }
+        }, 
+
+        Comment : {
+            switch : true,
+            type   : "Giscus",
+        },
+
+        Waline : {
+            el              : ".comments-content",
+            serverURL       : "",
+            path            : window.location.pathname,
+            meta            : "['nick', 'mail', 'link']",
+            requiredMeta    : "['nick', 'mail']",
+            pageSize        : 10,
+            lang            : "zh-cn",
+            locale: {
+                admin       : "博主",
+                anonymous   : "匿名用户",
+                sofa        : "快来做第一个评论的人吧 ~",
+                placeholder : "你是我一生只会遇见一次的惊喜...",
+            },
+            dark            : "html[color-scheme='dark']",
+            search          : false,
+            pageview        : true,
+            comment         : true,
+            copyright       : false,
+        },
+
+        Valine : {
+            el             : ".comments-content",
+            appId          : "srhKtvWPQTWYKh3qX8G8M7v0-gzGzoHsz",
+            appKey         : "8uVSP1q6UlALVC5igYfIfv2h",
+            serverURLs     : "",
+            placeholder    : "你是我一生只会遇见一次的惊喜...",
+            avatar         : "mm",
+            meta           : "nick,mail,link",
+            requiredFields : "nick,mail",
+            pageSize       : 5,
+            lang           : "zh-cn",
+            visitor        : true,
+            enableQQ       : true
+        },
+
+        Tocbot : {
+            switch                : true,
+            tocSelector           : ".toc",
+            contentSelector       : ".article-body",
+            headingSelector       : "h1, h2, h3, h4, h5",
+            headingsOffset        : 0,
+            scrollSmooth          : true,
+            scrollSmoothOffset    : -5,
+            positionFixedSelector : ".toc",
+            positionFixedClass    : "toc-fixed",
+            fixedSidebarOffset    : "",
+        },
+
+        Require : {
+            baseUrl     : "/js/",
+            waitSeconds : 100
+        },
+
+        Music : {
+            type : "Meting"
+        },
+        APlayer : {
+            container : ".aplayer",
+            fixed     : false,
+            autoplay  : false,
+            loop      : "all",
+            order     : "random",
+            preload   : "auto",
+            volume    : 0.67,
+            mutex     : true,
+            lrcType   : 3,
+            audio     : [
+                
+                    {
+                        name   : "Endless Tears",
+                        artist : "CLIFF EDGE",
+                        cover  : "/music/cover/Endless Tears.jpg",
+                        url    : "/music/song/Endless Tears.mp3",
+                        lrc    : "/music/lrc/Endless Tears.lrc"
+                    },
+                
+            ]
+        },
+        Meting : {
+            api      : "https://api.i-meto.com/meting/api",
+            id       : "3778678", 
+            lrcshow  : false, 
+            server   : "netease", 
+            type     : "playlist", 
+            fixed    : true, 
+            autoplay : false, 
+            loop     : "all", 
+            order    : "random", 
+            preload  : "auto", 
+            volume   : 0.67, 
+            mutex    : true
+        },
+
+        Mouse : {
+            enable  : true,
+            options : {
+                size  : 6,
+                sizeF : 24
+            }
+        },
+
+        LazyLoad : {
+            default : "/image/website/lazyload.svg"
+        },
+  
+        Style : {
+            aplayer          : "/css/APlayer.css",
+            archive          : "/css/archive.css",
+            base             : "/css/base.css",
+            clipboard        : "/css/clipboard.css",
+            code             : "/css/code.css",
+            donate           : "/css/donate.css",
+            fancybox         : "/css/jquery.fancybox.css",
+            footer           : "/css/footer.css",
+            iconfont         : "/iconfont/iconfont.css",
+            index            : "/css/index.css",
+            menuBubble       : "/css/menu-bubble.css",
+            mouse            : "/css/mouse.css",
+            page             : "/css/page.css",
+            post             : "/css/post.css",
+            search           : "/css/search.css",
+            tocbot           : "/css/tocbot.css",
+            valine           : "/css/valine.css",
+            waline           : "/css/waline.css",
+            walineCustom     : "/css/waline-custom.css"
+        },
+
+        Script: {
+            aplayer          : "/js/APlayer.min.js",
+            config           : "/js/require.config.js",
+            index            : "/js/index.js",
+            instantSearch    : "/js/instantsearch.min.js",
+            iscroll          : "/js/iscroll.js",
+            jQuery           : "/js/jquery-3.4.1.min.js",
+            loading          : "/js/loading.js",
+            meting           : "/js/Meting.min.js",
+            require          : "/js/require.min.js",
+            waline           : "/js/waline.mjs",
+            pageview         : "/js/pageview.mjs",
+            comment          : "/js/comment.mjs",
+        },
+
+        Font: {
+            LongCang    : "/font/LongCang.css",
+            Monda       : "/font/Monda.css",
+            NotoSansSC  : "/font/NotoSansSC.css",
+            NotoSerifSC : "/font/NotoSerifSC.css",
+            Playball    : "/font/Playball.css",
+            PTMono      : "/font/PTMono.css",
+            Roboto      : "/font/Roboto.css",
+            RobotoSlab  : "/font/RobotoSlab.css",
+            Rosario     : "/font/Rosario.css",
+            UbuntuMono  : "/font/UbuntuMono.css"
+        },
+
+        Suffix : {
+            about : "不成木讷树，便做自由风"
+        },
+            
+        Theme : {
+            url  : "https://github.com/first19326/Hexo-LiveForCode",
+            name : "Hexo - Live For Code"
+        }  
+    };
+</script>
+    <script type="text/javascript" src="/js/index.js"></script>
+</body>
+</html>
