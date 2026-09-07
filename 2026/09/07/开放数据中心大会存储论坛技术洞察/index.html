@@ -91,14 +91,14 @@
 <h2 id="一、《大规模万亿大模型训练与推理存储挑战及优化》"><a href="#一、《大规模万亿大模型训练与推理存储挑战及优化》" class="headerlink" title="一、《大规模万亿大模型训练与推理存储挑战及优化》"></a>一、《大规模万亿大模型训练与推理存储挑战及优化》</h2><p>AI大模型正向”万亿参数”和”百万Token上下文”的规模发展，存储已进入前后台计算的关键路径。</p>
 <p>在AI Coding场景下，AI Coding需要多轮上下文本交互，极其依赖KVCache；AI Agent需要数十轮长程推演和超并发，&#x3D;&#x3D;存储状态的共享、迁移与恢复决定了端到端效率&#x3D;&#x3D;。</p>
 <p>为此，阿里云提出了一套从一体机到集群、从千卡到万卡的全覆盖AI存储解决方案：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905102358501.png" class="" title="阿里云AI存储解决方案总体架构">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905102358501.jpg" class="" title="阿里云AI存储解决方案总体架构">
 
 <p>底层为APFS并行文件系统，中间新增了一层新的Fusion Cache（近计算缓存）用来服务上层的模型训练和推理。</p>
 <blockquote>
 <p>近计算缓存的核心思路是把数据”拦截”在算力设备附近的存储介质上，来解决大模型推理时访问远端存储高延迟、大带宽占用的问题。（个人理解是直接将数据卸载到本地存储介质上，来避免网络传输延迟）</p>
 </blockquote>
 <p>基于这样的架构，模型训练的核心挑战从”带宽不足”变为”千节点并发下的低一致性瓶颈与故障放大”。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905105137766.png" class="" title="千节点并发的两大挑战">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905105137766.jpg" class="" title="千节点并发的两大挑战">
 
 <blockquote>
 <p>这里的”千节点并发下的低一致性瓶颈与故障放大”主要体现在两个方面：</p>
@@ -117,7 +117,7 @@
 </ol>
 </blockquote>
 <p>为了解决上面提到的问题，提出了如下解决方案：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905105910367.png" class="" title="训练存储挑战的解决方案">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905105910367.jpg" class="" title="训练存储挑战的解决方案">
 
 <ol>
 <li><p><strong>针对锁的问题</strong>：提出<strong>资源预分配、异步申请、批量授权</strong>，提前把资源分给各节点，尽可能避免锁竞争。此外，使用<strong>全分布式打散与集中管理相结合</strong>的方式进行管理。（个人理解是：同一把大锁拆分成无数个分片锁，分布在不同机器上并行处理；同时保留一个集中管理模块来宏观调控）</p>
@@ -132,7 +132,7 @@
 </li>
 </ol>
 <p>此外，为了优化集群级有效算力和控制TCO，提出了如下解决方案：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905111940896.png" class="" title="DPU卸载模式与传统模式对比">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905111940896.jpg" class="" title="DPU卸载模式与传统模式对比">
 
 <ul>
 <li><strong>左侧（传统模式）</strong>：存储任务（FS、块IO）跑在主机的Host OS内核里，必须占用CPU资源，再通过NIC去访问APFS；</li>
@@ -148,7 +148,7 @@
 </ul>
 </blockquote>
 <p>下图讨论了在模型训练时，KVCache的决策，即KVCache的卸载过程需要考虑以下内容：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905113008358.png" class="" title="KVCache卸载决策">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905113008358.jpg" class="" title="KVCache卸载决策">
 
 <ul>
 <li><p><strong>缓存命中的总开销必须小于重新PreFill（预填充）的开销</strong>：</p>
@@ -168,7 +168,7 @@
 </li>
 </ul>
 <p>Fusion Cache的产品结构：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905114051472.png" class="" title="Fusion Cache产品结构">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905114051472.jpg" class="" title="Fusion Cache产品结构">
 
 <ul>
 <li><strong>最上层（PPU节点）</strong>：推理引擎运行在带HBM和CPU Memory的PPU（加速计算芯片）节点上，HBM最快但最贵，只能放最活跃的数据；</li>
@@ -177,11 +177,11 @@
 <li><strong>最底层（Fusion Cache APFS）</strong>：提供底层的”服务池级共享持久化存储池”，实现本地&#x2F;远端分层，以及计算与容量的彻底解耦。</li>
 </ul>
 <h2 id="二、《规模化AI存储架构设计——分层与解耦架构为何至关重要》"><a href="#二、《规模化AI存储架构设计——分层与解耦架构为何至关重要》" class="headerlink" title="二、《规模化AI存储架构设计——分层与解耦架构为何至关重要》"></a>二、《规模化AI存储架构设计——分层与解耦架构为何至关重要》</h2><h3 id="1-AI数据全景概览"><a href="#1-AI数据全景概览" class="headerlink" title="1. AI数据全景概览"></a>1. AI数据全景概览</h3><p>IDC预测：2028年全球数据生成量将达到394ZB，2023-2028年复合年增长率高达24%。且图像、音频与视频密集型AI模型是当前存储需求的最核心驱动力。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905115049432.png" class="" title="全球数据生成量预测">
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905115303385.png" class="" title="图像音频视频密集型模型是存储需求核心驱动力">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905115049432.jpg" class="" title="全球数据生成量预测">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905115303385.jpg" class="" title="图像音频视频密集型模型是存储需求核心驱动力">
 
 <h3 id="2-超大规模客户分层存储的成熟实践"><a href="#2-超大规模客户分层存储的成熟实践" class="headerlink" title="2. 超大规模客户分层存储的成熟实践"></a>2. 超大规模客户分层存储的成熟实践</h3><p>经过统计，约80%的云存储是基于HDD的。因此提出了”<strong>数据周期需要分层存储架构，每个阶段匹配适合的存储介质以优化TCO</strong>“的核心理念。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905115757619.png" class="" title="AI数据生命周期的分层匹配示意图">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905115757619.jpg" class="" title="AI数据生命周期的分层匹配示意图">
 
 <ul>
 <li><strong>数据摄入&#x2F;准备阶段</strong>：使用冷存储&#x2F;温存储（HDD为主，容量优先，带宽为辅）；</li>
@@ -189,29 +189,29 @@
 <li><strong>推理阶段</strong>：因为需要极速读取，使用温&#x2F;热存储（HDD &amp; 闪存，带宽与容量并重）。</li>
 </ul>
 <p>为了降低TCO，给出了不同存储介质的成本对比：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120203471.png" class="" title="不同存储介质成本对比1">
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120505221.png" class="" title="不同存储介质成本对比2">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120203471.jpg" class="" title="不同存储介质成本对比1">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120505221.jpg" class="" title="不同存储介质成本对比2">
 
 <p>对于<strong>1EB容量、5年期的总拥有成本</strong>：QLC全闪存高达7.29亿美元，而CMR HDD只需1.43亿美元，SMR HDD最便宜，只需1.221亿美元。SMR比全闪存便宜约6倍，比CMR便宜约15%。且在五年周期内，SMR对CMR的累计成本优势从1460万美元扩大到了2110万美元。</p>
 <p>同样是承载1EB数据，SMR只需要55个机架，CMR需要72个，QLC需要61个。SMR相比CMR节省了17个机架（约-24%），这不仅意味着更少的磁盘柜和交换机，更意味着大幅降低数据中心极其昂贵的电力消耗。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120548207.png" class="" title="1EB数据的机架数量对比">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120548207.jpg" class="" title="1EB数据的机架数量对比">
 
 <h3 id="3-西部数据开放软件生态"><a href="#3-西部数据开放软件生态" class="headerlink" title="3. 西部数据开放软件生态"></a>3. 西部数据开放软件生态</h3><p>西部数据将其高密度硬盘与Ceph、IBM Storage Scale、BeeGFS、Leil等主流存储软件进行了联合测试与适配，证明了分层存储理念能够在TCO优化上有重要的作用。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120731555.png" class="" title="西部数据开放软件生态">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905120731555.jpg" class="" title="西部数据开放软件生态">
 
 <h2 id="三、《智能体时代存储的新机遇和挑战》"><a href="#三、《智能体时代存储的新机遇和挑战》" class="headerlink" title="三、《智能体时代存储的新机遇和挑战》"></a>三、《智能体时代存储的新机遇和挑战》</h2><p>过去的对话式推理是短上下文、临时缓存、低并发；现在进入Agentic智能体时代，变成了多轮工作流、超长上下文、可复用长期记忆、自我派生增长。这直接激化了&#x3D;&#x3D;“HBM的高昂成本”与“推理负载需要高效复用”&#x3D;&#x3D;之间的矛盾。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123010082.png" class="" title="对话式推理与智能体时代的对比">
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123243141.png" class="" title="智能体时代的存储需求">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123010082.jpg" class="" title="对话式推理与智能体时代的对比">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123243141.jpg" class="" title="智能体时代的存储需求">
 
 <p>由于长上下文的发展趋势，存储厂商必须通过多级存储来平衡成本。这就引入了一个新的问题：选择本地存储还是外部存储。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123504614.png" class="" title="本地存储与外部存储的选择">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123504614.jpg" class="" title="本地存储与外部存储的选择">
 
 <p>由于外部存储是一个可共享分离的NVMe Pool，核心优势是<strong>池化、共享，能带来更大的容量、性能和更优的数据管理</strong>，相比于本地存储更具优势，因此使用外部存储作为KVCache的底层大容量共享底座，为智能体提供长期的持久化存储。</p>
 <p>GPU真正在算的时间才是产出的时间。当KVCache加载时间小于计算时间时是”纯收益”，大于时就是”负收益”（在第一个议题中也有表达）。这个平衡点称为”黄金交叉点”。理想的卸载率要无限接近100%，但又要保证不产生延迟。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123840196.png" class="" title="KVCache加载与计算的黄金交叉点">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905123840196.jpg" class="" title="KVCache加载与计算的黄金交叉点">
 
 <p>此外，AI工作流中的大模型（特别是稀疏注意力模型）产生的新数据特征，与底层传统存储架构能提供的IO特性之间存在严重的”错配”问题：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905124119563.png" class="" title="大IO顺序读取与小IO稀疏读取的错配">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905124119563.jpg" class="" title="大IO顺序读取与小IO稀疏读取的错配">
 
 <ul>
 <li><strong>左侧部分：大IO顺序读取</strong>。存储把整块巨大的KVCache数据，全部通过大IO顺序加载到HBM里，然后再由GPU上的”Top-K selector（选择器）”挑出其中真正需要的token送给Sparse Attention（稀疏注意力）。这样的负载对存储系统极其友好，但是对HBM的计算资源造成了浪费，因为存在着大量无效读取；</li>
@@ -223,23 +223,23 @@
 <li>从外部存储节点看，4张网卡和24&#x2F;36块NVMe的并发能力也已经远超CPU处理能力。</li>
 </ul>
 <p>为了解决上述瓶颈，提出了”CXL内存 + NVMe全闪”和”DPU直通”的双架构，并推出了软硬件一体的Xcache方案。它可以向上兼容NVIDIA、昆仑芯、沐曦等所有异构算力，以及vLLM、SGLang、TensorRT-LLM等推理引擎。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905125231405.png" class="" title="Xcache方案总体">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905125231405.jpg" class="" title="Xcache方案总体">
 
 <h3 id="1-硬件架构"><a href="#1-硬件架构" class="headerlink" title="1. 硬件架构"></a>1. 硬件架构</h3><p><strong>CXL高性能可共享内存池</strong>：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905125356847.png" class="" title="CXL内存池">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905125356847.jpg" class="" title="CXL内存池">
 
 <p>利用CXL 2.0协议，把多台服务器的内存池化，做成”千TB级”的CXL内存框。它用Load&#x2F;Store直接内存级访问语义，实现KV的精准稀疏读取和”智能挑选”，时延低至亚微秒。</p>
 <blockquote>
 <p>为了解决大小IO错配问题。</p>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905125741769.png" class="" title="DPU直通架构">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905125741769.jpg" class="" title="DPU直通架构">
 
 <p>把DPU放进存储盘柜里，通过NVMeoF KV标准协议互通。DPU硬件加速IO栈，绕过CPU的协议解析，实现原生KV直通，让KVCache拥有长期记忆和灵活共享复用，兼容传统CPU主控模式。</p>
 <blockquote>
 <p>解决CPU瓶颈问题。</p>
 </blockquote>
 <h3 id="2-软件架构"><a href="#2-软件架构" class="headerlink" title="2. 软件架构"></a>2. 软件架构</h3><p>有了上面的这些硬件，Xcache分层存储结构从快到慢划分出了6层：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905130233985.png" class="" title="Xcache六层分层存储结构">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905130233985.jpg" class="" title="Xcache六层分层存储结构">
 
 <ul>
 <li><strong>G1（HBM）</strong>和<strong>G2（Local Memory）</strong>：放当前最热的、机架内复用的数据；</li>
@@ -249,7 +249,7 @@
 <li><strong>G4（分布式存储）</strong>：通过POSIX RDMA（毫秒级），放上百PB级的集群共享、历史长期记忆。</li>
 </ul>
 <p>此外，通过KVCache原生的分布式存储系统软件来实现对硬件的调度：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905131921056.png" class="" title="KVCache原生分布式存储系统软件">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260905131921056.jpg" class="" title="KVCache原生分布式存储系统软件">
 
 <ul>
 <li><strong>CMS Backend</strong>：由于在硬件上通过NVMeoF KV标准协议实现了互通，因此CMS存储可以直接<code>KV -&gt; DPU -&gt; NVMe盘</code>，不再需要中间的文件系统层。因此<strong>数据不需要被拆成块，直接以键值对的形式在底层被命中并读取</strong>，且KV的读写指令都由DPU硬件卸载完成，绕过了主机CPU的干预；</li>
@@ -257,21 +257,21 @@
 <li><strong>空间索引</strong>：针对离散型KV，使用动态hash索引；针对Radix型KV，使用ART树索引。</li>
 </ul>
 <h2 id="四、《面向低带宽传输和存储的视觉语义编码技术与标准——机器视觉编码技术与标准进展》"><a href="#四、《面向低带宽传输和存储的视觉语义编码技术与标准——机器视觉编码技术与标准进展》" class="headerlink" title="四、《面向低带宽传输和存储的视觉语义编码技术与标准——机器视觉编码技术与标准进展》"></a>四、《面向低带宽传输和存储的视觉语义编码技术与标准——机器视觉编码技术与标准进展》</h2><h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><p>在过去30多年来，视频标准从MPEG-2、H.264、H.265到H.266，每一代追求的都是压缩效率翻倍，这些的主要驱动力是5000亿视频服务+5700亿智能手机这个市场。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906105720483.png" class="" title="视频编码标准演进">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906105720483.jpg" class="" title="视频编码标准演进">
 
 <p>80%的人类感知来自视觉，视频流量占网络主流。更重要的是，机器视觉是AI最大的应用领域，大多数5G应用场景都跟机器视觉有关，市场规模正在暴涨，传统的视频编码已经跟不上了。</p>
 <blockquote>
 <p>传统的视频编码协议都是为了给人看，最终的目标是感知质量。但是在机器视觉中，模型看视频主要是为了提取特征。</p>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906110015066.png" class="" title="机器视觉是AI最大的应用领域">
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906110405785.png" class="" title="机器视觉只需要特征">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906110015066.jpg" class="" title="机器视觉是AI最大的应用领域">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906110405785.jpg" class="" title="机器视觉只需要特征">
 
 <p>这里主要想体现的是：在机器视觉的应用中，传输数据时，没必要把客观世界的完整视频传过去，只需要把机器需要的特征传过去就行了。</p>
 <blockquote>
 <p>通过限定的码率下，最小化机器视觉任务的损失，实现压缩率与任务准确率的平衡。这能在极低带宽下，实现极高的压缩比。</p>
 </blockquote>
 <p>为了解决上述的问题，提出了”面向机器视觉和人机混合视觉的压缩编码”：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906111114110.png" class="" title="面向机器视觉的压缩编码框架">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906111114110.jpg" class="" title="面向机器视觉的压缩编码框架">
 
 <p><strong>左侧部分（编码端）</strong>：</p>
 <ul>
@@ -291,7 +291,7 @@
 <h3 id="FCM技术路线"><a href="#FCM技术路线" class="headerlink" title="FCM技术路线"></a>FCM技术路线</h3><blockquote>
 <p>FCM是作为一个过渡到VCM的技术路线，核心思路是直接压缩特征。</p>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906112340387.png" class="" title="FCM技术路线">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906112340387.jpg" class="" title="FCM技术路线">
 
 <ul>
 <li><strong>核心流程</strong>：提取中间特征（Intermediate features） -&gt; 特征降维（降采样&#x2F;多尺度特征重建，把没用的特征丢弃） -&gt; 特征转换（打包、量化，变成二进制） -&gt; 特征内核编码（Feature Inner Coding）。</li>
@@ -302,7 +302,7 @@
 <h3 id="DCM技术方案"><a href="#DCM技术方案" class="headerlink" title="DCM技术方案"></a>DCM技术方案</h3><blockquote>
 <p>DCM展现的是未来最终的编码方案，完全抛弃传统视频编码规则，端到端使用深度神经网络来压缩图像。</p>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906112823824.png" class="" title="DCM端到端神经编码方案">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906112823824.jpg" class="" title="DCM端到端神经编码方案">
 
 <p><strong>编码端（左侧）</strong>：</p>
 <ul>
@@ -320,37 +320,37 @@
 <li><strong>特征匹配模块 &amp; 重建模块</strong>：解码头接收到量化后的特征Yhat后，通过反量化、逆向变换，最后经过一系列神经网络进行重建。</li>
 </ul>
 <p><strong>应用案例</strong>：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906113737208.png" class="" title="机器视觉编码应用案例1">
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906113841497.png" class="" title="机器视觉编码应用案例2">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906113737208.jpg" class="" title="机器视觉编码应用案例1">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906113841497.jpg" class="" title="机器视觉编码应用案例2">
 
 <h2 id="五、《解耦·共享·增效：CXL内存池化的场景验证》"><a href="#五、《解耦·共享·增效：CXL内存池化的场景验证》" class="headerlink" title="五、《解耦·共享·增效：CXL内存池化的场景验证》"></a>五、《解耦·共享·增效：CXL内存池化的场景验证》</h2><p>主要问题：AI模型参数暴增，服务器对HBM和DDR的需求激增。但HBM受限于GPU封装难以扩展；传统DDR受限于DIMM插槽数量，扩展往往需要连带升级昂贵的CPU和主板；SSD虽然便宜，但IO路径长、延迟高，不适合高性能场景。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906115314991.png" class="" title="内存扩展的困境">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906115314991.jpg" class="" title="内存扩展的困境">
 
 <p>为了解决上述的问题，提出了CMM-D高性能内存拓展器。采用CXL 2.0 &amp; PCIe 5.0标准，单卡最高256GB，带宽可达36GB&#x2F;s，延迟约110ns。</p>
 <blockquote>
 <p>它的关键是能脱离CPU主板独立插拔。</p>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906115506169.png" class="" title="CMM-D内存拓展器">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906115506169.jpg" class="" title="CMM-D内存拓展器">
 
 <p>基于CMM-D的硬件支撑，提出了CXL池化方案：</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906120457543.png" class="" title="CXL内存池化方案">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906120457543.jpg" class="" title="CXL内存池化方案">
 
 <ul>
 <li><strong>基于RDMA的内存池化</strong>：通过网线扩展内存，依赖外部服务器，TCO极高，且性能受网络限制；</li>
 <li><strong>基于CXL的内存池化</strong>：通过CXL交换机扩展，不依赖服务器，无需网卡，TCO极低，且提供硬件级的内存一致性。</li>
 </ul>
 <p>为了验证基于CXL的内存池化的表现，实测了在三种典型高负载场景下的表现：</p>
-<h3 id="场景一：Redis集群"><a href="#场景一：Redis集群" class="headerlink" title="场景一：Redis集群"></a>场景一：Redis集群</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906120733787.png" class="" title="Redis集群场景">
+<h3 id="场景一：Redis集群"><a href="#场景一：Redis集群" class="headerlink" title="场景一：Redis集群"></a>场景一：Redis集群</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906120733787.jpg" class="" title="Redis集群场景">
 
 <p>传统的Redis扩容必须”Scale-out”（买新CPU和主板），且冷热数据不均会导致负载不均衡，数据迁移会造成性能损失。</p>
 <p>基于CXL内存池化的Redis集群方案的核心是：引入CXL Switch，将Redis内存池化。将<strong>Value</strong>放在CXL Switch后面的共享内存池中，而<strong>Key</strong>保留在本地节点的DRAM中。</p>
 <blockquote>
 <p>通过CXL内存共享，热点节点的内存压力可以由CXL共享池中的空闲空间去分担，实现了零拷贝的负载均衡。</p>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906121117537.png" class="" title="CXL Redis性能表现">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906121117537.jpg" class="" title="CXL Redis性能表现">
 
 <p>在Intel Xeon CPU、256GB DDR5、两块256GB的CMM-D、Redis 7.2.4，并使用业界标准的YCSB “All read”负载测试下，对比传统的RDMA Redis，CXL Redis的吞吐性能提升了41%，负载均衡时间缩短了46%。</p>
-<h3 id="场景二：LLM-KV-Cache"><a href="#场景二：LLM-KV-Cache" class="headerlink" title="场景二：LLM KV Cache"></a>场景二：LLM KV Cache</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906121350789.png" class="" title="LLM KV Cache场景">
+<h3 id="场景二：LLM-KV-Cache"><a href="#场景二：LLM-KV-Cache" class="headerlink" title="场景二：LLM KV Cache"></a>场景二：LLM KV Cache</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906121350789.jpg" class="" title="LLM KV Cache场景">
 
 <p>随着上下文变长，KV Cache爆炸式增长，GPU显存和主机内存不够；用SSD卸载延迟太高；用RDMA卸载成本太高。</p>
 <p>方案核心是：将CMM-D接入vLLM推理系统，通过修改内核将其视为独立NUMA节点，并修改LMCache支持CXL内存Pinning，让GPU能高效直访CXL内存。</p>
@@ -368,12 +368,12 @@
 <li><strong>异构算力端（GPU&#x2F;DSP）</strong>：在CXL Switch下方，连接着DSP，下面挂着GPU和M200等加速卡。</li>
 </ul>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906121600271.png" class="" title="CXL KVCache性能表现">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906121600271.jpg" class="" title="CXL KVCache性能表现">
 
 <blockquote>
 <p>在常规容量下，经过适配修改后的CXL方案吞吐性能已与原生DRAM基本持平；而当KV Cache容量超过DRAM极限触发重算时，CXL switch方案可提供5.6倍的有效容量扩展，并依然维持约36万TPS的高吞吐性能。</p>
 </blockquote>
-<h3 id="场景三：MySQL-NDB分布式数据库"><a href="#场景三：MySQL-NDB分布式数据库" class="headerlink" title="场景三：MySQL NDB分布式数据库"></a>场景三：MySQL NDB分布式数据库</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906122930147.png" class="" title="MySQL NDB场景">
+<h3 id="场景三：MySQL-NDB分布式数据库"><a href="#场景三：MySQL-NDB分布式数据库" class="headerlink" title="场景三：MySQL NDB分布式数据库"></a>场景三：MySQL NDB分布式数据库</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906122930147.jpg" class="" title="MySQL NDB场景">
 
 <p>数据节点与SQL节点之间，依赖传统的TCP&#x2F;IP或RDMA网络通信，小数据包高频传输时，网络延迟成为了巨大瓶颈。</p>
 <p>方案核心是：用CXL Switch直接取代网络交换机，把原本需要通过网线传输的数据变成了内存级直接访问。</p>
@@ -384,19 +384,19 @@
 <h2 id="六、《KVoF：KV时代的Fabric协议》"><a href="#六、《KVoF：KV时代的Fabric协议》" class="headerlink" title="六、《KVoF：KV时代的Fabric协议》"></a>六、《KVoF：KV时代的Fabric协议》</h2><h3 id="背景-1"><a href="#背景-1" class="headerlink" title="背景"></a>背景</h3><ul>
 <li><strong>趋势一：KVCache，以存代算。</strong> 大模型无论是全注意力还是线性注意力，KV重算的代价都极其高昂。只要存下KV，就能免去重算（以存代算）。行业印证：Mooncake以KVCache为核心做PD分离与分层缓存，吞吐提升75%。</li>
 </ul>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906124916779.png" class="" title="KVCache以存代算">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906124916779.jpg" class="" title="KVCache以存代算">
 
 <ul>
 <li><strong>趋势二：序列M级增长——分级缓存。</strong> 主流模型上下文已从4k涨到1M甚至4M以上，1M上下文约需70GB的KV。容量巨大，单点XPU（GPU）显存放不下，必须层层下移（HBM → DRAM → SCM → SSD），但每下一层时延增加10-100倍，成本大降。层与层之间需要高性能、差异化的连接与访问。</li>
 </ul>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906124944527.png" class="" title="序列M级增长与分级缓存">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906124944527.jpg" class="" title="序列M级增长与分级缓存">
 
 <ul>
 <li><strong>趋势三：Agent记忆——KV持久化+向量记忆。</strong> Agent任务跨会话、跨轮次，需要长期记忆和短期记忆。这种”可写、共享、跨会话”的记忆，要求按Key内容寻址、细粒度随机读，且对时延极敏感。两类记忆（KV和向量）统一在同一个数据面承载。</li>
 </ul>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906125001761.png" class="" title="Agent记忆与KV持久化">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906125001761.jpg" class="" title="Agent记忆与KV持久化">
 
-<h3 id="挑战"><a href="#挑战" class="headerlink" title="挑战"></a>挑战</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906125530089.png" class="" title="KVoF面临的挑战">
+<h3 id="挑战"><a href="#挑战" class="headerlink" title="挑战"></a>挑战</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906125530089.jpg" class="" title="KVoF面临的挑战">
 
 <blockquote>
 <p>这里主要总结了当前面临的一些挑战：</p>
@@ -411,7 +411,7 @@
 <blockquote>
 <p>主要目的是：统一KV数据在大模型推理环境下的访问和传输标准。</p>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906125931947.png" class="" title="KVoF协议总体设计">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906125931947.jpg" class="" title="KVoF协议总体设计">
 
 <blockquote>
 <ul>
@@ -422,13 +422,13 @@
 </ul>
 </blockquote>
 <p><strong>统一寻址格式</strong>：不同推理框架底层寻址方式完全不同，这就导致了同一份KV，换个框架就无法寻址，底层存储系统无法统一管理。为了解决这个问题，定义了一个统一的寻址格式，包含<code>&#123;模型/版本/层, token块/前缀hash, dtype, 生命周期元数据&#125;</code>。这时同内容同Key，因为是按内容哈希寻址，所以天然支持前缀复用与跨实例去重。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906132801773.png" class="" title="统一寻址格式">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906132801773.jpg" class="" title="统一寻址格式">
 
 <p><strong>XPU直通IO</strong>：传统路径为<code>存储 -&gt; 网络 -&gt; CPU -&gt; XPU</code>，数据要先拷到CPU内存，CPU再处理网络协议栈，最后再拷给GPU，极大地浪费了昂贵的CPU算力，并增加极高延迟。为了解决这个问题，KVoF让<strong>XPU直接发起并完成KV IO</strong>，路径变为<code>存储 -&gt; 网络 -&gt; XPU</code>：</p>
 <blockquote>
 <p>XPU直接向存储发起读写请求，数据通过RDMA&#x2F;CXL直达XPU显存。</p>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906132958761.png" class="" title="XPU直通IO路径">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906132958761.jpg" class="" title="XPU直通IO路径">
 
 <p>此外，KVoF直接把KV语义硬化进DPU &#x2F; 网卡 &#x2F; 存储控制器，让硬件直接处理KV指令：</p>
 <blockquote>
@@ -439,7 +439,7 @@
 <li><strong>协议栈offload</strong>：传输协议全流程卸载到硬件，彻底绕开CPU处理网络协议栈的开销。</li>
 </ol>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906133200380.png" class="" title="KV语义硬件化">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906133200380.jpg" class="" title="KV语义硬件化">
 
 <p>为了进一步消除GPU（XPU）空转，解决海量小IO和稀疏读取带来的性能损耗，KVoF通过以下方法实现：</p>
 <blockquote>
@@ -451,7 +451,7 @@
 </blockquote>
 <h2 id="七、《面向大模型推理场景的KVCache测试研究》"><a href="#七、《面向大模型推理场景的KVCache测试研究》" class="headerlink" title="七、《面向大模型推理场景的KVCache测试研究》"></a>七、《面向大模型推理场景的KVCache测试研究》</h2><p>这个议题主要汇报的是一个测试报告，通过标准化测试，为AI存储选型提供量化基准和数据支撑。</p>
 <p>测试环境——硬件：H20 GPU推理服务器、SN5600网络交换机（400G&#x2F;800G）、BlueField-3 DPU、高性能SSD；软件：vLLM&#x2F;SGLang等推理引擎，Qwen&#x2F;DeepSeek等主流模型，以及焱融科技、XSKY、泛联信息等提供的存储系统。</p>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906134546080.png" class="" title="KVCache测试环境">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906134546080.jpg" class="" title="KVCache测试环境">
 
 <blockquote>
 <ul>
@@ -459,9 +459,9 @@
 <li>核心结果：通过引入YRCache，中端GDDR GPU的推理性能显著提升，已接近甚至在某些部分超越了高端HBM GPU原生方案，实现了推理提速降本的双重突破。</li>
 </ul>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906134803236.png" class="" title="YRCache测试结果1">
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906134855155.png" class="" title="YRCache测试结果2">
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135008925.png" class="" title="YRCache测试结果3">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906134803236.jpg" class="" title="YRCache测试结果1">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906134855155.jpg" class="" title="YRCache测试结果2">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135008925.jpg" class="" title="YRCache测试结果3">
 
 <blockquote>
 <ul>
@@ -469,10 +469,10 @@
 <li>核心结果：长序列场景下，TTFT（首Token时延）从数秒降至百毫秒级；吞吐量提升了一个数量级（达10-28倍，最高32倍）。JBOF性能接近标准服务器集群。</li>
 </ul>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135157407.png" class="" title="JBOF测试结果1">
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135253560.png" class="" title="JBOF测试结果2">
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135307696.png" class="" title="JBOF测试结果3">
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135341684.png" class="" title="JBOF测试结果4">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135157407.jpg" class="" title="JBOF测试结果1">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135253560.jpg" class="" title="JBOF测试结果2">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135307696.jpg" class="" title="JBOF测试结果3">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135341684.jpg" class="" title="JBOF测试结果4">
 
 <blockquote>
 <ul>
@@ -480,7 +480,7 @@
 <li>核心结果：TTFT最大降幅达98%，Token吞吐量TPS最高提升65倍。大幅缩小了中端GDDR GPU与高端HBM GPU之间的算力差距，实现了结构性降本。</li>
 </ul>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135400641.png" class="" title="双RDMA路径测试结果">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135400641.jpg" class="" title="双RDMA路径测试结果">
 
 <blockquote>
 <ul>
@@ -488,7 +488,7 @@
 <li>核心结果：为业界AI推理KV Cache卸载场景的存储选型提供了量化基准。</li>
 </ul>
 </blockquote>
-<h2 id="八、《智算存储技术发展与生态构建》"><a href="#八、《智算存储技术发展与生态构建》" class="headerlink" title="八、《智算存储技术发展与生态构建》"></a>八、《智算存储技术发展与生态构建》</h2><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135722369.png" class="" title="大模型训练全生命周期">
+<h2 id="八、《智算存储技术发展与生态构建》"><a href="#八、《智算存储技术发展与生态构建》" class="headerlink" title="八、《智算存储技术发展与生态构建》"></a>八、《智算存储技术发展与生态构建》</h2><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135722369.jpg" class="" title="大模型训练全生命周期">
 
 <p>大模型训练过程全生命周期为：数据采集、数据预处理、模型训练、推理。</p>
 <blockquote>
@@ -501,18 +501,18 @@
 <li>推理Prefill&#x2F;Decode：多线程、小IO（KB级）、混合随机读写。</li>
 </ul>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135942063.png" class="" title="IO特征矩阵">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906135942063.jpg" class="" title="IO特征矩阵">
 
 <blockquote>
 <p><strong>数据预处理时</strong>，数据会加载到服务器内存中，由CPU进行解码、格式转换、数据增强，再批量送给GPU。此时，系统需要具备极高的系统吞吐性能，且要能扛住海量小文件元数据操作的巨大压力。</p>
 <p><strong>训练过程CheckPoint</strong>：在训练过程中大约每2小时保存一次，需要所有GPU卡并发写出大IO的多个大文件。这种”周期性、瞬时性”的巨大带宽需求，不仅给存储网络带来巨大的冲刷压力，还造成了昂贵的GPU算力白白停滞。</p>
 </blockquote>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906140004905.png" class="" title="推理阶段的IO特征">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906140004905.jpg" class="" title="推理阶段的IO特征">
 
 <blockquote>
 <p>模型推理阶段的特征相反：在<strong>模型加载</strong>时，多线程大IO顺序读多个大文件，主要靠系统吞吐性能；KVCache缓存读写是多线程、混合IO，不仅顺序读多个大文件，还有随机的读写请求，且要求系统高吞吐；<strong>推理Prefill&#x2F;Decode</strong>时，则是多线程、小IO、混合随机读写多个大文件。传统SSD和文件系统擅长顺序大块读取，而稀疏注意力机制产生的是大量的512B小IO随机读取，导致存储系统无法有效利用带宽，引发严重的CPU Bubble。</p>
 </blockquote>
-<h3 id="常见的解决方案"><a href="#常见的解决方案" class="headerlink" title="常见的解决方案"></a>常见的解决方案</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906140552541.png" class="" title="常见解决方案总览">
+<h3 id="常见的解决方案"><a href="#常见的解决方案" class="headerlink" title="常见的解决方案"></a>常见的解决方案</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906140552541.jpg" class="" title="常见解决方案总览">
 
 <p><strong>软件&#x2F;文件系统侧：</strong></p>
 <p>1）<strong>DeepSeek（3FS分布式文件系统）方案</strong>：</p>
@@ -527,7 +527,7 @@
 <li><strong>优化目标</strong>：对Prefill阶段优化”Max Cache Reuse”和”TTFT SLO（首字延迟）”；对Decode阶段优化”Max Throughput”；</li>
 <li><strong>特点</strong>：通过精细的KVCache管理，实现”以存代算”。</li>
 </ul>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906140612889.png" class="" title="DeepSeek与Mooncake方案">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906140612889.jpg" class="" title="DeepSeek与Mooncake方案">
 
 <p><strong>硬件侧：</strong></p>
 <p>1）<strong>NVIDIA ICMS（Inference Context Memory Storage）+ 华为</strong>：</p>
@@ -548,7 +548,7 @@
 <li><strong>控制流与数据流分离</strong>：图中红线为控制流，蓝线为数据流。控制流通过DPU下发，数据流通过NVMe over KV、Fabric直通，支持GPU直通存储、设备侧NVMe over KV和双端口盘访问；</li>
 <li><strong>特点</strong>：本质上是将KV Cache的存储引擎完全”下沉”到DPU芯片中，绕过CPU，实现了近零开销和极高IOPS。</li>
 </ul>
-<h3 id="KVCache生态的接口不统一问题"><a href="#KVCache生态的接口不统一问题" class="headerlink" title="KVCache生态的接口不统一问题"></a>KVCache生态的接口不统一问题</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906141025470.png" class="" title="KVCache存储管理与适配接口不统一">
+<h3 id="KVCache生态的接口不统一问题"><a href="#KVCache生态的接口不统一问题" class="headerlink" title="KVCache生态的接口不统一问题"></a>KVCache生态的接口不统一问题</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906141025470.jpg" class="" title="KVCache存储管理与适配接口不统一">
 
 <p>这里表达了上层软件生态上KVCache存储管理与适配的接口不统一：当前各家KVCache方案各不相同，推理引擎（MindIE、vLLM、SGLang）接口互不兼容，导致底层存储无法实现高效统一管理。</p>
 <blockquote>
@@ -561,7 +561,7 @@
 </ol>
 </blockquote>
 <p>（需多方推动适配vLLM&#x2F;SGLang&#x2F;MindIE框架，推动KV交换接口成熟，共建KVCache多级缓存生态）</p>
-<h3 id="GPU直接访问存储技术（GDS）"><a href="#GPU直接访问存储技术（GDS）" class="headerlink" title="GPU直接访问存储技术（GDS）"></a>GPU直接访问存储技术（GDS）</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906141055563.png" class="" title="GDS技术">
+<h3 id="GPU直接访问存储技术（GDS）"><a href="#GPU直接访问存储技术（GDS）" class="headerlink" title="GPU直接访问存储技术（GDS）"></a>GPU直接访问存储技术（GDS）</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906141055563.jpg" class="" title="GDS技术">
 
 <p><strong>核心概念</strong>：GDS（GPU Direct Storage）技术通过让GPU绕过CPU和系统内存，直接访问本地或远程存储设备（如NVMe SSD、网络存储），实现降低延迟、提高带宽、释放CPU资源。</p>
 <p><strong>传统IO路径（左图）</strong>：GPU显存 -&gt; PCIe Switch -&gt; NVMe&#x2F;NIC -&gt; 主机内存（CPU处理） -&gt; SSD。存储系统需调用CPU内核接口，配置DMA地址，流程冗长。</p>
@@ -573,7 +573,7 @@
 <li><strong>高速互连释放</strong>：最大化利用PCIe&#x2F;NVLink（本地）、RDMA over InfiniBand&#x2F;RoCE（远程）或CXL（可扩展内存池）等超高速互连潜力。</li>
 </ol>
 <p>（由于各GPU厂商接口不统一，需存储与GPU平台做一对一适配，当前正拉动行业构建国产GDS生态）</p>
-<h3 id="存储适配RAG系统的语义化接口"><a href="#存储适配RAG系统的语义化接口" class="headerlink" title="存储适配RAG系统的语义化接口"></a>存储适配RAG系统的语义化接口</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906141110756.png" class="" title="RAG生命周期与语义接口层">
+<h3 id="存储适配RAG系统的语义化接口"><a href="#存储适配RAG系统的语义化接口" class="headerlink" title="存储适配RAG系统的语义化接口"></a>存储适配RAG系统的语义化接口</h3><img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906141110756.jpg" class="" title="RAG生命周期与语义接口层">
 
 <p>这里介绍了如何让底层存储直接适配大模型的知识库（RAG系统），通过语义化接口减少模型幻觉。</p>
 <p><strong>左图：RAG的完整生命周期（离线与在线）</strong>：</p>
@@ -602,7 +602,7 @@
 </ul>
 </li>
 </ul>
-<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906142112099.png" class="" title="总结与展望">
+<img src="/2026/09/07/%E5%BC%80%E6%94%BE%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%E5%A4%A7%E4%BC%9A%E5%AD%98%E5%82%A8%E8%AE%BA%E5%9D%9B%E6%8A%80%E6%9C%AF%E6%B4%9E%E5%AF%9F/image-20260906142112099.jpg" class="" title="总结与展望">
 
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>这场存储系统论坛的议题高度聚焦在<strong>AI推理时代的存储新命题</strong>上，可以提炼出几条贯穿全场的主线：</p>
 <ol>
